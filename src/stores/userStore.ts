@@ -1,0 +1,158 @@
+import { create } from "zustand";
+import { userService } from "@/services/api";
+
+const CACHE_DURATION = 5 * 60 * 1000;
+
+interface User {
+  id: string;
+  username: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  is_active: boolean;
+  roles: string[];
+  allowed_subject_ids: number[];
+  created_at: string;
+}
+
+interface UserState {
+  users: User[];
+  usersById: Record<string, User>;
+  cache: Map<string, { data: User[]; timestamp: number; params: any }>;
+  loading: boolean;
+  error: string | null;
+
+  fetchUsers: (
+    params?: { role?: string; search?: string },
+    force?: boolean,
+  ) => Promise<void>;
+  fetchUserById: (id: string, force?: boolean) => Promise<User>;
+  refreshUsers: (params?: { role?: string; search?: string }) => Promise<void>;
+  createUser: (data: any) => Promise<User>;
+  updateUser: (id: string, data: any) => Promise<User>;
+  deleteUser: (id: string) => Promise<void>;
+
+  clearCache: () => void;
+  clearError: () => void;
+}
+
+export const useUserStore = create<UserState>((set, get) => ({
+  users: [],
+  usersById: {},
+  cache: new Map(),
+  loading: false,
+  error: null,
+
+  fetchUsers: async (params = {}, force = false) => {
+    const cacheKey = JSON.stringify(params);
+    const cached = get().cache.get(cacheKey);
+
+    if (!force && cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      set({ users: cached.data, loading: false });
+      return;
+    }
+
+    set({ loading: true, error: null });
+    try {
+      const data = await userService.getAll(params);
+      get().cache.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+        params,
+      });
+      set({ users: data, loading: false });
+    } catch (error: any) {
+      set({
+        error: error.message || "Ошибка загрузки пользователей",
+        loading: false,
+      });
+    }
+  },
+
+  fetchUserById: async (id: string, force = false) => {
+    const cached = get().usersById[id];
+    if (!force && cached) return cached;
+
+    set({ loading: true, error: null });
+    try {
+      const user = await userService.getById(id);
+      set((state) => ({
+        usersById: { ...state.usersById, [id]: user },
+        loading: false,
+      }));
+      return user;
+    } catch (error: any) {
+      set({
+        error: error.message || "Ошибка загрузки пользователя",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  refreshUsers: async (params = {}) => {
+    await get().fetchUsers(params, true);
+  },
+
+  createUser: async (data: any) => {
+    set({ loading: true, error: null });
+    try {
+      const newUser = await userService.create(data);
+      get().cache.clear();
+      set((state) => ({
+        usersById: { ...state.usersById, [newUser.id]: newUser },
+        loading: false,
+      }));
+      return newUser;
+    } catch (error: any) {
+      set({
+        error: error.message || "Ошибка создания пользователя",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  updateUser: async (id: string, data: any) => {
+    set({ loading: true, error: null });
+    try {
+      const updatedUser = await userService.update(id, data);
+      get().cache.clear();
+      set((state) => ({
+        usersById: { ...state.usersById, [id]: updatedUser },
+        loading: false,
+      }));
+      return updatedUser;
+    } catch (error: any) {
+      set({
+        error: error.message || "Ошибка обновления пользователя",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  deleteUser: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      await userService.delete(id);
+      get().cache.clear();
+      set((state) => {
+        const { [id]: _, ...rest } = state.usersById;
+        return {
+          usersById: rest,
+          loading: false,
+        };
+      });
+    } catch (error: any) {
+      set({
+        error: error.message || "Ошибка удаления пользователя",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  clearCache: () => set({ cache: new Map() }),
+  clearError: () => set({ error: null }),
+}));

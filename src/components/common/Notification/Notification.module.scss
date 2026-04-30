@@ -1,0 +1,320 @@
+.notifications_container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 500px;
+  
+  @media (max-width: 768px) {
+    right: 20px;
+    left: 20px;
+    top: 20px;
+    max-width: none;
+  }
+  
+  @media (max-width: 480px) {
+    right: 12px;
+    left: 12px;
+    top: 12px;
+  }
+}
+
+.notification {
+  position: relative;
+  min-width: 400px;
+  max-width: 500px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 4px solid;
+
+  &_visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  &_closing {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  // Типы уведомлений
+  &_success {
+    border-left-color: #10b981;
+    
+    .notification__progress {
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+  }
+
+  &_error {
+    border-left-color: #ef4444;
+    
+    .notification__progress {
+      background: linear-gradient(90deg, #ef4444, #f87171);
+    }
+  }
+
+  &_warning {
+    border-left-color: #f59e0b;
+    
+    .notification__progress {
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    }
+  }
+
+  &_info {
+    border-left-color: #3b82f6;
+    
+    .notification__progress {
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    }
+  }
+
+  // Progress Bar
+  &__progress {
+    height: 3px;
+    transition: width 0.1s linear;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  // Header
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    padding: 20px;
+    padding-right: 16px;
+    position: relative;
+  }
+
+  &__icon {
+    font-size: 1.5rem;
+    margin-right: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  &__title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 6px;
+    color: #1f2937;
+    line-height: 1.4;
+  }
+
+  &__message {
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.5;
+    word-wrap: break-word;
+  }
+
+  // Крестик - теперь темный и хорошо виден
+  &__close {
+    background: #f3f4f6;
+    border: none;
+    color: #374151;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: bold;
+    border: 1px solid #e5e7eb;
+
+    &:hover {
+      background: #ef4444;
+      color: white;
+      transform: scale(1.1);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &:focus {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+  }
+
+  // Error Section
+  &__error_section {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  &__details_toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    background: #f8fafc;
+
+    &:hover {
+      background: #f1f5f9;
+      color: #374151;
+    }
+
+    i {
+      font-size: 0.75rem;
+      transition: transform 0.2s ease;
+    }
+  }
+
+  // Details
+  &__details {
+    background: #f8fafc;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  &__details_content {
+    padding: 16px 20px;
+    
+    pre {
+      margin: 0;
+      font-size: 0.75rem;
+      color: #4b5563;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.4;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      max-height: 200px;
+      overflow-y: auto;
+      position: relative;
+      
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      
+      &::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    }
+  }
+
+  // Copy button
+  &__copy_btn {
+    border: none;
+    background: none;
+    border-radius: 6px;
+    padding: 4px;
+    position: absolute;
+    right: 3%;
+    top: 3%;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    z-index: 1;
+
+    &:hover {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    &:focus {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+  }
+}
+
+// Адаптивность
+@media (max-width: 768px) {
+  .notification {
+    min-width: calc(100vw - 40px);
+    max-width: calc(100vw - 40px);
+  }
+}
+
+@media (max-width: 480px) {
+  .notification {
+    min-width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    
+    &__header {
+      padding: 16px;
+      padding-right: 12px;
+    }
+    
+    &__icon {
+      font-size: 1.25rem;
+      margin-right: 12px;
+    }
+    
+    &__title {
+      font-size: 0.95rem;
+    }
+    
+    &__message {
+      font-size: 0.8rem;
+    }
+  }
+}
+
+// High contrast support
+@media (prefers-contrast: high) {
+  .notification {
+    border: 2px solid;
+    
+    &__close {
+      border: 2px solid;
+    }
+  }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  .notification {
+    transition: none;
+    
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}

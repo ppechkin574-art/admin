@@ -1,0 +1,35 @@
+@forward 'variables';
+@forward 'mixins';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: v.$font-family-sans;
+  line-height: v.$line-height-normal;
+  color: v.$text-primary;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: v.$bg-secondary;
+  font-size: v.$font-size-base;
+}
+
+// Common utility classes (можно расширять)
+.container {
+  width: 100%;
+  max-width: 1850px;
+  margin: 0 auto;
+  padding: 0 v.$spacing-4;
+}
+
+.sr-only {
+  @include m.sr-only;
+}
+
+// Import component styles (будем добавлять по мере необходимости)  

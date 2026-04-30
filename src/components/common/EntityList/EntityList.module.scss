@@ -1,0 +1,125 @@
+.entity_list {
+  width: 100%;
+  max-width: 1850px;
+  min-height: 100vh;
+  background: #f8f9fa;
+  width: 100%;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: auto;
+
+  &__controls {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(320px, 1fr));
+    gap: 24px;
+    animation: entityListFadeIn 0.6s ease-out;
+
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+
+  &__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+  }
+}
+
+.page_size_selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+
+  label {
+    font-weight: 500;
+    color: #495057;
+    font-size: 14px;
+  }
+
+  .page_size_select {
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .page_size_selector {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@keyframes entityListFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1024px) {
+  .entity_list {
+    &__grid {
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .entity_list {
+    padding: 16px;
+
+    &__grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .entity_list {
+    padding: 12px;
+  }
+}

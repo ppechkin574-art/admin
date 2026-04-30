@@ -1,0 +1,30 @@
+.question_blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.question_modal_section__header {
+  .question_modal_section__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .question_modal_section__action_label {
+      font-size: 0.875rem;
+      color: #6c757d;
+      font-weight: 500;
+      margin-right: 8px;
+    }
+    
+    .btn {
+      transition: all 0.3s ease;
+      cursor: pointer;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+}

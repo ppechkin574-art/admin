@@ -1,0 +1,17 @@
+.basic_fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.form_group {
+  margin-bottom: 0;
+  
+  label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    display: block;
+  }
+}

@@ -1,0 +1,11 @@
+export { DetailContainer } from "./DetailContainer";
+export { DetailContent } from "./DetailContent";
+export { DetailWrapper } from "./DetailWrapper";
+export { DetailHeader } from "./DetailHeader";
+export { DetailStats } from "./DetailStats";
+export { DetailInfoCard } from "./DetailInfoCard";
+export { DetailActions } from "./DetailActions";
+export { DetailSection } from "./DetailSection";
+export { DetailGrid } from "./DetailGrid";
+export { DetailTableSection } from "./DetailTableSection";
+export { QuickActionsCard } from "./QuickActionsCard";

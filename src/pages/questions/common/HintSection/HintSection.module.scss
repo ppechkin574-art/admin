@@ -1,0 +1,41 @@
+.hint_blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint_section {
+  &__empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+    
+    p {
+      margin-bottom: 16px;
+    }
+  }
+  
+  &__empty_actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  
+  &__action_label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+  }
+}
+
+@media (max-width: 768px) {
+  .hint_section {
+    &__empty_actions {
+      flex-direction: column;
+    }
+  }
+}

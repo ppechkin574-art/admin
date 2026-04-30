@@ -1,0 +1,30 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  IMAGE_NAME: "$CI_PROJECT_NAME:$CI_COMMIT_REF_NAME"
+
+build:
+  stage: build
+  script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+    - >
+      docker build --no-cache --rm -t "$IMAGE_NAME"
+      --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL}
+      --build-arg VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
+      --build-arg VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
+      --build-arg VITE_KEYCLOAK_CLIENT_ID=${VITE_KEYCLOAK_CLIENT_ID}
+      --build-arg VITE_API_PROXY_TARGET=${VITE_API_PROXY_TARGET}
+      .
+  only:
+    - master
+
+deploy:
+  stage: deploy
+  script:
+    - docker stop "$CI_PROJECT_NAME" || true
+    - docker rm "$CI_PROJECT_NAME" || true
+    - docker run -d --name "$CI_PROJECT_NAME" -p "8001:3001" "$IMAGE_NAME"
+  only:
+    - master

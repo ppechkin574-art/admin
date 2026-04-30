@@ -1,0 +1,66 @@
+.custom_select {
+  position: relative;
+  display: block;
+  
+  &__native {
+    width: 100%;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 14px 50px 14px 16px;
+    background: white;
+    font-size: 14px;
+    color: #495057;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    
+    &:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15), 0 4px 12px rgba(102, 126, 234, 0.1);
+      outline: none;
+      transform: translateY(-1px);
+    }
+    
+    &:hover {
+      border-color: #adb5bd;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    &:disabled {
+      background-color: #f8f9fa;
+      cursor: not-allowed;
+      opacity: 0.6;
+      color: #6c757d;
+    }
+  }
+  
+  &__arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    pointer-events: none;
+    font-size: 12px;
+    transition: transform 0.3s ease;
+  }
+  
+  &:focus-within &__arrow {
+    transform: translateY(-50%) rotate(180deg);
+    color: #667eea;
+  }
+}
+
+.custom_select__sm {
+  .custom_select__native {
+    padding: 10px 40px 10px 12px;
+    font-size: 13px;
+  }
+  
+  .custom_select__arrow {
+    right: 12px;
+    font-size: 10px;
+  }
+}

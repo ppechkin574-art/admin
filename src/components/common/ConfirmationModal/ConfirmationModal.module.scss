@@ -1,0 +1,256 @@
+.confirmation_modal_overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.confirmation_modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 100%;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    padding: 28px 24px 20px;
+    gap: 16px;
+  }
+
+  &__icon {
+    font-size: 1.75rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0 0 12px 0;
+    line-height: 1.3;
+  }
+
+  &__message {
+    color: #6c757d;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  &__footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 20px 24px 24px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+  }
+
+  &__btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+      &::before {
+        left: 100%;
+      }
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &:focus {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    &__danger {
+      background: #dc3545;
+      color: white;
+
+      &:hover {
+        background: #c82333;
+      }
+    }
+
+    &__warning {
+      background: #ffc107;
+      color: #212529;
+
+      &:hover {
+        background: #e0a800;
+      }
+    }
+
+    &__success {
+      background: #28a745;
+      color: white;
+
+      &:hover {
+        background: #218838;
+      }
+    }
+
+    &__info {
+      background: #17a2b8;
+      color: white;
+
+      &:hover {
+        background: #138496;
+      }
+    }
+
+    &__cancel {
+      background: #6c757d;
+      color: white;
+
+      &:hover {
+        background: #5a6268;
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .confirmation_modal_overlay {
+    padding: 16px;
+    align-items: flex-end;
+  }
+
+  .confirmation_modal {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    animation: slideUpMobile 0.3s ease-out;
+
+    &__header {
+      padding: 24px 20px 16px;
+      flex-direction: column;
+      text-align: center;
+      gap: 12px;
+    }
+
+    &__icon {
+      align-self: center;
+    }
+
+    &__footer {
+      flex-direction: column-reverse;
+      padding: 16px 20px 20px;
+      gap: 8px;
+    }
+
+    &__btn {
+      width: 100%;
+      min-width: auto;
+    }
+  }
+}
+
+@keyframes slideUpMobile {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-contrast: high) {
+  .confirmation_modal {
+    border: 2px solid #000;
+  }
+  
+  .confirmation_modal__btn {
+    border: 1px solid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmation_modal_overlay,
+  .confirmation_modal {
+    animation: none;
+  }
+  
+  .confirmation_modal__btn {
+    transition: none;
+    
+    &::before {
+      display: none;
+    }
+    
+    &:hover {
+      transform: none;
+    }
+  }
+}

@@ -1,0 +1,84 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &__icon {
+    font-size: 11px;
+  }
+
+  &__sm {
+    padding: 4px 8px;
+    font-size: 11px;
+    
+    .badge__icon {
+      font-size: 10px;
+    }
+  }
+
+  &__md {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  &__lg {
+    padding: 8px 16px;
+    font-size: 13px;
+    
+    .badge__icon {
+      font-size: 12px;
+    }
+  }
+
+  &__hint {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  }
+
+  &__media {
+    background: linear-gradient(135deg, #2196F3 0%, #0b7dda 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+  }
+
+  &__success {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+  }
+
+  &__warning {
+    background: linear-gradient(135deg, #ff9800 0%, #e68900 100%);
+    color: white;
+  }
+
+  &__error {
+    background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+    color: white;
+  }
+
+  &__info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+  }
+
+  &__primary {
+    background: linear-gradient(135deg, #FF8D28 0%, #F49000 50%, #FF6B00 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(255, 141, 40, 0.3);
+  }
+
+  &__secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    color: white;
+  }
+}

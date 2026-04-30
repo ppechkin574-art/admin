@@ -1,0 +1,154 @@
+.entity_form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  animation: fadeInUp 0.5s ease-out;
+
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    text-align: center;
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e9ecef;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__title_section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+  }
+
+  &__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  &__title {
+    margin: 0 0 4px 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+
+  &__subtitle {
+    margin: 0;
+    color: #6c757d;
+    font-size: 16px;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+
+    @media (max-width: 768px) {
+      justify-content: stretch;
+      
+      .btn {
+        flex: 1;
+        justify-content: center;
+      }
+    }
+  }
+
+  &__form {
+    margin-bottom: 32px;
+  }
+
+  &__fields {
+    display: grid;
+    gap: 24px;
+  }
+}
+
+.form_group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form_label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.required {
+  color: #dc3545;
+  margin-left: 4px;
+}
+
+.checkbox_wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox_input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.checkbox_label {
+  margin: 0;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .entity_form {
+    padding: 16px;
+
+    &__header {
+      gap: 16px;
+    }
+
+    &__title_section {
+      flex-direction: column;
+      text-align: center;
+      gap: 12px;
+    }
+
+    &__actions {
+      flex-direction: column;
+    }
+  }
+}
