@@ -35,8 +35,8 @@ const Sidebar = () =>
     <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-30 lg:border-r lg:border-gray-200 lg:bg-white">
       <div className="flex items-center h-16 px-6 border-b border-gray-200">
         <div className="flex items-center space-x-2">
-          <img src="/images/lumi.svg" alt="Lumi" className="h-8 w-8" />
-          <span className="text-xl font-bold text-primary-600">Lumi Admin</span>
+          <img src="/images/logo.png" alt="AIMA" className="h-8 w-8" />
+          <span className="text-xl font-bold text-primary-600">AIMA Admin</span>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
 import { LogOut, User, Menu, X, ChevronDown } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, NavLink } from 'react-router-dom'
 import { menuItemsGen2, menuItemsGen1 } from '@/constants/sidebarContent'
 
 const Header = () =>
@@ -19,6 +19,34 @@ const Header = () =>
     }
 
     const username = `${user?.preferred_username || ''}`
+
+    // Mobile menu link — copy of the desktop Sidebar's renderer.  Was
+    // referenced on lines 105 and 120 but never defined, so opening the
+    // mobile menu (only happens on screen width <lg, i.e. tablets/phones)
+    // threw `ReferenceError: renderNavLink is not defined` and crashed
+    // the whole Layout.  Desktop was unaffected because the
+    // `mobileMenuOpen && (…)` block is gated.
+    const renderNavLink = (item: { label: string; href: string; icon: any }) =>
+    {
+        const Icon = item.icon
+        return (
+            <NavLink
+                key={item.href}
+                to={item.href}
+                end={item.href === '/'}
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                    `flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    }`
+                }
+            >
+                <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                {item.label}
+            </NavLink>
+        )
+    }
 
     return (
         <>
@@ -85,8 +113,8 @@ const Header = () =>
                         </div>
 
                         <div className="flex items-center h-16 px-6 border-b border-gray-200">
-                            <img src="/images/lumi.svg" alt="Lumi" className="h-8 w-8" />
-                            <span className="ml-3 text-xl font-bold text-primary-600">Lumi Admin</span>
+                            <img src="/images/logo.png" alt="AIMA" className="h-8 w-8" />
+                            <span className="ml-3 text-xl font-bold text-primary-600">AIMA Admin</span>
                         </div>
 
                         <nav className="flex-1 px-4 py-4 space-y-1">
