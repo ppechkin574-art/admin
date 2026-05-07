@@ -355,6 +355,34 @@ export const promocodeService = {
     api.get(`/admin/promocodes/${promocodeId}/history`).then((res) => res.data),
 };
 
+// Content management — for now a single resource (subscription benefits),
+// but kept under its own service so future content types (FAQ, banners,
+// onboarding screens) can land alongside without ballooning api.ts.
+export const subscriptionBenefitService = {
+  getAll: (): Promise<any[]> =>
+    api.get("/admin/content/subscription-benefits").then((res) => res.data),
+
+  getById: (id: number): Promise<any> =>
+    api
+      .get(`/admin/content/subscription-benefits/${id}`)
+      .then((res) => res.data),
+
+  create: (data: any): Promise<any> =>
+    api
+      .post("/admin/content/subscription-benefits", data)
+      .then((res) => res.data),
+
+  update: (id: number, data: any): Promise<any> =>
+    api
+      .patch(`/admin/content/subscription-benefits/${id}`, data)
+      .then((res) => res.data),
+
+  delete: (id: number): Promise<void> =>
+    api
+      .delete(`/admin/content/subscription-benefits/${id}`)
+      .then(() => undefined),
+};
+
 export const moduleService = {
   getAll: async (params?: any): Promise<SubjectModule[]> => {
     const response = await api.get("/admin/modules", { params });

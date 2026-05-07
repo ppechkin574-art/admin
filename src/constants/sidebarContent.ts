@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Layers,
   Dumbbell,
+  Sparkles,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -16,6 +17,11 @@ export const menuItemsGen2 = [
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
   { label: "Учителя", href: "/users", icon: Users },
+  {
+    label: "Фичи подписки",
+    href: "/content/subscription-benefits",
+    icon: Sparkles,
+  },
 ];
 
 export const menuItemsGen1 = [

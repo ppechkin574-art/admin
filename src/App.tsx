@@ -24,6 +24,8 @@ import { SubjectCombinationDetail } from './pages/subjectCombinations/details/Su
 import { PromocodeList } from './pages/promocodes/list'
 import { PromocodeForm } from './pages/promocodes/form'
 import { PromocodeHistory } from './pages/promocodes/history'
+import { SubscriptionBenefitList } from './pages/content/subscription-benefits/list'
+import { SubscriptionBenefitForm } from './pages/content/subscription-benefits/form'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -146,6 +148,12 @@ function App()
             <Route index element={<PromocodeList />} />
             <Route path="create" element={<PromocodeForm />} />
             <Route path=":id/history" element={<PromocodeHistoryWrapper />} />
+          </Route>
+
+          <Route path="/content/subscription-benefits">
+            <Route index element={<SubscriptionBenefitList />} />
+            <Route path="create" element={<SubscriptionBenefitForm />} />
+            <Route path=":id/edit" element={<SubscriptionBenefitForm />} />
           </Route>
 
           <Route path="/modules">
