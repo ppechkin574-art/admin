@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   BookOpen,
   CreditCard,
   FileText,
@@ -17,6 +18,7 @@ export const menuItemsGen2 = [
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
   { label: "Пользователи", href: "/users", icon: Users },
+  { label: "Маркетинг", href: "/marketing", icon: BarChart3 },
   {
     label: "Фичи подписки",
     href: "/content/subscription-benefits",

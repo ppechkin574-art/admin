@@ -568,4 +568,37 @@ export const userService = {
     api.delete(`/admin/users/${id}`).then((res) => res.data),
 };
 
+// Marketing dashboard data sources. Wraps the existing
+// `/admin/analytics/*` endpoints — no new backend work needed.
+// Each method returns `any` because the FastAPI side ships untyped
+// response_models for these routes; the dashboard normalises shape
+// on the React side, which lets us iterate on what's displayed
+// without round-tripping a backend deploy.
+export const analyticsService = {
+  activity: (): Promise<any> =>
+    api.get("/admin/analytics/activity").then((res) => res.data),
+
+  retention: (): Promise<any> =>
+    api.get("/admin/analytics/retention").then((res) => res.data),
+
+  efficienty: (): Promise<any> =>
+    api.get("/admin/analytics/efficienty").then((res) => res.data),
+
+  paymentsInfo: (params?: {
+    date_from?: string;
+    date_to?: string;
+    status?: string;
+    period?: string;
+  }): Promise<any> =>
+    api.get("/admin/analytics/payments/info", { params }).then((res) => res.data),
+
+  paymentsByYear: (): Promise<any> =>
+    api.get("/admin/analytics/payments/by_year").then((res) => res.data),
+
+  topClients: (showAll = false): Promise<any> =>
+    api
+      .get("/admin/analytics/top_clients", { params: { show_all: showAll } })
+      .then((res) => res.data),
+};
+
 export default api;

@@ -39,6 +39,7 @@ import { SubjectModuleList } from './pages/modules/SubjectModuleList'
 import { UserList } from './pages/users/UserList'
 import { UserForm } from './pages/users/UserForm'
 import { UserDetail } from './pages/users/UserDetail'
+import { MarketingDashboard } from './pages/marketing/MarketingDashboard'
 
 function App()
 {
@@ -173,6 +174,8 @@ function App()
             <Route path=":id" element={<UserDetail />} />
             <Route path=":id/edit" element={<UserForm />} />
           </Route>
+
+          <Route path="/marketing" element={<MarketingDashboard />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>
