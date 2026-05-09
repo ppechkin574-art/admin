@@ -16,7 +16,7 @@ export const menuItemsGen2 = [
   { label: "Модули", href: "/modules", icon: Puzzle },
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
-  { label: "Учителя", href: "/users", icon: Users },
+  { label: "Пользователи", href: "/users", icon: Users },
   {
     label: "Фичи подписки",
     href: "/content/subscription-benefits",

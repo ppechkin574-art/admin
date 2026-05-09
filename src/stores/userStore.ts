@@ -11,8 +11,26 @@ interface User {
   phone: string | null;
   is_active: boolean;
   roles: string[];
+  // Computed string from backend: "parent" | "child" | "user".
+  // Mirrors UserDTO.role @computed_field — derived from `roles`,
+  // safe even if backend ever stops emitting it.
+  role?: "parent" | "child" | "user" | string;
   allowed_subject_ids: number[];
+  // Школьный класс (5..11). null для родителей/учителей и для
+  // legacy-юзеров зарегистрированных до 09.05.2026 (поле введено
+  // задним числом). Backend стал отдавать это поле в коммите от
+  // 2026-05-09.
+  grade: number | null;
+  plan: "FREE" | "PRO" | string;
+  used_trial: boolean;
+  subscription_end: string | null;
+  subscription_cancelled: boolean;
+  attendance_streak_days: number;
+  attendance_total_points: number;
+  points: number;
+  rank: number | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 interface UserState {

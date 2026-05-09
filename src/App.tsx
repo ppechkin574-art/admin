@@ -38,6 +38,7 @@ import { SubjectList as TrainerSubjectList } from '@/pages/subjects/list/NewSubj
 import { SubjectModuleList } from './pages/modules/SubjectModuleList'
 import { UserList } from './pages/users/UserList'
 import { UserForm } from './pages/users/UserForm'
+import { UserDetail } from './pages/users/UserDetail'
 
 function App()
 {
@@ -169,6 +170,7 @@ function App()
           <Route path="/users">
             <Route index element={<UserList />} />
             <Route path="create" element={<UserForm />} />
+            <Route path=":id" element={<UserDetail />} />
             <Route path=":id/edit" element={<UserForm />} />
           </Route>
 
