@@ -6,6 +6,7 @@ import {
   FolderKanban,
   LinkIcon,
   Puzzle,
+  Settings,
   Users,
   GraduationCap,
   Layers,
@@ -23,6 +24,11 @@ export const menuItemsGen2 = [
     label: "Фичи подписки",
     href: "/content/subscription-benefits",
     icon: Sparkles,
+  },
+  {
+    label: "Настройки сервиса",
+    href: "/admin/app-settings",
+    icon: Settings,
   },
 ];
 

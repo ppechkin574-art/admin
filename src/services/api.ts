@@ -383,6 +383,25 @@ export const subscriptionBenefitService = {
       .then(() => undefined),
 };
 
+// ────────────────────────────────────────────────────────────────────
+// App Settings — runtime-config knobs editable from admin without redeploy.
+// Backend reads go through a 60s Redis cache so saves propagate across
+// replicas within at most a minute. There is no create/delete: settings
+// are seeded by migrations and only `value` is mutable.
+// ────────────────────────────────────────────────────────────────────
+export const appSettingsService = {
+  getAll: (): Promise<any[]> =>
+    api.get("/admin/app-settings").then((res) => res.data),
+
+  getByKey: (key: string): Promise<any> =>
+    api.get(`/admin/app-settings/${key}`).then((res) => res.data),
+
+  updateValue: (key: string, value: string): Promise<any> =>
+    api
+      .put(`/admin/app-settings/${key}`, { value })
+      .then((res) => res.data),
+};
+
 export const moduleService = {
   getAll: async (params?: any): Promise<SubjectModule[]> => {
     const response = await api.get("/admin/modules", { params });

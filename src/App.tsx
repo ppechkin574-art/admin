@@ -26,6 +26,7 @@ import { PromocodeForm } from './pages/promocodes/form'
 import { PromocodeHistory } from './pages/promocodes/history'
 import { SubscriptionBenefitList } from './pages/content/subscription-benefits/list'
 import { SubscriptionBenefitForm } from './pages/content/subscription-benefits/form'
+import { AppSettingsList } from './pages/admin/app-settings'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -157,6 +158,8 @@ function App()
             <Route path="create" element={<SubscriptionBenefitForm />} />
             <Route path=":id/edit" element={<SubscriptionBenefitForm />} />
           </Route>
+
+          <Route path="/admin/app-settings" element={<AppSettingsList />} />
 
           <Route path="/modules">
             <Route index element={<SubjectModuleList />} />
