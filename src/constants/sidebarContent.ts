@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   BookOpen,
   CreditCard,
   FileText,
@@ -20,6 +21,7 @@ export const menuItemsGen2 = [
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
   { label: "Пользователи", href: "/users", icon: Users },
   { label: "Маркетинг", href: "/marketing", icon: BarChart3 },
+  { label: "Push-уведомления", href: "/push", icon: Bell },
   {
     label: "Фичи подписки",
     href: "/content/subscription-benefits",

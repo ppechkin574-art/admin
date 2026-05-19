@@ -620,4 +620,31 @@ export const analyticsService = {
       .then((res) => res.data),
 };
 
+// Push notifications — broadcast a message to a slice of the user
+// base. Backend lives at POST /admin/notifications/send (see
+// aima-backend@5216971). The legacy /admin/notifications/test/send
+// is intentionally NOT used here — that endpoint is marked "remove
+// in production" in the backend code.
+export type PushTarget = "all" | "pro" | "ios";
+
+export interface PushSendResult {
+  target: string;
+  matched_tokens: number;
+  requested: number;
+  delivered: number;
+  failed: number;
+  removed_tokens: number;
+}
+
+export const pushService = {
+  send: (
+    title: string,
+    body: string,
+    target: PushTarget = "all"
+  ): Promise<PushSendResult> =>
+    api
+      .post("/admin/notifications/send", { title, body, target })
+      .then((res) => res.data),
+};
+
 export default api;

@@ -41,6 +41,7 @@ import { UserList } from './pages/users/UserList'
 import { UserForm } from './pages/users/UserForm'
 import { UserDetail } from './pages/users/UserDetail'
 import { MarketingDashboard } from './pages/marketing/MarketingDashboard'
+import { PushNotifications } from './pages/marketing/PushNotifications'
 
 function App()
 {
@@ -179,6 +180,7 @@ function App()
           </Route>
 
           <Route path="/marketing" element={<MarketingDashboard />} />
+          <Route path="/push" element={<PushNotifications />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>
