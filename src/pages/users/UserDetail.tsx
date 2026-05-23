@@ -57,6 +57,37 @@ const formatDate = (iso: string | null): string => {
     }
 }
 
+// Quick-pick day presets — covers ~95% of admin intents:
+// week (trial / refund window), month (standard comp), quarter,
+// year. Custom input remains for one-off amounts.
+const QUICK_PICKS = [7, 30, 90, 365] as const
+
+// Remaining-days computation for the active-PRO countdown badge.
+// Returns null when subscription_end is missing/unparseable, 0 when
+// expired (used to render «Истекла» rather than negative days),
+// otherwise floor of days-until-end.
+const daysRemaining = (iso: string | null): number | null => {
+    if (!iso) return null
+    const end = new Date(iso).getTime()
+    if (Number.isNaN(end)) return null
+    const now = Date.now()
+    if (end <= now) return 0
+    return Math.floor((end - now) / (1000 * 60 * 60 * 24))
+}
+
+// Pluralise day-count in Russian (1 день / 2 дня / 5 дней).
+// Used in badge + button labels — looks more natural than the
+// hardcoded «дн.» abbreviation everywhere.
+const plural = (n: number, one: string, few: string, many: string): string => {
+    const mod10 = n % 10
+    const mod100 = n % 100
+    if (mod100 >= 11 && mod100 <= 14) return many
+    if (mod10 === 1) return one
+    if (mod10 >= 2 && mod10 <= 4) return few
+    return many
+}
+const daysLabel = (n: number) => `${n} ${plural(n, 'день', 'дня', 'дней')}`
+
 const roleLabel = (user: User): string => {
     const r = user.role || (user.roles?.includes('parent')
         ? 'parent'
@@ -135,24 +166,28 @@ export const UserDetail: React.FC = () => {
         }
     }
 
-    // Forcibly grant PRO for N days. Used when an IAP receipt failed to
-    // propagate (real payment, missing PRO) or to comp a reviewer/demo
-    // account before App Store submission. After the backend writes the
-    // new Keycloak attrs we re-fetch the user with force=true to bypass
-    // the userStore cache so the Subscription section reflects the new
-    // plan immediately.
-    const handleGrantPro = async () => {
+    // Grant or extend PRO for N days. Backend service decides grant-vs-
+    // extend automatically: if user already has active PRO, the days
+    // are added to current subscription_end; otherwise they start from
+    // now. We re-fetch with force=true so the Subscription section
+    // reflects the new state without a page reload, and the success
+    // toast shows the new expiry date so the operator can sanity-check.
+    const handleGrantPro = async (overrideDays?: number) => {
         if (!user) return
-        if (!Number.isInteger(grantDays) || grantDays < 1 || grantDays > 3650) {
+        const days = overrideDays ?? grantDays
+        if (!Number.isInteger(days) || days < 1 || days > 3650) {
             toast.error('Дней должно быть от 1 до 3650')
             return
         }
         setSubBusy(true)
         try {
-            await userService.grantPro(user.id, grantDays)
+            const updated = await userService.grantPro(user.id, days) as User
             const refreshed = await fetchUserById(user.id, true) as unknown as User
             setUser(refreshed)
-            toast.success(`PRO выдан на ${grantDays} дн.`)
+            const newEnd = updated.subscription_end || refreshed.subscription_end
+            const endStr = newEnd ? formatDate(newEnd) : ''
+            const action = isProActive ? 'продлён' : 'выдан'
+            toast.success(`PRO ${action} на ${daysLabel(days)}${endStr ? ` (до ${endStr})` : ''}`)
         } catch (e: any) {
             const msg = e?.response?.data?.detail || 'Не удалось выдать PRO'
             toast.error(msg)
@@ -203,6 +238,15 @@ export const UserDetail: React.FC = () => {
             </div>
         )
     }
+
+    // Computed views over the user's subscription. Centralised so the
+    // Subscription section and the action handlers agree on what
+    // "active PRO" means (plan===PRO && subscription_end is in future).
+    const remainingDays = daysRemaining(user.subscription_end)
+    const isProActive =
+        user.plan === 'PRO' &&
+        remainingDays != null &&
+        remainingDays > 0
 
     return (
         <div className="space-y-6 p-6">
@@ -262,9 +306,28 @@ export const UserDetail: React.FC = () => {
             {/* Subscription */}
             <Section title="Подписка">
                 <Field label="Тариф">
-                    <Badge type={user.plan === 'PRO' ? 'primary' : 'secondary'}>
-                        {user.plan || 'FREE'}
-                    </Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Badge type={user.plan === 'PRO' ? 'primary' : 'secondary'}>
+                            {user.plan || 'FREE'}
+                        </Badge>
+                        {/* Countdown badge — appears only when PRO is active.
+                            Red+warning icon if ≤7 days left (renewal-attention
+                            zone), neutral otherwise. Pinned to remaining-days
+                            because an admin scanning the user list cares more
+                            about "do we need to act soon" than the raw date. */}
+                        {isProActive && remainingDays != null && (
+                            <Badge type={remainingDays <= 7 ? 'warning' : 'success'}>
+                                {remainingDays <= 7 ? '⚠ ' : ''}
+                                {daysLabel(remainingDays)} {remainingDays === 0 ? 'осталось' : 'осталось'}
+                            </Badge>
+                        )}
+                        {/* Explicit "expired" state when subscription_end is in the
+                            past but plan attr still says PRO — happens when the
+                            backend auto-downgrade hasn't run yet or got skipped. */}
+                        {user.plan === 'PRO' && remainingDays === 0 && (
+                            <Badge type="error">Истекла</Badge>
+                        )}
+                    </div>
                 </Field>
                 <Field label="Trial использован">
                     {user.used_trial ? 'Да' : 'Нет'}
@@ -275,37 +338,72 @@ export const UserDetail: React.FC = () => {
                 <Field label="Авто-продление отменено">
                     {user.subscription_cancelled ? 'Да' : 'Нет'}
                 </Field>
-                <div className="pt-4 mt-2 border-t border-gray-100 flex flex-wrap items-end gap-3">
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs uppercase tracking-wide text-gray-500">
-                            Дней
-                        </label>
-                        <input
-                            type="number"
-                            min={1}
-                            max={3650}
-                            value={grantDays}
-                            onChange={(e) => setGrantDays(parseInt(e.target.value, 10) || 0)}
-                            className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
-                            disabled={subBusy}
-                        />
+                {/* Management panel — quick presets cover the 95% of admin
+                    intents (week trial / month comp / quarter / year), with
+                    a custom input retained for one-off amounts. Smart button
+                    label flips between Grant and Extend based on current PRO
+                    state so the operator's mental model matches the action's
+                    actual effect (backend extends from current end if active,
+                    otherwise starts from now). */}
+                <div className="pt-5 mt-3 border-t border-gray-100 space-y-3">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">
+                        Управление подпиской
                     </div>
-                    <Button
-                        variant="primary"
-                        onClick={handleGrantPro}
-                        disabled={subBusy}
-                        icon={<Crown className="h-4 w-4" />}
-                    >
-                        Выдать PRO
-                    </Button>
-                    <Button
-                        variant="danger"
-                        onClick={handleResetSubscription}
-                        disabled={subBusy}
-                        icon={<X className="h-4 w-4" />}
-                    >
-                        Сбросить в FREE
-                    </Button>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-gray-500 mr-1">Быстро:</span>
+                        {QUICK_PICKS.map((d) => (
+                            <button
+                                key={d}
+                                type="button"
+                                onClick={() => handleGrantPro(d)}
+                                disabled={subBusy}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-md border transition
+                                    ${subBusy
+                                        ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700'}`}
+                            >
+                                {d}д
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs uppercase tracking-wide text-gray-500">
+                                Своё, дней
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={3650}
+                                value={grantDays}
+                                onChange={(e) => setGrantDays(parseInt(e.target.value, 10) || 0)}
+                                className="w-28 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
+                                disabled={subBusy}
+                            />
+                        </div>
+                        <Button
+                            variant="primary"
+                            onClick={() => handleGrantPro()}
+                            disabled={subBusy}
+                            icon={subBusy
+                                ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                : <Crown className="h-4 w-4" />}
+                        >
+                            {subBusy
+                                ? (isProActive ? 'Продлеваю…' : 'Выдаю…')
+                                : (isProActive ? `Продлить +${grantDays}д` : `Выдать PRO на ${grantDays}д`)}
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleResetSubscription}
+                            disabled={subBusy}
+                            icon={<X className="h-4 w-4" />}
+                        >
+                            Сбросить в FREE
+                        </Button>
+                    </div>
                 </div>
             </Section>
 
