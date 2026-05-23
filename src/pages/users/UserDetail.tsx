@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useUserStore } from '@/stores/userStore'
+import { userService } from '@/services/api'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Lock, RefreshCw, Unlock } from 'lucide-react'
+import { ArrowLeft, Lock, RefreshCw, Unlock, Crown, X } from 'lucide-react'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 
@@ -96,6 +97,8 @@ export const UserDetail: React.FC = () => {
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
     const [toggleBusy, setToggleBusy] = useState(false)
+    const [subBusy, setSubBusy] = useState(false)
+    const [grantDays, setGrantDays] = useState<number>(30)
 
     useEffect(() => {
         if (!id) return
@@ -129,6 +132,55 @@ export const UserDetail: React.FC = () => {
             toast.error('Не удалось изменить статус')
         } finally {
             setToggleBusy(false)
+        }
+    }
+
+    // Forcibly grant PRO for N days. Used when an IAP receipt failed to
+    // propagate (real payment, missing PRO) or to comp a reviewer/demo
+    // account before App Store submission. After the backend writes the
+    // new Keycloak attrs we re-fetch the user with force=true to bypass
+    // the userStore cache so the Subscription section reflects the new
+    // plan immediately.
+    const handleGrantPro = async () => {
+        if (!user) return
+        if (!Number.isInteger(grantDays) || grantDays < 1 || grantDays > 3650) {
+            toast.error('Дней должно быть от 1 до 3650')
+            return
+        }
+        setSubBusy(true)
+        try {
+            await userService.grantPro(user.id, grantDays)
+            const refreshed = await fetchUserById(user.id, true) as unknown as User
+            setUser(refreshed)
+            toast.success(`PRO выдан на ${grantDays} дн.`)
+        } catch (e: any) {
+            const msg = e?.response?.data?.detail || 'Не удалось выдать PRO'
+            toast.error(msg)
+        } finally {
+            setSubBusy(false)
+        }
+    }
+
+    // Forcibly reset to FREE — wipes plan, subscription_end and
+    // subscription_cancelled. Confirmation prompt because this is
+    // destructive (a real paying user's PRO would be wiped if pressed
+    // by accident).
+    const handleResetSubscription = async () => {
+        if (!user) return
+        if (!window.confirm(`Сбросить подписку для ${user.name || user.id}? Будет установлен FREE.`)) {
+            return
+        }
+        setSubBusy(true)
+        try {
+            await userService.resetSubscription(user.id)
+            const refreshed = await fetchUserById(user.id, true) as unknown as User
+            setUser(refreshed)
+            toast.success('Подписка сброшена в FREE')
+        } catch (e: any) {
+            const msg = e?.response?.data?.detail || 'Не удалось сбросить подписку'
+            toast.error(msg)
+        } finally {
+            setSubBusy(false)
         }
     }
 
@@ -223,6 +275,38 @@ export const UserDetail: React.FC = () => {
                 <Field label="Авто-продление отменено">
                     {user.subscription_cancelled ? 'Да' : 'Нет'}
                 </Field>
+                <div className="pt-4 mt-2 border-t border-gray-100 flex flex-wrap items-end gap-3">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs uppercase tracking-wide text-gray-500">
+                            Дней
+                        </label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={3650}
+                            value={grantDays}
+                            onChange={(e) => setGrantDays(parseInt(e.target.value, 10) || 0)}
+                            className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
+                            disabled={subBusy}
+                        />
+                    </div>
+                    <Button
+                        variant="primary"
+                        onClick={handleGrantPro}
+                        disabled={subBusy}
+                        icon={<Crown className="h-4 w-4" />}
+                    >
+                        Выдать PRO
+                    </Button>
+                    <Button
+                        variant="danger"
+                        onClick={handleResetSubscription}
+                        disabled={subBusy}
+                        icon={<X className="h-4 w-4" />}
+                    >
+                        Сбросить в FREE
+                    </Button>
+                </div>
             </Section>
 
             {/* Engagement */}

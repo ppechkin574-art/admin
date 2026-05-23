@@ -585,6 +585,22 @@ export const userService = {
 
   delete: (id: string): Promise<void> =>
     api.delete(`/admin/users/${id}`).then((res) => res.data),
+
+  // Forcibly grant PRO for `days` days. Backend writes plan=PRO +
+  // subscription_end = now+days into Keycloak attrs. Used when an
+  // IAP receipt fails to propagate or for reviewer/demo accounts.
+  grantPro: (id: string, days: number = 30): Promise<any> =>
+    api
+      .post(`/admin/users/${id}/grant-pro-subscription`, { days })
+      .then((res) => res.data),
+
+  // Forcibly reset back to FREE (clears plan + subscription_end +
+  // subscription_cancelled). Companion to grantPro. Existing endpoint,
+  // exposed in the UI alongside the grant action.
+  resetSubscription: (id: string): Promise<any> =>
+    api
+      .post(`/admin/users/${id}/reset-subscription`)
+      .then((res) => res.data),
 };
 
 // Marketing dashboard data sources. Wraps the existing
