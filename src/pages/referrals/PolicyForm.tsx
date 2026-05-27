@@ -193,7 +193,7 @@ export const ReferralPolicyForm: React.FC = () => {
               disabled={loading || saving}
             />
             <NumberField
-              label="Дни Pro-подписки"
+              label="Дни подписки Month"
               value={values.inviterDays}
               onChange={(v) => setField("inviterDays", v)}
               disabled={loading || saving}
@@ -212,7 +212,7 @@ export const ReferralPolicyForm: React.FC = () => {
               disabled={loading || saving}
             />
             <NumberField
-              label="Дни Pro-подписки"
+              label="Дни подписки Month"
               value={values.inviteeDays}
               onChange={(v) => setField("inviteeDays", v)}
               disabled={loading || saving}
