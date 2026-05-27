@@ -5,6 +5,7 @@ import {
   CreditCard,
   FileText,
   FolderKanban,
+  Gift,
   LinkIcon,
   Puzzle,
   Settings,
@@ -26,6 +27,11 @@ export const menuItemsGen2 = [
     label: "Фичи подписки",
     href: "/content/subscription-benefits",
     icon: Sparkles,
+  },
+  {
+    label: "Реферралы",
+    href: "/referrals/policy",
+    icon: Gift,
   },
   {
     label: "Настройки сервиса",
