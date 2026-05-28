@@ -30,6 +30,7 @@ import { AppSettingsList } from './pages/admin/app-settings'
 import { ReferralPolicyForm } from './pages/referrals'
 import { LeaderboardPrizesList } from './pages/leaderboardPrizes'
 import { StreakRewardsList } from './pages/streakRewards'
+import { StreakPushTemplatePage } from './pages/streakPushTemplate'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -170,6 +171,8 @@ function App()
           <Route path="/leaderboard-prizes" element={<LeaderboardPrizesList />} />
 
           <Route path="/streak-rewards" element={<StreakRewardsList />} />
+
+          <Route path="/streak-push" element={<StreakPushTemplatePage />} />
 
           <Route path="/modules">
             <Route index element={<SubjectModuleList />} />

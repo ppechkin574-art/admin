@@ -46,6 +46,11 @@ export const menuItemsGen2 = [
     icon: Flame,
   },
   {
+    label: "Push: напоминание о стрике",
+    href: "/streak-push",
+    icon: Bell,
+  },
+  {
     label: "Настройки сервиса",
     href: "/admin/app-settings",
     icon: Settings,

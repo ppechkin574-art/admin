@@ -447,6 +447,30 @@ export const leaderboardPrizesService = {
     api.delete(`/admin/leaderboard-prizes/${id}`).then(() => undefined),
 };
 
+export interface StreakPushTemplate {
+  enabled: boolean;
+  title: string;
+  body: string;
+  hours_before_reset: number;
+  timezone: string;
+  updated_at: string;
+}
+
+export const streakPushTemplateService = {
+  get: (): Promise<StreakPushTemplate> =>
+    api.get("/admin/streak-push-template").then((r) => r.data),
+  update: (
+    payload: Partial<{
+      enabled: boolean;
+      title: string;
+      body: string;
+      hours_before_reset: number;
+      timezone: string;
+    }>,
+  ): Promise<StreakPushTemplate> =>
+    api.put("/admin/streak-push-template", payload).then((r) => r.data),
+};
+
 export const moduleService = {
   getAll: async (params?: any): Promise<SubjectModule[]> => {
     const response = await api.get("/admin/modules", { params });
