@@ -402,6 +402,26 @@ export const appSettingsService = {
       .then((res) => res.data),
 };
 
+export const streakRewardTiersService = {
+  list: (): Promise<any[]> =>
+    api.get("/admin/streak-reward-tiers").then((r) => r.data),
+  create: (payload: {
+    min_streak: number;
+    coins: number;
+    is_active: boolean;
+  }): Promise<any> =>
+    api.post("/admin/streak-reward-tiers", payload).then((r) => r.data),
+  update: (
+    min_streak: number,
+    payload: Partial<{ coins: number; is_active: boolean }>,
+  ): Promise<any> =>
+    api
+      .patch(`/admin/streak-reward-tiers/${min_streak}`, payload)
+      .then((r) => r.data),
+  delete: (min_streak: number): Promise<void> =>
+    api.delete(`/admin/streak-reward-tiers/${min_streak}`).then(() => undefined),
+};
+
 export const leaderboardPrizesService = {
   list: (): Promise<any[]> =>
     api.get("/admin/leaderboard-prizes").then((r) => r.data),

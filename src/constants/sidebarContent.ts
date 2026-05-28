@@ -4,6 +4,7 @@ import {
   BookOpen,
   CreditCard,
   FileText,
+  Flame,
   FolderKanban,
   Gift,
   LinkIcon,
@@ -38,6 +39,11 @@ export const menuItemsGen2 = [
     label: "Призы топов",
     href: "/leaderboard-prizes",
     icon: Trophy,
+  },
+  {
+    label: "Награды стрика",
+    href: "/streak-rewards",
+    icon: Flame,
   },
   {
     label: "Настройки сервиса",
