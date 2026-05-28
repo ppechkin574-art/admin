@@ -28,6 +28,7 @@ import { SubscriptionBenefitList } from './pages/content/subscription-benefits/l
 import { SubscriptionBenefitForm } from './pages/content/subscription-benefits/form'
 import { AppSettingsList } from './pages/admin/app-settings'
 import { ReferralPolicyForm } from './pages/referrals'
+import { LeaderboardPrizesList } from './pages/leaderboardPrizes'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -164,6 +165,8 @@ function App()
           <Route path="/admin/app-settings" element={<AppSettingsList />} />
 
           <Route path="/referrals/policy" element={<ReferralPolicyForm />} />
+
+          <Route path="/leaderboard-prizes" element={<LeaderboardPrizesList />} />
 
           <Route path="/modules">
             <Route index element={<SubjectModuleList />} />

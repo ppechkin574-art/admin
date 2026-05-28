@@ -1,0 +1,1 @@
+export { LeaderboardPrizesList } from "./LeaderboardPrizesList";

@@ -402,6 +402,31 @@ export const appSettingsService = {
       .then((res) => res.data),
 };
 
+export const leaderboardPrizesService = {
+  list: (): Promise<any[]> =>
+    api.get("/admin/leaderboard-prizes").then((r) => r.data),
+  iconKeys: (): Promise<{ icon_keys: string[] }> =>
+    api.get("/admin/leaderboard-prizes/icon-keys").then((r) => r.data),
+  create: (payload: {
+    rank: number;
+    icon_key: string;
+    title: string;
+    description: string;
+    is_active: boolean;
+  }): Promise<any> =>
+    api.post("/admin/leaderboard-prizes", payload).then((r) => r.data),
+  update: (id: number, payload: Partial<{
+    rank: number;
+    icon_key: string;
+    title: string;
+    description: string;
+    is_active: boolean;
+  }>): Promise<any> =>
+    api.patch(`/admin/leaderboard-prizes/${id}`, payload).then((r) => r.data),
+  delete: (id: number): Promise<void> =>
+    api.delete(`/admin/leaderboard-prizes/${id}`).then(() => undefined),
+};
+
 export const moduleService = {
   getAll: async (params?: any): Promise<SubjectModule[]> => {
     const response = await api.get("/admin/modules", { params });

@@ -7,6 +7,7 @@ import {
   FolderKanban,
   Gift,
   LinkIcon,
+  Trophy,
   Puzzle,
   Settings,
   Users,
@@ -32,6 +33,11 @@ export const menuItemsGen2 = [
     label: "Реферралы",
     href: "/referrals/policy",
     icon: Gift,
+  },
+  {
+    label: "Призы топов",
+    href: "/leaderboard-prizes",
+    icon: Trophy,
   },
   {
     label: "Настройки сервиса",
