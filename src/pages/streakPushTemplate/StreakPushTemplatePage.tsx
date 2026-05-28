@@ -89,7 +89,7 @@ export const StreakPushTemplatePage: React.FC = () => {
     <ListContainer>
       <ListHeader
         title="Push: напоминание о стрике"
-        actions={[
+        actionButtons={[
           {
             label: "Обновить",
             onClick: () => void load(),
@@ -199,7 +199,7 @@ export const StreakPushTemplatePage: React.FC = () => {
             </div>
             <Button
               onClick={() => void save()}
-              icon={Save}
+              icon={<Save className="h-4 w-4" />}
               variant="primary"
               disabled={saving}
             >
