@@ -456,6 +456,13 @@ export interface StreakPushTemplate {
   updated_at: string;
 }
 
+export interface StreakPushTriggerResult {
+  requested: number;
+  delivered: number;
+  failed: number;
+  skipped_disabled: boolean;
+}
+
 export const streakPushTemplateService = {
   get: (): Promise<StreakPushTemplate> =>
     api.get("/admin/streak-push-template").then((r) => r.data),
@@ -469,6 +476,13 @@ export const streakPushTemplateService = {
     }>,
   ): Promise<StreakPushTemplate> =>
     api.put("/admin/streak-push-template", payload).then((r) => r.data),
+  trigger: (payload: {
+    target_user_id?: string;
+    fake_streak?: number;
+  }): Promise<StreakPushTriggerResult> =>
+    api
+      .post("/admin/streak-push-template/trigger", payload)
+      .then((r) => r.data),
 };
 
 export const moduleService = {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Save, RefreshCw } from "lucide-react";
+import { Save, RefreshCw, Send } from "lucide-react";
 
 import {
   streakPushTemplateService,
@@ -32,6 +32,12 @@ export const StreakPushTemplatePage: React.FC = () => {
   const [hoursBeforeReset, setHoursBeforeReset] = useState(8);
   const [timezone, setTimezone] = useState("Asia/Almaty");
 
+  // QA trigger panel — independent state from the template form so
+  // saving the template doesn't reset the test inputs and vice versa.
+  const [testUserId, setTestUserId] = useState("");
+  const [testStreak, setTestStreak] = useState(5);
+  const [triggering, setTriggering] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -55,6 +61,31 @@ export const StreakPushTemplatePage: React.FC = () => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const trigger = async () => {
+    setTriggering(true);
+    try {
+      const payload: { target_user_id?: string; fake_streak?: number } = {};
+      if (testUserId.trim()) {
+        payload.target_user_id = testUserId.trim();
+        payload.fake_streak = testStreak;
+      }
+      const result = await streakPushTemplateService.trigger(payload);
+      if (result.skipped_disabled) {
+        toast("Cron отключён (enabled=false или FCM disabled) — пропустил");
+      } else {
+        toast.success(
+          `Отправлено: запросов ${result.requested}, доставлено ${result.delivered}, ошибок ${result.failed}`,
+        );
+      }
+    } catch (err: any) {
+      console.error("Failed to trigger streak push:", err);
+      const detail = err?.response?.data?.detail || err.message;
+      toast.error(`Ошибка триггера: ${detail}`);
+    } finally {
+      setTriggering(false);
+    }
+  };
 
   const save = async () => {
     if (!title.trim() || !body.trim()) {
@@ -205,6 +236,58 @@ export const StreakPushTemplatePage: React.FC = () => {
             >
               {saving ? "Сохранение…" : "Сохранить"}
             </Button>
+          </div>
+
+          <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900">
+                QA: ручной триггер
+              </h3>
+              <p className="text-xs text-amber-800">
+                Не ждать cron. Пустой <code>user_id</code> → реальный broadcast
+                всем у кого стрик ≥ 1 и не клеймили сегодня. С user_id →
+                точечный test-send (минует фильтр; подставит fake_streak).
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-amber-900">
+                  user_id (UUID, опционально)
+                </label>
+                <input
+                  type="text"
+                  value={testUserId}
+                  onChange={(e) => setTestUserId(e.target.value)}
+                  placeholder="оставь пустым для broadcast"
+                  className="w-full rounded-md border border-amber-300 bg-white px-3 py-2 font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-amber-900">
+                  fake_streak (для test-send)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={testStreak}
+                  onChange={(e) =>
+                    setTestStreak(parseInt(e.target.value || "5", 10))
+                  }
+                  className="w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void trigger()}
+                icon={<Send className="h-4 w-4" />}
+                variant="primary"
+                disabled={triggering}
+              >
+                {triggering ? "Отправка…" : "Отправить тест-пуш"}
+              </Button>
+            </div>
           </div>
         </div>
       )}
