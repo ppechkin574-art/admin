@@ -31,6 +31,7 @@ import { ReferralPolicyForm } from './pages/referrals'
 import { LeaderboardPrizesList } from './pages/leaderboardPrizes'
 import { StreakRewardsList } from './pages/streakRewards'
 import { StreakPushTemplatePage } from './pages/streakPushTemplate'
+import { AppScreensPage } from './pages/appScreens/AppScreensPage'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -193,6 +194,7 @@ function App()
 
           <Route path="/marketing" element={<MarketingDashboard />} />
           <Route path="/push" element={<PushNotifications />} />
+          <Route path="/app-screens" element={<AppScreensPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>

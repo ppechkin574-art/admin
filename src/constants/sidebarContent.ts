@@ -16,6 +16,7 @@ import {
   Layers,
   Dumbbell,
   Sparkles,
+  Smartphone,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -54,6 +55,11 @@ export const menuItemsGen2 = [
     label: "Настройки сервиса",
     href: "/admin/app-settings",
     icon: Settings,
+  },
+  {
+    label: "Страницы приложения",
+    href: "/app-screens",
+    icon: Smartphone,
   },
 ];
 
