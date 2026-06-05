@@ -4,13 +4,17 @@ type LocalizationField =
   | "task_description_ru"
   | "task_description_kk"
   | "question_translation_ru"
-  | "question_translation_kk";
+  | "question_translation_kk"
+  | "explanation_ru"
+  | "explanation_kk";
 
 interface LocalizationFieldsProps {
   task_description_ru?: string;
   task_description_kk?: string;
   question_translation_ru?: string;
   question_translation_kk?: string;
+  explanation_ru?: string;
+  explanation_kk?: string;
   onChange: (field: LocalizationField, value: string) => void;
 }
 
@@ -23,6 +27,8 @@ export const LocalizationFields: React.FC<LocalizationFieldsProps> = ({
   task_description_kk = "",
   question_translation_ru = "",
   question_translation_kk = "",
+  explanation_ru = "",
+  explanation_kk = "",
   onChange,
 }) => {
   return (
@@ -74,6 +80,27 @@ export const LocalizationFields: React.FC<LocalizationFieldsProps> = ({
             rows={3}
             value={question_translation_kk}
             onChange={(e) => onChange("question_translation_kk", e.target.value)}
+            className={textareaClass}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Правило для запоминания (RU)</label>
+          <textarea
+            rows={3}
+            value={explanation_ru}
+            onChange={(e) => onChange("explanation_ru", e.target.value)}
+            className={textareaClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Правило для запоминания (KZ)</label>
+          <textarea
+            rows={3}
+            value={explanation_kk}
+            onChange={(e) => onChange("explanation_kk", e.target.value)}
             className={textareaClass}
           />
         </div>

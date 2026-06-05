@@ -40,6 +40,8 @@ export const useQuestionForm = (
       task_description_kk: "",
       question_translation_ru: "",
       question_translation_kk: "",
+      explanation_ru: "",
+      explanation_kk: "",
     }),
     [defaultType],
   );
@@ -104,6 +106,8 @@ export const useQuestionForm = (
         task_description_kk: question.task_description_kk ?? "",
         question_translation_ru: question.question_translation_ru ?? "",
         question_translation_kk: question.question_translation_kk ?? "",
+        explanation_ru: question.explanation_ru ?? "",
+        explanation_kk: question.explanation_kk ?? "",
       });
     }
   }, [question, defaultType]);
@@ -142,6 +146,8 @@ export const useQuestionForm = (
         task_description_kk: question.task_description_kk ?? "",
         question_translation_ru: question.question_translation_ru ?? "",
         question_translation_kk: question.question_translation_kk ?? "",
+        explanation_ru: question.explanation_ru ?? "",
+        explanation_kk: question.explanation_kk ?? "",
       });
     } else {
       resetForm();

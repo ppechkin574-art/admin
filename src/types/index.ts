@@ -56,6 +56,8 @@ export interface Question extends BaseEntity {
   task_description_kk?: string;
   question_translation_ru?: string;
   question_translation_kk?: string;
+  explanation_ru?: string;
+  explanation_kk?: string;
 
   type?: QuestionType;
   created_at?: string;

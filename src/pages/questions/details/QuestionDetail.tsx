@@ -496,6 +496,8 @@ export const QuestionDetail: React.FC = () =>
                         task_description_kk={formData.task_description_kk}
                         question_translation_ru={formData.question_translation_ru}
                         question_translation_kk={formData.question_translation_kk}
+                        explanation_ru={formData.explanation_ru}
+                        explanation_kk={formData.explanation_kk}
                         onChange={handleChange}
                       />
                     </div>

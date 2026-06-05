@@ -37,6 +37,8 @@ export interface QuestionFormData {
   task_description_kk?: string;
   question_translation_ru?: string;
   question_translation_kk?: string;
+  explanation_ru?: string;
+  explanation_kk?: string;
 }
 
 export interface VariantFormData {
