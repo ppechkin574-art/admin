@@ -36,6 +36,10 @@ export const useQuestionForm = (
       blocks: [],
       variants: [],
       hint: { blocks: [] },
+      task_description_ru: "",
+      task_description_kk: "",
+      question_translation_ru: "",
+      question_translation_kk: "",
     }),
     [defaultType],
   );
@@ -96,6 +100,10 @@ export const useQuestionForm = (
                 ) || [],
             }
           : { blocks: [] },
+        task_description_ru: question.task_description_ru ?? "",
+        task_description_kk: question.task_description_kk ?? "",
+        question_translation_ru: question.question_translation_ru ?? "",
+        question_translation_kk: question.question_translation_kk ?? "",
       });
     }
   }, [question, defaultType]);
@@ -130,6 +138,10 @@ export const useQuestionForm = (
                 ) || [],
             }
           : { blocks: [] },
+        task_description_ru: question.task_description_ru ?? "",
+        task_description_kk: question.task_description_kk ?? "",
+        question_translation_ru: question.question_translation_ru ?? "",
+        question_translation_kk: question.question_translation_kk ?? "",
       });
     } else {
       resetForm();

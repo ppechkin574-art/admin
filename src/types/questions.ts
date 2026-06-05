@@ -33,6 +33,10 @@ export interface QuestionFormData {
   blocks: TextBlock[];
   variants: VariantFormData[];
   hint: HintFormData | null;
+  task_description_ru?: string;
+  task_description_kk?: string;
+  question_translation_ru?: string;
+  question_translation_kk?: string;
 }
 
 export interface VariantFormData {

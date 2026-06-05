@@ -3,6 +3,7 @@ import React, { useCallback, useState, useEffect } from 'react'
 import { useQuestionForm } from '@/hooks/useQuestionForm'
 import { QuestionBlocks } from '@/pages/questions/blocks/QuestionBlocks'
 import { BasicFields } from '@/pages/questions/common/BasicFields/BasicFields'
+import { LocalizationFields } from '@/pages/questions/common/LocalizationFields/LocalizationFields'
 import { HintSection } from '@/pages/questions/common/HintSection/HintSection'
 import { VariantsSection } from '@/pages/questions/common/VariantsSection/VariantsSection'
 import { BlockType, Question, QuestionType } from '@/types'
@@ -189,6 +190,17 @@ export const QuestionModal: React.FC<QuestionModalProps> = ({
                 subjectReadOnly={isSubjectReadOnly}
                 topicReadOnly={isTopicReadOnly}
                 typeReadOnly={isTypeReadOnly}
+              />
+            </div>
+
+            {/* Подсказка „Что требует вопрос?“ */}
+            <div className="space-y-4">
+              <LocalizationFields
+                task_description_ru={formData.task_description_ru}
+                task_description_kk={formData.task_description_kk}
+                question_translation_ru={formData.question_translation_ru}
+                question_translation_kk={formData.question_translation_kk}
+                onChange={handleChange}
               />
             </div>
 

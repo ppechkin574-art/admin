@@ -52,6 +52,11 @@ export interface Question extends BaseEntity {
   blocks?: TextBlock[];
   ent_option_id?: number | null;
 
+  task_description_ru?: string;
+  task_description_kk?: string;
+  question_translation_ru?: string;
+  question_translation_kk?: string;
+
   type?: QuestionType;
   created_at?: string;
   updated_at?: string;

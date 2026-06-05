@@ -21,6 +21,7 @@ import { useApiErrorHandler } from '@/hooks/useApiErrorHandler'
 import { useQuestionForm } from '@/hooks/useQuestionForm'
 import { QuestionBlocks } from '@/pages/questions/blocks/QuestionBlocks'
 import { BasicFields } from '@/pages/questions/common/BasicFields/BasicFields'
+import { LocalizationFields } from '@/pages/questions/common/LocalizationFields/LocalizationFields'
 import { HintSection } from '@/pages/questions/common/HintSection/HintSection'
 import { VariantsSection } from '@/pages/questions/common/VariantsSection/VariantsSection'
 import { questionService } from '@/services/api'
@@ -485,6 +486,18 @@ export const QuestionDetail: React.FC = () =>
                           onChange={handleChange}
                         />
                       )}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow">
+                    <div className="p-6">
+                      <LocalizationFields
+                        task_description_ru={formData.task_description_ru}
+                        task_description_kk={formData.task_description_kk}
+                        question_translation_ru={formData.question_translation_ru}
+                        question_translation_kk={formData.question_translation_kk}
+                        onChange={handleChange}
+                      />
                     </div>
                   </div>
 
