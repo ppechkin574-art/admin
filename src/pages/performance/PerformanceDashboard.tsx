@@ -87,14 +87,32 @@ function fmtBytes(b: number): string {
     return `${(b / 1024 / 1024).toFixed(2)} MB`
 }
 
+// Logs in via the PUBLIC /auth/login (web-app client) and returns an access
+// token — the exact same client + token shape a phone uses. Measuring with a
+// real student token (not the operator's admin token) is what makes this the
+// true "phone path": admin accounts lack student data and would make some
+// /user/* probes error in ways real users never see.
+async function loginWebApp(login: string, password: string): Promise<string | null> {
+    try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ login, password }),
+            credentials: 'omit',
+        })
+        if (!res.ok) return null
+        const data = await res.json()
+        return data?.access_token ?? null
+    } catch {
+        return null
+    }
+}
+
 // One probe = one real round-trip over the public path. Native fetch (not the
 // app's axios instance) so a 401 here never triggers the global login-redirect.
-async function runProbe(probe: Probe): Promise<Sample> {
+async function runProbe(probe: Probe, token: string | null): Promise<Sample> {
     const headers: Record<string, string> = {}
-    if (probe.auth) {
-        const token = localStorage.getItem('token')
-        if (token) headers.Authorization = `Bearer ${token}`
-    }
+    if (probe.auth && token) headers.Authorization = `Bearer ${token}`
     const start = performance.now()
     try {
         const res = await fetch(`${API_BASE}${probe.path}`, {
@@ -202,6 +220,20 @@ export const PerformanceDashboard: React.FC = () => {
     const [net, setNet] = useState<NetInfo>({})
     const timerRef = useRef<number | null>(null)
 
+    // Test student account (web-app client) — the faithful phone path. When
+    // set, probes authenticate as this account instead of the operator's admin
+    // token. Credentials live only in this browser's localStorage (a low-value
+    // test/reviewer account), never sent anywhere but the public /auth/login.
+    const [testLogin, setTestLogin] = useState(
+        () => localStorage.getItem('perf_test_login') ?? '',
+    )
+    const [testPassword, setTestPassword] = useState(
+        () => localStorage.getItem('perf_test_password') ?? '',
+    )
+    const [tokenNote, setTokenNote] = useState<string>('')
+    // Cached probe token (in memory) + soft expiry so we re-login periodically.
+    const tokenRef = useRef<{ token: string; until: number } | null>(null)
+
     // Persist history so the trend survives reloads.
     useEffect(() => {
         try {
@@ -222,11 +254,35 @@ export const PerformanceDashboard: React.FC = () => {
         return () => c.removeEventListener?.('change', update)
     }, [])
 
+    // Resolve the bearer token for auth probes: prefer a fresh web-app token
+    // for the configured test account (true phone path); else fall back to the
+    // operator's admin token (still measures the network path, but admin
+    // accounts can make some /user/* probes error — shown as a note).
+    const resolveToken = useCallback(async (): Promise<string | null> => {
+        if (testLogin && testPassword) {
+            const cached = tokenRef.current
+            if (cached && cached.until > Date.now()) return cached.token
+            const token = await loginWebApp(testLogin, testPassword)
+            if (token) {
+                tokenRef.current = { token, until: Date.now() + 4 * 60 * 1000 }
+                setTokenNote('путь web-app (тестовый аккаунт)')
+                localStorage.setItem('perf_test_login', testLogin)
+                localStorage.setItem('perf_test_password', testPassword)
+                return token
+            }
+            setTokenNote('логин тестового аккаунта не удался — использую токен админки')
+        } else {
+            setTokenNote('токен админки (укажи тестовый аккаунт для пути web-app)')
+        }
+        return localStorage.getItem('token')
+    }, [testLogin, testPassword])
+
     const runAll = useCallback(async () => {
         setRunning(true)
         try {
+            const token = await resolveToken()
             const results = await Promise.all(
-                PROBES.map(async (p) => ({ path: p.path, sample: await runProbe(p) })),
+                PROBES.map(async (p) => ({ path: p.path, sample: await runProbe(p, token) })),
             )
             setSamples((prev) => {
                 const next: Samples = { ...prev }
@@ -240,7 +296,7 @@ export const PerformanceDashboard: React.FC = () => {
         } finally {
             setRunning(false)
         }
-    }, [])
+    }, [resolveToken])
 
     // Auto-refresh loop.
     useEffect(() => {
@@ -352,6 +408,34 @@ export const PerformanceDashboard: React.FC = () => {
                         Замерить
                     </Button>
                 </div>
+            </div>
+
+            {/* Test account — measure as a real web-app student, not the admin */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium text-gray-700">Тестовый аккаунт (web-app):</span>
+                <input
+                    value={testLogin}
+                    onChange={(e) => setTestLogin(e.target.value)}
+                    placeholder="+7700..."
+                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-40"
+                />
+                <input
+                    value={testPassword}
+                    onChange={(e) => setTestPassword(e.target.value)}
+                    type="password"
+                    placeholder="пароль"
+                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-36"
+                />
+                <button
+                    onClick={() => {
+                        tokenRef.current = null
+                        runAll()
+                    }}
+                    className="text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                    применить
+                </button>
+                {tokenNote && <span className="text-xs text-gray-400">· {tokenNote}</span>}
             </div>
 
             {/* Summary cards */}
