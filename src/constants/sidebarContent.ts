@@ -17,6 +17,7 @@ import {
   Dumbbell,
   Sparkles,
   Smartphone,
+  Gauge,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -25,6 +26,7 @@ export const menuItemsGen2 = [
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
   { label: "Пользователи", href: "/users", icon: Users },
   { label: "Маркетинг", href: "/marketing", icon: BarChart3 },
+  { label: "Скорость API", href: "/performance", icon: Gauge },
   { label: "Push-уведомления", href: "/push", icon: Bell },
   {
     label: "Фичи подписки",
