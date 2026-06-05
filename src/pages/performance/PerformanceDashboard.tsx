@@ -9,8 +9,10 @@ import {
     Server,
     AlertTriangle,
     CheckCircle2,
+    Smartphone,
 } from 'lucide-react'
 import Button from '@/components/common/Button'
+import { apiService } from '@/services/api'
 
 // Synthetic API performance monitor.
 //
@@ -209,6 +211,134 @@ interface NetInfo {
     type?: string
     downlink?: number
     rtt?: number
+}
+
+// ---- RUM: real-user latency aggregated from the app's api_request events ----
+interface RumRow {
+    endpoint: string
+    count: number
+    p50_ms: number
+    p95_ms: number
+    avg_ms: number
+    error_rate: number
+}
+
+const RUM_WINDOWS: { label: string; hours: number }[] = [
+    { label: '1 час', hours: 1 },
+    { label: '24 часа', hours: 24 },
+    { label: '7 дней', hours: 168 },
+]
+
+const RumSection: React.FC = () => {
+    const [rows, setRows] = useState<RumRow[]>([])
+    const [total, setTotal] = useState(0)
+    const [hours, setHours] = useState(24)
+    const [loading, setLoading] = useState(false)
+    const [loaded, setLoaded] = useState(false)
+
+    const fetchRum = useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await apiService.get('/admin/analytics/api-timing', { hours })
+            setRows(res.data?.rows ?? [])
+            setTotal(res.data?.total_samples ?? 0)
+        } catch {
+            setRows([])
+            setTotal(0)
+        } finally {
+            setLoading(false)
+            setLoaded(true)
+        }
+    }, [hours])
+
+    useEffect(() => {
+        fetchRum()
+    }, [fetchRum])
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-gray-100">
+                <div>
+                    <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <Smartphone className="h-5 w-5 text-indigo-600" />
+                        Реальные данные с телефонов (RUM)
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Агрегировано из событий приложения · {total.toLocaleString()} замеров за окно
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <select
+                        value={hours}
+                        onChange={(e) => setHours(Number(e.target.value))}
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                        {RUM_WINDOWS.map((w) => (
+                            <option key={w.hours} value={w.hours}>
+                                {w.label}
+                            </option>
+                        ))}
+                    </select>
+                    <Button variant="secondary" className="gap-2" onClick={fetchRum} disabled={loading}>
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Обновить
+                    </Button>
+                </div>
+            </div>
+
+            {rows.length === 0 ? (
+                <div className="p-8 text-center text-sm text-gray-400">
+                    {loaded
+                        ? 'Пока нет данных с телефонов. Они появятся после релиза приложения с RUM-инструментовкой (Dio-интерцептор шлёт тайминги в /analytics/events).'
+                        : 'Загрузка…'}
+                </div>
+            ) : (
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left text-gray-500 border-b border-gray-100">
+                            <th className="px-5 py-3 font-medium">Эндпоинт</th>
+                            <th className="px-3 py-3 font-medium">Замеров</th>
+                            <th className="px-3 py-3 font-medium">p50</th>
+                            <th className="px-3 py-3 font-medium">p95</th>
+                            <th className="px-3 py-3 font-medium">Среднее</th>
+                            <th className="px-5 py-3 font-medium">Ошибки</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((r) => {
+                            const tone = latencyTone(r.p95_ms)
+                            return (
+                                <tr key={r.endpoint} className="border-b border-gray-50 last:border-0">
+                                    <td className="px-5 py-3 font-mono text-xs text-gray-700">
+                                        {r.endpoint}
+                                    </td>
+                                    <td className="px-3 py-3 text-gray-500">{r.count.toLocaleString()}</td>
+                                    <td className="px-3 py-3 text-gray-700">{fmtMs(r.p50_ms)}</td>
+                                    <td className="px-3 py-3">
+                                        <span
+                                            className={`inline-block px-2 py-0.5 rounded-md font-semibold ${tone.bg} ${tone.text}`}
+                                        >
+                                            {fmtMs(r.p95_ms)}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-3 text-gray-700">{fmtMs(r.avg_ms)}</td>
+                                    <td className="px-5 py-3">
+                                        <span
+                                            className={
+                                                r.error_rate > 0.02 ? 'text-red-600' : 'text-green-600'
+                                            }
+                                        >
+                                            {(r.error_rate * 100).toFixed(1)}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            )}
+        </div>
+    )
 }
 
 export const PerformanceDashboard: React.FC = () => {
@@ -561,6 +691,9 @@ export const PerformanceDashboard: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* RUM — real-user data from phones */}
+            <RumSection />
 
             {/* Methodology note */}
             <div className="text-xs text-gray-400 flex items-start gap-2 max-w-3xl">
