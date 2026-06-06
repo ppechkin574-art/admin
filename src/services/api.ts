@@ -717,6 +717,12 @@ export const analyticsService = {
     api
       .get("/admin/analytics/top_clients", { params: { show_all: showAll } })
       .then((res) => res.data),
+
+  // Revenue split by gateway (Google Play vs FreedomPay), paid only.
+  paymentsByGateway: (hours = 720): Promise<any> =>
+    api
+      .get("/admin/analytics/payments/by-gateway", { params: { hours } })
+      .then((res) => res.data),
 };
 
 // Push notifications — broadcast a message to a slice of the user
