@@ -48,6 +48,7 @@ import { UserDetail } from './pages/users/UserDetail'
 import { MarketingDashboard } from './pages/marketing/MarketingDashboard'
 import { PushNotifications } from './pages/marketing/PushNotifications'
 import { PerformanceDashboard } from './pages/performance/PerformanceDashboard'
+import { FinancePage } from './pages/finance/FinancePage'
 
 function App()
 {
@@ -196,6 +197,7 @@ function App()
           <Route path="/marketing" element={<MarketingDashboard />} />
           <Route path="/push" element={<PushNotifications />} />
           <Route path="/performance" element={<PerformanceDashboard />} />
+          <Route path="/finance" element={<FinancePage />} />
           <Route path="/app-screens" element={<AppScreensPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
