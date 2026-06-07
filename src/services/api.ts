@@ -1,6 +1,12 @@
 import axios from "axios";
 import { Subject, SubjectType, Topic } from "@/types";
 import { ModuleLesson, SubjectModule } from "@/types/modules";
+import {
+  QuestionDraft,
+  QuestionDraftListParams,
+  QuestionDraftListResult,
+  QuestionDraftUpdate,
+} from "@/types/questionDrafts";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -117,6 +123,48 @@ export const questionService = {
         },
       })
       .then((res) => res.data),
+};
+
+// ────────────────────────────────────────────────────────────────────
+// Question Drafts — review queue for AI-generated questions. Same /admin
+// auth as the rest of the panel (token interceptor above). «Publish»
+// promotes a draft into a live question via a dedicated backend action;
+// the response carries `published_question_id` so the UI can link out to
+// the created question. List tolerates either a bare array or a
+// `{ items|drafts|data, total }` envelope.
+// ────────────────────────────────────────────────────────────────────
+export const questionDraftService = {
+  getAll: (params?: QuestionDraftListParams): Promise<QuestionDraftListResult> =>
+    api.get("/admin/question-drafts", { params }).then((res) => {
+      const data = res.data;
+      if (Array.isArray(data)) {
+        return { drafts: data as QuestionDraft[], total: data.length };
+      }
+      const drafts: QuestionDraft[] =
+        data?.items ?? data?.drafts ?? data?.data ?? [];
+      const total: number =
+        typeof data?.total === "number" ? data.total : drafts.length;
+      return { drafts, total };
+    }),
+
+  getById: (id: number): Promise<QuestionDraft> =>
+    api.get(`/admin/question-drafts/${id}`).then((res) => res.data),
+
+  update: (id: number, data: QuestionDraftUpdate): Promise<QuestionDraft> =>
+    api.patch(`/admin/question-drafts/${id}`, data).then((res) => res.data),
+
+  publish: (id: number): Promise<QuestionDraft> =>
+    api
+      .post(`/admin/question-drafts/${id}/publish`)
+      .then((res) => res.data),
+
+  reject: (id: number): Promise<QuestionDraft> =>
+    api
+      .post(`/admin/question-drafts/${id}/reject`)
+      .then((res) => res.data),
+
+  delete: (id: number): Promise<void> =>
+    api.delete(`/admin/question-drafts/${id}`).then(() => undefined),
 };
 
 export const subjectService = {

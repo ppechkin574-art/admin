@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import QuestionList from '@/pages/questions/list'
 import QuestionDetail from '@/pages/questions/details'
+import { QuestionDraftList } from '@/pages/questionDrafts/QuestionDraftList'
 import LoginForm from '@/pages/LoginForm'
 import SubjectDetail from '@/pages/subjects/details'
 import SubjectForm from '@/pages/subjects/form'
@@ -119,6 +120,8 @@ function App()
             <Route index element={<QuestionList />} />
             <Route path=":id" element={<QuestionDetailWrapper />} />
           </Route>
+
+          <Route path="/question-drafts" element={<QuestionDraftList />} />
 
           <Route path="/subjects">
             <Route index element={<SubjectList />} />

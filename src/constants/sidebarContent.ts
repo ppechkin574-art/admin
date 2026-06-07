@@ -19,6 +19,7 @@ import {
   Smartphone,
   Gauge,
   Wallet,
+  FileStack,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -73,5 +74,6 @@ export const menuItemsGen1 = [
   { label: "Предметы", href: "/subjects", icon: BookOpen },
   { label: "Темы", href: "/topics", icon: FolderKanban },
   { label: "Вопросы", href: "/questions", icon: FileText },
+  { label: "Черновики вопросов", href: "/question-drafts", icon: FileStack },
   { label: "Промокоды", href: "/promocodes", icon: CreditCard },
 ];
