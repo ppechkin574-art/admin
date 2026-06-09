@@ -24,12 +24,18 @@ import {
 } from "./utils";
 
 const PAGE_SIZE = 25;
+// Per-status cap for the merged client-side «Архив» view (200 total max).
+const ARCHIVE_LIMIT = 100;
 
-const STATUS_OPTIONS: { value: QuestionDraftStatus; label: string }[] = [
+// The current view is either a single draft status or the combined archive.
+type ViewKey = QuestionDraftStatus | "archive";
+
+const VIEW_TABS: { value: ViewKey; label: string }[] = [
   { value: "draft", label: "Черновики" },
   { value: "approved", label: "Одобренные" },
   { value: "published", label: "Опубликованные" },
   { value: "rejected", label: "Отклонённые" },
+  { value: "archive", label: "📦 Архив" },
 ];
 
 export const QuestionDraftList: React.FC = () => {
@@ -40,11 +46,13 @@ export const QuestionDraftList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [status, setStatus] = useState<QuestionDraftStatus>("draft");
+  const [view, setView] = useState<ViewKey>("draft");
   const [subjectId, setSubjectId] = useState<number | "">("");
   const [offset, setOffset] = useState(0);
 
   const [selected, setSelected] = useState<QuestionDraft | null>(null);
+
+  const isArchive = view === "archive";
 
   useEffect(() => {
     fetchSubjects();
@@ -53,15 +61,43 @@ export const QuestionDraftList: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const subject_id = subjectId === "" ? undefined : subjectId;
     try {
-      const result = await questionDraftService.getAll({
-        status,
-        subject_id: subjectId === "" ? undefined : subjectId,
-        limit: PAGE_SIZE,
-        offset,
-      });
-      setDrafts(result.drafts);
-      setTotal(result.total);
+      if (view === "archive") {
+        // Archive = published + rejected, fetched in parallel and merged
+        // client-side, newest first (updated_at desc, id desc as fallback).
+        const [pub, rej] = await Promise.all([
+          questionDraftService.getAll({
+            status: "published",
+            subject_id,
+            limit: ARCHIVE_LIMIT,
+            offset: 0,
+          }),
+          questionDraftService.getAll({
+            status: "rejected",
+            subject_id,
+            limit: ARCHIVE_LIMIT,
+            offset: 0,
+          }),
+        ]);
+        const merged = [...pub.drafts, ...rej.drafts].sort((a, b) => {
+          if (a.updated_at && b.updated_at) {
+            return b.updated_at.localeCompare(a.updated_at);
+          }
+          return b.id - a.id;
+        });
+        setDrafts(merged);
+        setTotal(pub.total + rej.total);
+      } else {
+        const result = await questionDraftService.getAll({
+          status: view,
+          subject_id,
+          limit: PAGE_SIZE,
+          offset,
+        });
+        setDrafts(result.drafts);
+        setTotal(result.total);
+      }
     } catch (err: any) {
       console.error("Error loading question drafts:", err);
       setError(err?.message || "Ошибка загрузки черновиков");
@@ -69,15 +105,15 @@ export const QuestionDraftList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [status, subjectId, offset]);
+  }, [view, subjectId, offset]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Reset to first page whenever a filter changes.
-  const onStatusChange = (next: QuestionDraftStatus) => {
-    setStatus(next);
+  // Reset to first page whenever a filter (tab or subject) changes.
+  const onViewChange = (next: ViewKey) => {
+    setView(next);
     setOffset(0);
   };
   const onSubjectChange = (next: number | "") => {
@@ -107,15 +143,15 @@ export const QuestionDraftList: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const filterText = useMemo(() => {
-    const parts: string[] = [
-      `статус: ${STATUS_META[status]?.label ?? status}`,
-    ];
+    const activeLabel =
+      VIEW_TABS.find((t) => t.value === view)?.label ?? view;
+    const parts: string[] = [`раздел: ${activeLabel}`];
     if (subjectId !== "") {
       const s = subjects.find((x) => x.id === subjectId);
       if (s) parts.push(`предмет: ${s.name}`);
     }
     return parts.join(", ");
-  }, [status, subjectId, subjects]);
+  }, [view, subjectId, subjects]);
 
   if (error) {
     return (
@@ -146,31 +182,33 @@ export const QuestionDraftList: React.FC = () => {
         </Button>
       </ListHeader>
 
-      {/* Filters */}
+      {/* Filters: prominent status tabs + subject select */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Статус
-            </label>
-            <select
-              value={status}
-              onChange={(e) =>
-                onStatusChange(e.target.value as QuestionDraftStatus)
-              }
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-primary-500 focus:border-primary-500"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Status tabs */}
+          <div className="flex flex-wrap gap-2">
+            {VIEW_TABS.map((tab) => {
+              const active = view === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => onViewChange(tab.value)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 ${
+                    active
+                      ? "bg-primary-600 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Предмет
-            </label>
+
+          {/* Subject filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500">Предмет</label>
             <select
               value={subjectId}
               onChange={(e) =>
@@ -301,8 +339,8 @@ export const QuestionDraftList: React.FC = () => {
           </table>
         </div>
 
-        {/* Pagination */}
-        {total > 0 && (
+        {/* Pagination (single-status views) */}
+        {!isArchive && total > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
             <div>
               Всего: {total} · стр. {currentPage} из {totalPages}
@@ -328,6 +366,15 @@ export const QuestionDraftList: React.FC = () => {
                 Вперёд
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Archive note (merged client-side view, no server pagination) */}
+        {isArchive && total > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
+            Всего в архиве: {total} · показано: {drafts.length}.
+            Показаны последние опубликованные и отклонённые (до{" "}
+            {ARCHIVE_LIMIT * 2}).
           </div>
         )}
       </div>
