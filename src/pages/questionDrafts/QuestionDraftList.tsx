@@ -38,6 +38,19 @@ const VIEW_TABS: { value: ViewKey; label: string }[] = [
   { value: "archive", label: "📦 Архив" },
 ];
 
+const fmtDateTime = (iso?: string): string => {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return "—";
+  return dt.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 export const QuestionDraftList: React.FC = () => {
   const { subjects, fetchSubjects } = useSubjectStore();
 
@@ -241,6 +254,7 @@ export const QuestionDraftList: React.FC = () => {
                 <Th>Статус</Th>
                 <Th>Уверенность</Th>
                 <Th>Источник</Th>
+                <Th>Когда</Th>
                 <Th className="text-right w-20">Действия</Th>
               </tr>
             </thead>
@@ -305,6 +319,14 @@ export const QuestionDraftList: React.FC = () => {
                     <td className="px-4 py-3 text-xs text-gray-500 max-w-[12rem] truncate">
                       {sourceLabel || "—"}
                     </td>
+                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {fmtDateTime(d.updated_at)}
+                      {d.reviewed_by && (
+                        <div className="text-gray-400 truncate max-w-[10rem]">
+                          {d.reviewed_by}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={(e) => {
@@ -323,14 +345,14 @@ export const QuestionDraftList: React.FC = () => {
 
               {loading && (
                 <tr>
-                  <td colSpan={7} className="text-center text-gray-500 py-10">
+                  <td colSpan={8} className="text-center text-gray-500 py-10">
                     Загрузка черновиков...
                   </td>
                 </tr>
               )}
               {!loading && drafts.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center text-gray-500 py-10">
+                  <td colSpan={8} className="text-center text-gray-500 py-10">
                     Черновики не найдены
                   </td>
                 </tr>
