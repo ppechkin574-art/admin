@@ -20,6 +20,7 @@ import {
   Gauge,
   Wallet,
   FileStack,
+  ArrowUpCircle,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -65,6 +66,11 @@ export const menuItemsGen2 = [
     label: "Страницы приложения",
     href: "/app-screens",
     icon: Smartphone,
+  },
+  {
+    label: "Обновление приложения",
+    href: "/app-update",
+    icon: ArrowUpCircle,
   },
 ];
 

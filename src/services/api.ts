@@ -533,6 +533,29 @@ export const streakPushTemplateService = {
       .then((r) => r.data),
 };
 
+// ────────────────────────────────────────────────────────────────────
+// App update config — per-platform minimum build number + store URLs that
+// drive the mobile force-update gate. If a user's installed build is below
+// the platform minimum the app shows a blocking "update required" screen.
+// A minimum of 0 disables the gate for that platform. Singleton config:
+// no create/delete, only GET (read current) and PUT (partial update).
+// ────────────────────────────────────────────────────────────────────
+export interface AppUpdateConfig {
+  ios_min_build: number;
+  android_min_build: number;
+  ios_store_url: string;
+  android_store_url: string;
+}
+
+export const appUpdateConfigService = {
+  get: (): Promise<AppUpdateConfig> =>
+    api.get("/admin/app-update-config").then((r) => r.data),
+  update: (
+    payload: Partial<AppUpdateConfig>,
+  ): Promise<AppUpdateConfig> =>
+    api.put("/admin/app-update-config", payload).then((r) => r.data),
+};
+
 export const moduleService = {
   getAll: async (params?: any): Promise<SubjectModule[]> => {
     const response = await api.get("/admin/modules", { params });

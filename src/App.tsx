@@ -33,6 +33,7 @@ import { LeaderboardPrizesList } from './pages/leaderboardPrizes'
 import { StreakRewardsList } from './pages/streakRewards'
 import { StreakPushTemplatePage } from './pages/streakPushTemplate'
 import { AppScreensPage } from './pages/appScreens/AppScreensPage'
+import { AppUpdateConfigPage } from './pages/appUpdate'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -202,6 +203,7 @@ function App()
           <Route path="/performance" element={<PerformanceDashboard />} />
           <Route path="/finance" element={<FinancePage />} />
           <Route path="/app-screens" element={<AppScreensPage />} />
+          <Route path="/app-update" element={<AppUpdateConfigPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>
