@@ -1,16 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Wallet, Smartphone, CreditCard, RefreshCw, Apple, Search } from 'lucide-react'
+import { Wallet, Smartphone, Apple, RefreshCw } from 'lucide-react'
 import { analyticsService } from '@/services/api'
 import Button from '@/components/common/Button'
-import toast from 'react-hot-toast'
-
-// Finance overview: paid revenue split by payment gateway.
-//
-// Google Play purchases land in the `payments` table via the IAP verify +
-// RTDN flows (gateway = google_play); everything else is FreedomPay. Amounts
-// here are GROSS — Google's ~15% fee is taken before payout, so the actual
-// bank figure for Google is lower (exact payout comes from Play Console /
-// Google Payments Center, a later reconciliation phase).
 
 interface GatewayRow {
     gateway: string
@@ -31,7 +22,6 @@ const GATEWAY_META: Record<
 > = {
     google_play: { label: 'Google Play', icon: Smartphone, accent: 'bg-green-50 text-green-700' },
     apple: { label: 'App Store (Apple)', icon: Apple, accent: 'bg-gray-50 text-gray-700' },
-    freedompay: { label: 'FreedomPay', icon: CreditCard, accent: 'bg-blue-50 text-blue-700' },
 }
 
 const fmtMoney = (v: number) =>
@@ -42,7 +32,6 @@ export const FinancePage: React.FC = () => {
     const [total, setTotal] = useState(0)
     const [hours, setHours] = useState(720)
     const [loading, setLoading] = useState(false)
-    const [polling, setPolling] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -58,20 +47,6 @@ export const FinancePage: React.FC = () => {
         }
     }, [hours])
 
-    const pollPending = useCallback(async () => {
-        setPolling(true)
-        try {
-            const res = await analyticsService.pollPendingPayments()
-            toast(res.message, { duration: 6000 })
-            // Auto-refresh after 90s to show results once background task finishes
-            setTimeout(() => void load(), 90_000)
-        } catch {
-            toast.error('Ошибка при проверке платежей')
-        } finally {
-            setPolling(false)
-        }
-    }, [load])
-
     useEffect(() => {
         load()
     }, [load])
@@ -84,9 +59,8 @@ export const FinancePage: React.FC = () => {
                 amount: Number(r.total_amount) || 0,
             })
         }
-        // Always show all gateway buckets. Hide apple if it has 0 and no entry.
-        const allGateways = ['google_play', 'apple', 'freedompay']
-        return allGateways
+        // Show google_play always; show apple only when there's at least 1 payment
+        return (['google_play', 'apple'] as const)
             .filter((g) => g !== 'apple' || map.has('apple'))
             .map((g) => ({
                 gateway: g,
@@ -104,12 +78,10 @@ export const FinancePage: React.FC = () => {
                         Финансы — выручка по шлюзам
                     </h1>
                     <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-                        Оплаченные платежи (status=paid) за период. Google Play и FreedomPay в
-                        одном месте. Суммы Google — <b>до</b> комиссии (~15% удерживает Google
-                        перед выплатой).
+                        Оплаченные подписки через Google Play и App Store за период. Суммы — <b>до</b> комиссии магазина.
                     </p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
                     <select
                         value={hours}
                         onChange={(e) => setHours(Number(e.target.value))}
@@ -121,16 +93,7 @@ export const FinancePage: React.FC = () => {
                             </option>
                         ))}
                     </select>
-                    <Button
-                        variant="secondary"
-                        className="gap-2"
-                        onClick={() => void pollPending()}
-                        disabled={loading || polling}
-                    >
-                        <Search className={`h-4 w-4 ${polling ? 'animate-pulse' : ''}`} />
-                        {polling ? 'Проверяем...' : 'Проверить FP платежи'}
-                    </Button>
-                    <Button variant="secondary" className="gap-2" onClick={() => void load()} disabled={loading || polling}>
+                    <Button variant="secondary" className="gap-2" onClick={() => void load()} disabled={loading}>
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Обновить
                     </Button>
@@ -148,11 +111,8 @@ export const FinancePage: React.FC = () => {
             {/* Per-gateway cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {byGateway.map((g) => {
-                    const meta = GATEWAY_META[g.gateway] ?? {
-                        label: g.gateway,
-                        icon: Wallet,
-                        accent: 'bg-gray-50 text-gray-700',
-                    }
+                    const meta = GATEWAY_META[g.gateway]
+                    if (!meta) return null
                     const Icon = meta.icon
                     const share = total > 0 ? Math.round((g.amount / total) * 100) : 0
                     return (
@@ -172,7 +132,7 @@ export const FinancePage: React.FC = () => {
                                 </span>
                                 {g.gateway === 'google_play' && g.amount > 0 && (
                                     <div className="text-xs text-gray-400 mt-1">
-                                        ≈ {fmtMoney(Math.round(g.amount * 0.85))} после комиссии Google
+                                        ≈ {fmtMoney(Math.round(g.amount * 0.85))} после комиссии Google (15%)
                                     </div>
                                 )}
                                 {g.gateway === 'apple' && g.amount > 0 && (
@@ -190,9 +150,8 @@ export const FinancePage: React.FC = () => {
             </div>
 
             <div className="text-xs text-gray-400 max-w-3xl">
-                Активации/покупки видны здесь и в разделе «Маркетинг». Точные выплаты Google
-                (после комиссии) — в Play Console → Financial reports и payments.google.com.
-                FreedomPay — в кабинете FreedomPay.
+                Точные выплаты Google (после комиссии) — Play Console → Financial reports.
+                Apple — App Store Connect → Payments and Financial Reports.
             </div>
         </div>
     )
