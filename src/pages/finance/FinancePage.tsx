@@ -62,12 +62,9 @@ export const FinancePage: React.FC = () => {
         setPolling(true)
         try {
             const res = await analyticsService.pollPendingPayments()
-            if (res.updated_to_paid > 0) {
-                toast.success(`Оплачено: ${res.updated_to_paid} платеж(ей). Проверено: ${res.checked}`)
-            } else {
-                toast(`Проверено ${res.checked} платежей. Новых оплат нет (${res.still_pending} pending, ${res.updated_to_failed} failed)`)
-            }
-            await load()
+            toast(res.message, { duration: 6000 })
+            // Auto-refresh after 90s to show results once background task finishes
+            setTimeout(() => void load(), 90_000)
         } catch {
             toast.error('Ошибка при проверке платежей')
         } finally {

@@ -874,12 +874,11 @@ export const analyticsService = {
       .get("/admin/analytics/payments/by-gateway", { params: { hours } })
       .then((res) => res.data),
 
-  // Force-check all pending FreedomPay payments right now (bypass 25-min cycle).
+  // Trigger background check of all pending FreedomPay payments (returns immediately).
   pollPendingPayments: (): Promise<{
-    checked: number
-    updated_to_paid: number
-    updated_to_failed: number
-    still_pending: number
+    started: boolean
+    pending_count: number
+    message: string
   }> =>
     api.post("/admin/payments/poll-pending").then((res) => res.data),
 };
