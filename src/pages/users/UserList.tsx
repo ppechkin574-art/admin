@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '@/stores/userStore'
 import toast from 'react-hot-toast'
-import { Eye, Lock, RefreshCw, Unlock, Users as UsersIcon } from 'lucide-react'
+import { Eye, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import { ListHeader } from '@/components/lists/ListHeader'
 import { ListTable } from '@/components/lists/ListTable'
@@ -85,7 +85,7 @@ const roleLabel = (user: User): string => {
 
 export const UserList: React.FC = () => {
     const navigate = useNavigate()
-    const { users, loading, fetchUsers, refreshUsers, updateUser } = useUserStore()
+    const { users, loading, fetchUsers, refreshUsers, updateUser, deleteUser } = useUserStore()
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(25)
     const [filters, setFilters] = useState({ role: '', search: '' })
@@ -111,6 +111,20 @@ export const UserList: React.FC = () => {
     const handleView = useCallback((user: User) => {
         navigate(`/users/${user.id}`)
     }, [navigate])
+
+    const handleDelete = useCallback(async (user: User) => {
+        const confirmed = window.confirm(
+            `Удалить аккаунт "${user.name || user.phone || user.id}" полностью?\n\nЭто действие необратимо — номер телефона и все данные будут удалены из системы.`
+        )
+        if (!confirmed) return
+        try {
+            await deleteUser(user.id)
+            toast.success(`Аккаунт удалён`)
+            await refreshUsers(filters)
+        } catch {
+            toast.error('Не удалось удалить аккаунт')
+        }
+    }, [deleteUser, refreshUsers, filters])
 
     // Single source of truth for the block/unblock toggle. Hits the
     // existing PATCH /admin/users/{id} with {is_active}; AdminUserUpdateDTO
@@ -227,6 +241,13 @@ export const UserList: React.FC = () => {
                                 : <Unlock className="h-4 w-4 text-green-600" />
                         }
                         title={item.is_active ? 'Заблокировать' : 'Разблокировать'}
+                    />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(item)}
+                        icon={<Trash2 className="h-4 w-4 text-red-600" />}
+                        title="Удалить аккаунт полностью"
                     />
                 </div>
             ),
