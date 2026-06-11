@@ -49,6 +49,8 @@ interface UserState {
   createUser: (data: any) => Promise<User>;
   updateUser: (id: string, data: any) => Promise<User>;
   deleteUser: (id: string) => Promise<void>;
+  grantPro: (id: string, days?: number) => Promise<void>;
+  resetToFree: (id: string) => Promise<void>;
 
   clearCache: () => void;
   clearError: () => void;
@@ -169,6 +171,16 @@ export const useUserStore = create<UserState>((set, get) => ({
       });
       throw error;
     }
+  },
+
+  grantPro: async (id: string, days = 30) => {
+    await userService.grantPro(id, days)
+    get().cache.clear()
+  },
+
+  resetToFree: async (id: string) => {
+    await userService.resetSubscription(id)
+    get().cache.clear()
   },
 
   clearCache: () => set({ cache: new Map() }),

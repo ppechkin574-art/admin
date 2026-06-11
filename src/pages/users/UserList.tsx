@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '@/stores/userStore'
 import toast from 'react-hot-toast'
-import { Eye, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon } from 'lucide-react'
+import { ChevronDown, Crown, Eye, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import { ListHeader } from '@/components/lists/ListHeader'
 import { ListTable } from '@/components/lists/ListTable'
@@ -85,7 +85,9 @@ const roleLabel = (user: User): string => {
 
 export const UserList: React.FC = () => {
     const navigate = useNavigate()
-    const { users, loading, fetchUsers, refreshUsers, updateUser, deleteUser } = useUserStore()
+    const { users, loading, fetchUsers, refreshUsers, updateUser, deleteUser, grantPro, resetToFree } = useUserStore()
+    const [openSubMenu, setOpenSubMenu] = useState<string | null>(null)
+    const subMenuRef = useRef<HTMLDivElement>(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(25)
     const [filters, setFilters] = useState({ role: '', search: '' })
@@ -93,6 +95,16 @@ export const UserList: React.FC = () => {
     useEffect(() => {
         fetchUsers(filters)
     }, [filters, fetchUsers])
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (subMenuRef.current && !subMenuRef.current.contains(e.target as Node)) {
+                setOpenSubMenu(null)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const handleRefresh = useCallback(() => {
         refreshUsers(filters)
@@ -111,6 +123,28 @@ export const UserList: React.FC = () => {
     const handleView = useCallback((user: User) => {
         navigate(`/users/${user.id}`)
     }, [navigate])
+
+    const handleGrantPro = useCallback(async (user: User, days: number) => {
+        setOpenSubMenu(null)
+        try {
+            await grantPro(user.id, days)
+            toast.success(`PRO на ${days} дней выдан для "${user.name || user.phone}"`)
+            await refreshUsers(filters)
+        } catch {
+            toast.error('Не удалось выдать PRO')
+        }
+    }, [grantPro, refreshUsers, filters])
+
+    const handleResetToFree = useCallback(async (user: User) => {
+        setOpenSubMenu(null)
+        try {
+            await resetToFree(user.id)
+            toast.success(`Подписка сброшена на FREE для "${user.name || user.phone}"`)
+            await refreshUsers(filters)
+        } catch {
+            toast.error('Не удалось сбросить подписку')
+        }
+    }, [resetToFree, refreshUsers, filters])
 
     const handleDelete = useCallback(async (user: User) => {
         const confirmed = window.confirm(
@@ -223,7 +257,7 @@ export const UserList: React.FC = () => {
             accessor: 'id',
             width: '9%',
             render: (_: string, item: User) => (
-                <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()} ref={openSubMenu === item.id ? subMenuRef : null}>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -242,6 +276,40 @@ export const UserList: React.FC = () => {
                         }
                         title={item.is_active ? 'Заблокировать' : 'Разблокировать'}
                     />
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setOpenSubMenu(openSubMenu === item.id ? null : item.id)}
+                            icon={<Crown className="h-4 w-4 text-yellow-500" />}
+                            title="Управление подпиской"
+                        />
+                        {openSubMenu === item.id && (
+                            <div className="absolute right-0 top-7 z-50 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                                <button
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50"
+                                    onClick={() => handleGrantPro(item, 30)}
+                                >
+                                    <Crown className="h-3.5 w-3.5 text-yellow-500" />
+                                    PRO на 30 дней
+                                </button>
+                                <button
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50"
+                                    onClick={() => handleGrantPro(item, 365)}
+                                >
+                                    <Crown className="h-3.5 w-3.5 text-yellow-500" />
+                                    PRO на год
+                                </button>
+                                <div className="my-1 border-t border-gray-100" />
+                                <button
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left text-gray-500 hover:bg-gray-50"
+                                    onClick={() => handleResetToFree(item)}
+                                >
+                                    Сбросить на FREE
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"
