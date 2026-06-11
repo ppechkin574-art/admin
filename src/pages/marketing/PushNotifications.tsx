@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
     Bell, Send, Users, Crown, Smartphone, History, AlertTriangle,
     Clock, Flame, Settings, CheckCircle, XCircle, Loader2,
-    ChevronDown, ChevronUp, Save, Play,
+    ChevronDown, ChevronUp, Save, Play, WifiOff,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Button from '@/components/common/Button'
@@ -466,6 +466,8 @@ export const PushNotifications: React.FC = () => {
     const [dailyLoading, setDailyLoading] = useState(true)
     const [dailyError, setDailyError] = useState(false)
 
+    const [firebaseEnabled, setFirebaseEnabled] = useState<boolean | null>(null)
+
     useEffect(() => {
         streakPushTemplateService.get()
             .then(t => { setStreakTemplate(t); setStreakError(false) })
@@ -476,6 +478,10 @@ export const PushNotifications: React.FC = () => {
             .then(t => { setDailyTemplate(t); setDailyError(false) })
             .catch(() => setDailyError(true))
             .finally(() => setDailyLoading(false))
+
+        dailyNotificationService.firebaseStatus()
+            .then(s => setFirebaseEnabled(s.enabled))
+            .catch(() => setFirebaseEnabled(false))
     }, [])
 
     const titleTrimmed = title.trim()
@@ -525,6 +531,20 @@ export const PushNotifications: React.FC = () => {
                     <p className="text-sm text-gray-500 mt-0.5">Ручная рассылка и управление автоматическими пушами</p>
                 </div>
             </div>
+
+            {/* Firebase disabled banner */}
+            {firebaseEnabled === false && (
+                <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                    <WifiOff className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-semibold text-red-800">Firebase Cloud Messaging отключён</p>
+                        <p className="text-xs text-red-700 mt-0.5">
+                            Пуши не доставляются. Чтобы включить: добавьте <code className="bg-red-100 px-1 rounded">firebase_credentials.json</code> в Railway Volume
+                            и установите <code className="bg-red-100 px-1 rounded">firebase__enabled=true</code> в переменных окружения.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* ── Scheduled ── */}
             <div className="space-y-2">

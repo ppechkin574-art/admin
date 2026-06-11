@@ -600,6 +600,8 @@ export const dailyNotificationService = {
     api.put("/admin/daily-notification-template", payload).then((r) => r.data),
   trigger: (): Promise<DailyNotificationTriggerResult> =>
     api.post("/admin/daily-notification-template/trigger").then((r) => r.data),
+  firebaseStatus: (): Promise<{ enabled: boolean }> =>
+    api.get("/admin/daily-notification-template/firebase-status").then((r) => r.data),
 };
 
 // ────────────────────────────────────────────────────────────────────
