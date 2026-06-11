@@ -7,7 +7,6 @@ import {
     Flame,
     GraduationCap,
     Globe,
-    Info,
     Smartphone,
     TrendingUp,
     Users as UsersIcon,
@@ -51,9 +50,11 @@ const ACCENT_BG: Record<NonNullable<KpiCardProps['accent']>, string> = {
     teal: 'bg-teal-50 text-teal-700',
 }
 
-// Small ⓘ next to a metric label. Click toggles a popover explaining the
-// metric; closes on a second click or a click outside. Click-driven (not
-// hover) so it works on touch and stays out of the way until asked.
+// Small "i" chip next to a metric label. A filled gray circle (clearly
+// visible on the white cards, unlike a faint outline icon). Click toggles a
+// popover explaining the metric; closes on a second click or a click outside.
+// inline-flex + align-middle + ml-1 so it sits right after the label text
+// (incl. wrapped 2-line labels) instead of floating vertically-centered.
 const InfoHint: React.FC<{ text: string }> = ({ text }) => {
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLSpanElement>(null)
@@ -66,7 +67,7 @@ const InfoHint: React.FC<{ text: string }> = ({ text }) => {
         return () => document.removeEventListener('mousedown', onDocClick)
     }, [open])
     return (
-        <span ref={ref} className="relative inline-flex normal-case">
+        <span ref={ref} className="relative ml-1 inline-flex align-middle normal-case">
             <button
                 type="button"
                 aria-label="Что это"
@@ -74,12 +75,12 @@ const InfoHint: React.FC<{ text: string }> = ({ text }) => {
                     e.stopPropagation()
                     setOpen((o) => !o)
                 }}
-                className="text-gray-300 hover:text-gray-500 transition-colors"
+                className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-gray-200 text-[11px] font-bold leading-none text-gray-600 transition-colors hover:bg-gray-300 hover:text-gray-800"
             >
-                <Info className="h-3.5 w-3.5" />
+                i
             </button>
             {open && (
-                <span className="absolute z-30 left-0 top-6 w-56 rounded-lg bg-gray-900 p-2.5 text-xs font-normal leading-snug text-white shadow-lg">
+                <span className="absolute left-0 top-7 z-30 w-56 rounded-lg bg-gray-900 p-2.5 text-xs font-normal normal-case leading-snug text-white shadow-lg">
                     {text}
                 </span>
             )}
@@ -90,7 +91,7 @@ const InfoHint: React.FC<{ text: string }> = ({ text }) => {
 const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, info, icon: Icon, accent = 'blue' }) => (
     <div className="bg-white rounded-2xl shadow-sm p-5 flex items-start justify-between">
         <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-gray-500 flex items-center gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
                 {label}
                 {info && <InfoHint text={info} />}
             </span>
@@ -118,7 +119,7 @@ const Section: React.FC<{
                 </div>
             )}
             <div>
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1.5">
+                <h3 className="text-lg font-semibold text-gray-900">
                     {title}
                     {info && <InfoHint text={info} />}
                 </h3>
@@ -361,7 +362,7 @@ export const MarketingDashboard: React.FC = () => {
             >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">
                             Регистрации по месяцам
                             <InfoHint text="Сколько пользователей впервые зашли в приложение в каждый месяц." />
                         </h4>
@@ -394,7 +395,7 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">
                             Retention
                             <InfoHint text="% пользователей, вернувшихся через 1 день / 1 неделю / 1 месяц после первого входа." />
                         </h4>
@@ -431,7 +432,7 @@ export const MarketingDashboard: React.FC = () => {
             >
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                        <span className="text-xs text-gray-500 uppercase">
                             Всего
                             <InfoHint text="Суммарный доход (net) со store-оплат за вычетом комиссии стора." />
                         </span>
@@ -440,7 +441,7 @@ export const MarketingDashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                        <span className="text-xs text-gray-500 uppercase">
                             Платежей
                             <InfoHint text="Число успешных оплат (Apple + Google Play)." />
                         </span>
@@ -449,7 +450,7 @@ export const MarketingDashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                        <span className="text-xs text-gray-500 uppercase">
                             Платящих
                             <InfoHint text="Уникальные платящие пользователи." />
                         </span>
@@ -458,7 +459,7 @@ export const MarketingDashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                        <span className="text-xs text-gray-500 uppercase">
                             Средний чек
                             <InfoHint text="Средняя сумма одной оплаты (net)." />
                         </span>
@@ -468,7 +469,7 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">
                     Топ клиенты
                     <InfoHint text="Пользователи с наибольшей суммой оплат (net) за всё время." />
                 </h4>
@@ -517,7 +518,7 @@ export const MarketingDashboard: React.FC = () => {
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">
                             По ролям
                             <InfoHint text="Распределение пользователей по ролям (ученик / родитель / учитель…)." />
                         </h4>
@@ -549,7 +550,7 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">
                             По тарифам
                             <InfoHint text="Распределение по тарифам (FREE / PRO)." />
                         </h4>
@@ -574,7 +575,7 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">
                             По классам
                             <InfoHint text="Распределение по классам (9–11). «не указан» — кто зарегистрировался до запуска поля «класс»." />
                         </h4>
