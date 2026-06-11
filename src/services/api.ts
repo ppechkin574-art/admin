@@ -770,6 +770,14 @@ export const analyticsService = {
   retention: (): Promise<any> =>
     api.get("/admin/analytics/retention").then((res) => res.data),
 
+  // Marketing-safe audience aggregate (counts only, no PII): total +
+  // by_role / by_plan / by_grade over ALL Keycloak users. Server-side
+  // computed + Redis-cached, so this replaces the old client-side
+  // aggregation over the paginated /admin/users page. Reachable by the
+  // `marketing` role (router is allow_admin_or_marketing).
+  getAudience: (): Promise<any> =>
+    api.get("/admin/analytics/audience").then((res) => res.data),
+
   efficienty: (): Promise<any> =>
     api.get("/admin/analytics/efficienty").then((res) => res.data),
 

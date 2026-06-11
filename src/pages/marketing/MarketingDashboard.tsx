@@ -12,7 +12,7 @@ import {
     Users as UsersIcon,
     Zap,
 } from 'lucide-react'
-import { analyticsService, userService } from '@/services/api'
+import { analyticsService } from '@/services/api'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import toast from 'react-hot-toast'
@@ -148,7 +148,7 @@ const useMarketingData = () => {
     const [efficienty, setEfficienty] = useState<any | null>(null)
     const [payments, setPayments] = useState<any | null>(null)
     const [topClients, setTopClients] = useState<any[]>([])
-    const [users, setUsers] = useState<any[]>([])
+    const [audience, setAudience] = useState<any | null>(null)
     const [loading, setLoading] = useState(true)
 
     const refetch = React.useCallback(async () => {
@@ -158,21 +158,27 @@ const useMarketingData = () => {
             // independent. Failures on individual endpoints are isolated
             // (Promise.allSettled), so one broken section won't blank the
             // whole page.
-            const [a, r, e, p, t, u] = await Promise.allSettled([
+            //
+            // Audience now comes from the dedicated marketing-safe
+            // /admin/analytics/audience aggregate (counts only, no PII)
+            // instead of pulling the whole /admin/users page — the old
+            // path was both wrong (paginated) and 403 for marketing-role
+            // tokens.
+            const [a, r, e, p, t, au] = await Promise.allSettled([
                 analyticsService.activity(),
                 analyticsService.retention(),
                 analyticsService.efficienty(),
                 analyticsService.paymentsInfo(),
                 analyticsService.topClients(false),
-                userService.getAll(),
+                analyticsService.getAudience(),
             ])
             if (a.status === 'fulfilled') setActivity(a.value)
             if (r.status === 'fulfilled') setRetention(r.value)
             if (e.status === 'fulfilled') setEfficienty(e.value)
             if (p.status === 'fulfilled') setPayments(p.value)
             if (t.status === 'fulfilled') setTopClients(t.value || [])
-            if (u.status === 'fulfilled') setUsers(u.value || [])
-            const failed = [a, r, e, p, t, u].filter(x => x.status === 'rejected')
+            if (au.status === 'fulfilled') setAudience(au.value)
+            const failed = [a, r, e, p, t, au].filter(x => x.status === 'rejected')
             if (failed.length === 6) toast.error('Не удалось загрузить аналитику')
         } finally {
             setLoading(false)
@@ -183,48 +189,35 @@ const useMarketingData = () => {
         refetch()
     }, [refetch])
 
-    return { activity, retention, efficienty, payments, topClients, users, loading, refetch }
+    return { activity, retention, efficienty, payments, topClients, audience, loading, refetch }
 }
 
 export const MarketingDashboard: React.FC = () => {
-    const { activity, retention, efficienty, payments, topClients, users, loading, refetch } =
+    const { activity, retention, efficienty, payments, topClients, audience, loading, refetch } =
         useMarketingData()
 
-    // Aggregated views built from raw `users` list. This becomes a
-    // bottleneck past ~5000 records (we pull the whole list); see
-    // ADMIN_TASKS.md P0 about server-side pagination + dedicated
-    // /admin/analytics/audience endpoint.
+    // Audience views now read the marketing-safe /admin/analytics/audience
+    // aggregate (counts only, no PII) — server-computed over ALL Keycloak
+    // users and Redis-cached, instead of the old client-side roll-up over
+    // the paginated /admin/users page (wrong totals + 403 for marketing).
+    // The backend returns by_role / by_plan / by_grade as [{name,count}];
+    // we fold them into name→count maps the existing panels already expect.
     const audienceStats = React.useMemo(() => {
-        const total = users.length
-        const newLast7d = users.filter(u => {
-            if (!u.created_at) return false
-            const created = new Date(u.created_at).getTime()
-            return Date.now() - created < 7 * 24 * 60 * 60 * 1000
-        }).length
-
-        const proCount = users.filter(u => u.plan === 'PRO').length
-        const trialUsed = users.filter(u => u.used_trial).length
-
-        const byRole: Record<string, number> = {}
-        for (const u of users) {
-            const r = u.role || (u.roles?.[0] ?? 'user')
-            byRole[r] = (byRole[r] || 0) + 1
+        const fold = (rows: Array<{ name: string; count: number }> | undefined) => {
+            const out: Record<string, number> = {}
+            for (const row of rows ?? []) out[row.name] = row.count
+            return out
         }
 
-        const byPlan: Record<string, number> = {}
-        for (const u of users) {
-            const p = u.plan || 'FREE'
-            byPlan[p] = (byPlan[p] || 0) + 1
-        }
+        const byRole = fold(audience?.by_role)
+        const byPlan = fold(audience?.by_plan)
+        const byGrade = fold(audience?.by_grade)
 
-        const byGrade: Record<string, number> = {}
-        for (const u of users) {
-            const g = u.grade != null ? `${u.grade} класс` : 'не указан'
-            byGrade[g] = (byGrade[g] || 0) + 1
-        }
+        const total = audience?.total ?? 0
+        const proCount = byPlan['PRO'] ?? 0
 
-        return { total, newLast7d, proCount, trialUsed, byRole, byPlan, byGrade }
-    }, [users])
+        return { total, proCount, byRole, byPlan, byGrade }
+    }, [audience])
 
     const dauValue = React.useMemo(() => {
         if (!activity?.dau || activity.dau.length === 0) return 0
@@ -273,7 +266,8 @@ export const MarketingDashboard: React.FC = () => {
                 />
                 <KpiCard
                     label="Новые за 7 дн."
-                    value={formatNumber(audienceStats.newLast7d)}
+                    value={formatNumber(activity?.new_users_7d ?? null)}
+                    hint="Первый запуск за 7 дней"
                     icon={Zap}
                     accent="green"
                 />
@@ -301,7 +295,7 @@ export const MarketingDashboard: React.FC = () => {
                 <KpiCard
                     label="PRO подписки"
                     value={formatNumber(audienceStats.proCount)}
-                    hint={`Trial использовали: ${formatNumber(audienceStats.trialUsed)}`}
+                    hint="Активные тарифы PRO"
                     icon={Crown}
                     accent="pink"
                 />
