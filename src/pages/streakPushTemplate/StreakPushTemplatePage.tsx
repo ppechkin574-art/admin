@@ -120,6 +120,7 @@ export const StreakPushTemplatePage: React.FC = () => {
     <ListContainer>
       <ListHeader
         title="Push: напоминание о стрике"
+        backTo="/push"
         actionButtons={[
           {
             label: "Обновить",
