@@ -495,6 +495,35 @@ export const leaderboardPrizesService = {
     api.delete(`/admin/leaderboard-prizes/${id}`).then(() => undefined),
 };
 
+// ── Leaderboard hide-list ────────────────────────────────────────────────
+// Admin can hide selected users from the in-app leaderboard. The backend
+// excludes hidden users from the ranking entirely (everyone below shifts
+// up — gap-free positions), which also removes them from the top-3 podium
+// prizes (display-by-rank only). The mobile app needs no change.
+export const leaderboardHiddenService = {
+  // Current hidden set — list of Keycloak user_ids the admin has hidden.
+  get: (): Promise<{ user_ids: string[] }> =>
+    api.get("/admin/leaderboard/hidden").then((r) => r.data),
+  // Bulk hide (hidden=true) or show (hidden=false). Idempotent. Returns
+  // the updated full hidden set so the caller can refresh its marked rows.
+  set: (
+    userIds: string[],
+    hidden: boolean,
+  ): Promise<{ user_ids: string[] }> =>
+    api
+      .post("/admin/leaderboard/hidden", { user_ids: userIds, hidden })
+      .then((r) => r.data),
+};
+
+// Named convenience wrappers (per the requested signatures).
+export const getLeaderboardHidden = (): Promise<{ user_ids: string[] }> =>
+  leaderboardHiddenService.get();
+export const setLeaderboardHidden = (
+  userIds: string[],
+  hidden: boolean,
+): Promise<{ user_ids: string[] }> =>
+  leaderboardHiddenService.set(userIds, hidden);
+
 export interface StreakPushTemplate {
   enabled: boolean;
   title: string;

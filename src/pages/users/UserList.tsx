@@ -4,11 +4,12 @@ import { useUserStore } from '@/stores/userStore'
 import toast from 'react-hot-toast'
 import {
     ArrowUpDown, ChevronDown, ChevronUp, Crown,
-    Eye, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon, X,
+    Eye, EyeOff, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon, X,
 } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
+import { leaderboardHiddenService } from '@/services/api'
 
 interface User {
     id: string
@@ -94,9 +95,25 @@ export const UserList: React.FC = () => {
     const [pageSize, setPageSize] = useState(25)
     const [openSubMenu, setOpenSubMenu] = useState<string | null>(null)
     const [bulkLoading, setBulkLoading] = useState(false)
+    const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
     const subMenuRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => { fetchUsers({}) }, [fetchUsers])
+
+    // ── leaderboard hide-list ────────────────────────────────────────────────
+    // Hidden users are excluded from the in-app leaderboard ranking by the
+    // backend; here we only fetch the set to mark rows + drive the bulk action.
+    const refreshHidden = useCallback(async () => {
+        try {
+            const data = await leaderboardHiddenService.get()
+            setHiddenIds(new Set(data.user_ids))
+        } catch {
+            // Non-fatal: the user table still works without the hide-list.
+            // A failed fetch just means no "Скрыт" badges this render.
+        }
+    }, [])
+
+    useEffect(() => { refreshHidden() }, [refreshHidden])
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -250,6 +267,29 @@ export const UserList: React.FC = () => {
         )
     }
 
+    // Hide / show selected users on the in-app leaderboard. One bulk call
+    // to the backend; on success refetch the hidden set so the «Скрыт»
+    // badges update, then clear the selection. Does NOT touch user data,
+    // so no refreshUsers() needed.
+    const handleBulkHidden = async (hidden: boolean) => {
+        const ids = Array.from(selected)
+        setBulkLoading(true)
+        try {
+            await leaderboardHiddenService.set(ids, hidden)
+            await refreshHidden()
+            toast.success(
+                hidden
+                    ? `${ids.length} скрыто из лидерборда`
+                    : `${ids.length} показано в лидерборде`
+            )
+            clearSelection()
+        } catch {
+            toast.error('Не удалось изменить видимость в лидерборде')
+        } finally {
+            setBulkLoading(false)
+        }
+    }
+
     const resetFilters = () => { setSearch(''); setRoleFilter(''); setPlanFilter(''); setCurrentPage(1) }
     const activeFiltersCount = (search ? 1 : 0) + (roleFilter ? 1 : 0) + (planFilter ? 1 : 0)
 
@@ -372,6 +412,21 @@ export const UserList: React.FC = () => {
                     <div className="h-4 w-px bg-blue-200" />
                     <button
                         disabled={bulkLoading}
+                        onClick={() => handleBulkHidden(true)}
+                        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+                    >
+                        <EyeOff className="h-3 w-3" /> Скрыть из лидерборда
+                    </button>
+                    <button
+                        disabled={bulkLoading}
+                        onClick={() => handleBulkHidden(false)}
+                        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                    >
+                        <Eye className="h-3 w-3" /> Показать в лидерборде
+                    </button>
+                    <div className="h-4 w-px bg-blue-200" />
+                    <button
+                        disabled={bulkLoading}
                         onClick={handleBulkDelete}
                         className="text-xs px-2.5 py-1.5 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
                     >
@@ -476,7 +531,16 @@ export const UserList: React.FC = () => {
                                 <td className="px-4 py-3">
                                     <Badge type="secondary">{roleLabel(user)}</Badge>
                                 </td>
-                                <td className="px-4 py-3">{subLabel(user)}</td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        {subLabel(user)}
+                                        {hiddenIds.has(user.id) && (
+                                            <Badge type="secondary" icon={<EyeOff className="h-3 w-3" />}>
+                                                Скрыт
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-4 py-3 text-gray-600">
                                     {user.attendance_streak_days > 0 ? `${user.attendance_streak_days} дн.` : '—'}
                                 </td>
