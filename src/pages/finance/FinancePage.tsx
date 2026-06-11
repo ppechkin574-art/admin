@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Wallet, Smartphone, CreditCard, RefreshCw, Apple } from 'lucide-react'
+import { Wallet, Smartphone, CreditCard, RefreshCw, Apple, Search } from 'lucide-react'
 import { analyticsService } from '@/services/api'
 import Button from '@/components/common/Button'
+import toast from 'react-hot-toast'
 
 // Finance overview: paid revenue split by payment gateway.
 //
@@ -41,6 +42,7 @@ export const FinancePage: React.FC = () => {
     const [total, setTotal] = useState(0)
     const [hours, setHours] = useState(720)
     const [loading, setLoading] = useState(false)
+    const [polling, setPolling] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -55,6 +57,23 @@ export const FinancePage: React.FC = () => {
             setLoading(false)
         }
     }, [hours])
+
+    const pollPending = useCallback(async () => {
+        setPolling(true)
+        try {
+            const res = await analyticsService.pollPendingPayments()
+            if (res.updated_to_paid > 0) {
+                toast.success(`Оплачено: ${res.updated_to_paid} платеж(ей). Проверено: ${res.checked}`)
+            } else {
+                toast(`Проверено ${res.checked} платежей. Новых оплат нет (${res.still_pending} pending, ${res.updated_to_failed} failed)`)
+            }
+            await load()
+        } catch {
+            toast.error('Ошибка при проверке платежей')
+        } finally {
+            setPolling(false)
+        }
+    }, [load])
 
     useEffect(() => {
         load()
@@ -93,7 +112,7 @@ export const FinancePage: React.FC = () => {
                         перед выплатой).
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <select
                         value={hours}
                         onChange={(e) => setHours(Number(e.target.value))}
@@ -105,7 +124,16 @@ export const FinancePage: React.FC = () => {
                             </option>
                         ))}
                     </select>
-                    <Button variant="secondary" className="gap-2" onClick={load} disabled={loading}>
+                    <Button
+                        variant="secondary"
+                        className="gap-2"
+                        onClick={() => void pollPending()}
+                        disabled={loading || polling}
+                    >
+                        <Search className={`h-4 w-4 ${polling ? 'animate-pulse' : ''}`} />
+                        {polling ? 'Проверяем...' : 'Проверить FP платежи'}
+                    </Button>
+                    <Button variant="secondary" className="gap-2" onClick={() => void load()} disabled={loading || polling}>
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                         Обновить
                     </Button>
