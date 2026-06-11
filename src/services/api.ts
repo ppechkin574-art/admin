@@ -873,6 +873,15 @@ export const analyticsService = {
     api
       .get("/admin/analytics/payments/by-gateway", { params: { hours } })
       .then((res) => res.data),
+
+  // Force-check all pending FreedomPay payments right now (bypass 25-min cycle).
+  pollPendingPayments: (): Promise<{
+    checked: number
+    updated_to_paid: number
+    updated_to_failed: number
+    still_pending: number
+  }> =>
+    api.post("/admin/payments/poll-pending").then((res) => res.data),
 };
 
 // Push notifications — broadcast a message to a slice of the user
