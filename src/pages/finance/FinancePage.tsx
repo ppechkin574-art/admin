@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Wallet, Smartphone, CreditCard, RefreshCw } from 'lucide-react'
+import { Wallet, Smartphone, CreditCard, RefreshCw, Apple } from 'lucide-react'
 import { analyticsService } from '@/services/api'
 import Button from '@/components/common/Button'
 
@@ -29,6 +29,7 @@ const GATEWAY_META: Record<
     { label: string; icon: React.ComponentType<{ className?: string }>; accent: string }
 > = {
     google_play: { label: 'Google Play', icon: Smartphone, accent: 'bg-green-50 text-green-700' },
+    apple: { label: 'App Store (Apple)', icon: Apple, accent: 'bg-gray-50 text-gray-700' },
     freedompay: { label: 'FreedomPay', icon: CreditCard, accent: 'bg-blue-50 text-blue-700' },
 }
 
@@ -67,12 +68,15 @@ export const FinancePage: React.FC = () => {
                 amount: Number(r.total_amount) || 0,
             })
         }
-        // Always show both buckets, even at zero.
-        return ['google_play', 'freedompay'].map((g) => ({
-            gateway: g,
-            count: map.get(g)?.count ?? 0,
-            amount: map.get(g)?.amount ?? 0,
-        }))
+        // Always show all gateway buckets. Hide apple if it has 0 and no entry.
+        const allGateways = ['google_play', 'apple', 'freedompay']
+        return allGateways
+            .filter((g) => g !== 'apple' || map.has('apple'))
+            .map((g) => ({
+                gateway: g,
+                count: map.get(g)?.count ?? 0,
+                amount: map.get(g)?.amount ?? 0,
+            }))
     }, [rows])
 
     return (
@@ -144,6 +148,11 @@ export const FinancePage: React.FC = () => {
                                 {g.gateway === 'google_play' && g.amount > 0 && (
                                     <div className="text-xs text-gray-400 mt-1">
                                         ≈ {fmtMoney(Math.round(g.amount * 0.85))} после комиссии Google
+                                    </div>
+                                )}
+                                {g.gateway === 'apple' && g.amount > 0 && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                        ≈ {fmtMoney(Math.round(g.amount * 0.70))} после комиссии Apple (30%)
                                     </div>
                                 )}
                             </div>
