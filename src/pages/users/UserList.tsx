@@ -508,12 +508,13 @@ export const UserList: React.FC = () => {
                                 key={user.id}
                                 className={`hover:bg-gray-50 transition-colors ${selected.has(user.id) ? 'bg-blue-50' : ''}`}
                             >
-                                <td className="px-3 py-3" onClick={e => { e.stopPropagation(); toggleOne(user.id) }}>
+                                <td className="px-3 py-3 cursor-pointer" onClick={e => { e.stopPropagation(); toggleOne(user.id) }}>
                                     <input
                                         type="checkbox"
                                         checked={selected.has(user.id)}
-                                        onChange={() => toggleOne(user.id)}
-                                        className="rounded border-gray-300 cursor-pointer"
+                                        readOnly
+                                        tabIndex={-1}
+                                        className="rounded border-gray-300 pointer-events-none"
                                     />
                                 </td>
                                 <td
