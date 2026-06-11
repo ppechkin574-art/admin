@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
     Activity,
     BarChart3,
@@ -7,6 +7,7 @@ import {
     Flame,
     GraduationCap,
     Globe,
+    Info,
     Smartphone,
     TrendingUp,
     Users as UsersIcon,
@@ -36,6 +37,7 @@ interface KpiCardProps {
     label: string
     value: string | number
     hint?: string
+    info?: string
     icon: React.ComponentType<{ className?: string }>
     accent?: 'blue' | 'green' | 'purple' | 'orange' | 'pink' | 'teal'
 }
@@ -49,10 +51,49 @@ const ACCENT_BG: Record<NonNullable<KpiCardProps['accent']>, string> = {
     teal: 'bg-teal-50 text-teal-700',
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon: Icon, accent = 'blue' }) => (
+// Small ⓘ next to a metric label. Click toggles a popover explaining the
+// metric; closes on a second click or a click outside. Click-driven (not
+// hover) so it works on touch and stays out of the way until asked.
+const InfoHint: React.FC<{ text: string }> = ({ text }) => {
+    const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLSpanElement>(null)
+    useEffect(() => {
+        if (!open) return
+        const onDocClick = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+        }
+        document.addEventListener('mousedown', onDocClick)
+        return () => document.removeEventListener('mousedown', onDocClick)
+    }, [open])
+    return (
+        <span ref={ref} className="relative inline-flex normal-case">
+            <button
+                type="button"
+                aria-label="Что это"
+                onClick={(e) => {
+                    e.stopPropagation()
+                    setOpen((o) => !o)
+                }}
+                className="text-gray-300 hover:text-gray-500 transition-colors"
+            >
+                <Info className="h-3.5 w-3.5" />
+            </button>
+            {open && (
+                <span className="absolute z-30 left-0 top-6 w-56 rounded-lg bg-gray-900 p-2.5 text-xs font-normal leading-snug text-white shadow-lg">
+                    {text}
+                </span>
+            )}
+        </span>
+    )
+}
+
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, info, icon: Icon, accent = 'blue' }) => (
     <div className="bg-white rounded-2xl shadow-sm p-5 flex items-start justify-between">
         <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-gray-500">{label}</span>
+            <span className="text-xs uppercase tracking-wide text-gray-500 flex items-center gap-1">
+                {label}
+                {info && <InfoHint text={info} />}
+            </span>
             <span className="text-3xl font-bold text-gray-900">{value}</span>
             {hint && <span className="text-xs text-gray-400 mt-1">{hint}</span>}
         </div>
@@ -65,9 +106,10 @@ const KpiCard: React.FC<KpiCardProps> = ({ label, value, hint, icon: Icon, accen
 const Section: React.FC<{
     title: string
     description?: string
+    info?: string
     icon?: React.ComponentType<{ className?: string }>
     children: React.ReactNode
-}> = ({ title, description, icon: Icon, children }) => (
+}> = ({ title, description, info, icon: Icon, children }) => (
     <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-start gap-3 mb-4">
             {Icon && (
@@ -76,7 +118,10 @@ const Section: React.FC<{
                 </div>
             )}
             <div>
-                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-1.5">
+                    {title}
+                    {info && <InfoHint text={info} />}
+                </h3>
                 {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
             </div>
         </div>
@@ -261,6 +306,7 @@ export const MarketingDashboard: React.FC = () => {
                 <KpiCard
                     label="Всего юзеров"
                     value={formatNumber(audience?.total ?? audienceStats.total)}
+                    info="Все зарегистрированные пользователи (из Keycloak)."
                     icon={UsersIcon}
                     accent="blue"
                 />
@@ -268,6 +314,7 @@ export const MarketingDashboard: React.FC = () => {
                     label="Новые за 7 дн."
                     value={formatNumber(activity?.new_users_7d ?? null)}
                     hint="Первый запуск за 7 дней"
+                    info="Пользователи, впервые открывшие приложение за последние 7 дней."
                     icon={Zap}
                     accent="green"
                 />
@@ -275,6 +322,7 @@ export const MarketingDashboard: React.FC = () => {
                     label="DAU"
                     value={formatNumber(dauValue)}
                     hint="Daily Active Users"
+                    info="Daily Active Users — уникальные пользователи, заходившие за день."
                     icon={Activity}
                     accent="purple"
                 />
@@ -282,6 +330,7 @@ export const MarketingDashboard: React.FC = () => {
                     label="MAU"
                     value={formatNumber(mauValue)}
                     hint="Monthly Active Users"
+                    info="Monthly Active Users — уникальные пользователи за месяц."
                     icon={BarChart3}
                     accent="teal"
                 />
@@ -289,6 +338,7 @@ export const MarketingDashboard: React.FC = () => {
                     label="Stickiness"
                     value={`${stickiness}%`}
                     hint="DAU/MAU ratio"
+                    info="DAU / MAU — как часто активные пользователи возвращаются. Выше % = «прилипчивее»."
                     icon={Flame}
                     accent="orange"
                 />
@@ -296,6 +346,7 @@ export const MarketingDashboard: React.FC = () => {
                     label="PRO подписки"
                     value={formatNumber(audienceStats.proCount)}
                     hint="Активные тарифы PRO"
+                    info="Пользователи с активным PRO-тарифом."
                     icon={Crown}
                     accent="pink"
                 />
@@ -305,11 +356,15 @@ export const MarketingDashboard: React.FC = () => {
             <Section
                 title="Регистрации и удержание"
                 description="Сколько новых юзеров приходят и как долго остаются"
+                info="«Регистрация» = первый вход в приложение (первый app_opened). Удержание показывает, как долго юзеры остаются после первого входа."
                 icon={TrendingUp}
             >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Регистрации по месяцам</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                            Регистрации по месяцам
+                            <InfoHint text="Сколько пользователей впервые зашли в приложение в каждый месяц." />
+                        </h4>
                         {retention?.retention_rate_by_month?.length ? (
                             <div className="space-y-2">
                                 {retention.retention_rate_by_month
@@ -339,7 +394,10 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Retention</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                            Retention
+                            <InfoHint text="% пользователей, вернувшихся через 1 день / 1 неделю / 1 месяц после первого входа." />
+                        </h4>
                         <div className="space-y-3">
                             <HBar
                                 label="День 1 (D1)"
@@ -368,36 +426,52 @@ export const MarketingDashboard: React.FC = () => {
             <Section
                 title="Доходы"
                 description="Платежи и топ-клиенты"
+                info="Доход со store-оплат: Apple IAP + Google Play, за вычетом комиссии стора (Apple −30%, Google −15%). FreedomPay не учитывается."
                 icon={DollarSign}
             >
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase">Всего</span>
+                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                            Всего
+                            <InfoHint text="Суммарный доход (net) со store-оплат за вычетом комиссии стора." />
+                        </span>
                         <div className="text-xl font-bold text-gray-900 mt-1">
                             {formatMoney(payments?.info?.total_amount)}
                         </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase">Платежей</span>
+                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                            Платежей
+                            <InfoHint text="Число успешных оплат (Apple + Google Play)." />
+                        </span>
                         <div className="text-xl font-bold text-gray-900 mt-1">
                             {formatNumber(payments?.info?.total_payments)}
                         </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase">Платящих</span>
+                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                            Платящих
+                            <InfoHint text="Уникальные платящие пользователи." />
+                        </span>
                         <div className="text-xl font-bold text-gray-900 mt-1">
                             {formatNumber(payments?.info?.unique_users)}
                         </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-4">
-                        <span className="text-xs text-gray-500 uppercase">Средний чек</span>
+                        <span className="text-xs text-gray-500 uppercase flex items-center gap-1">
+                            Средний чек
+                            <InfoHint text="Средняя сумма одной оплаты (net)." />
+                        </span>
                         <div className="text-xl font-bold text-gray-900 mt-1">
                             {formatMoney(payments?.info?.avg_amount)}
                         </div>
                     </div>
                 </div>
 
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Топ клиенты</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                    Топ клиенты
+                    <InfoHint text="Пользователи с наибольшей суммой оплат (net) за всё время." />
+                </h4>
                 {topClients?.length ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -438,11 +512,15 @@ export const MarketingDashboard: React.FC = () => {
             <Section
                 title="Аудитория"
                 description="Кто пользуется приложением"
+                info="Состав текущих зарегистрированных пользователей по ролям, тарифам и классам."
                 icon={UsersIcon}
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">По ролям</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                            По ролям
+                            <InfoHint text="Распределение пользователей по ролям (ученик / родитель / учитель…)." />
+                        </h4>
                         <div className="space-y-2">
                             {Object.entries(audienceStats.byRole)
                                 .sort(([, a], [, b]) => b - a)
@@ -471,7 +549,10 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">По тарифам</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                            По тарифам
+                            <InfoHint text="Распределение по тарифам (FREE / PRO)." />
+                        </h4>
                         <div className="space-y-2">
                             {Object.entries(audienceStats.byPlan)
                                 .sort(([, a], [, b]) => b - a)
@@ -493,7 +574,10 @@ export const MarketingDashboard: React.FC = () => {
                     </div>
 
                     <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">По классам</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
+                            По классам
+                            <InfoHint text="Распределение по классам (9–11). «не указан» — кто зарегистрировался до запуска поля «класс»." />
+                        </h4>
                         <div className="space-y-2">
                             {Object.entries(audienceStats.byGrade)
                                 .sort(([a], [b]) => {
