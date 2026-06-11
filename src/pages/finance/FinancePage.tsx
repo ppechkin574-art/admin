@@ -59,9 +59,7 @@ export const FinancePage: React.FC = () => {
                 amount: Number(r.total_amount) || 0,
             })
         }
-        // Show google_play always; show apple only when there's at least 1 payment
         return (['google_play', 'apple'] as const)
-            .filter((g) => g !== 'apple' || map.has('apple'))
             .map((g) => ({
                 gateway: g,
                 count: map.get(g)?.count ?? 0,
