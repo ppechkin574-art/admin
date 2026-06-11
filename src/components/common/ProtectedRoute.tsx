@@ -1,6 +1,7 @@
 import { FC } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
+import { isMarketingPath } from '@/constants/sidebarContent'
 import LoadingSpinner from './LoadingSpinner'
 
 interface ProtectedRouteProps
@@ -10,7 +11,8 @@ interface ProtectedRouteProps
 
 const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
 {
-    const { isInitialized, isAuthenticated } = useKeycloakAuth()
+    const { isInitialized, isAuthenticated, isMarketingOnly } = useKeycloakAuth()
+    const location = useLocation()
 
     if (!isInitialized)
         return (
@@ -21,6 +23,12 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
 
     if (!isAuthenticated)
         return <Navigate to="/login" replace />
+
+    // Marketing-only users (role `marketing`, NOT `admin`) may visit ONLY
+    // the marketing routes. Any other path — including the "/" landing —
+    // redirects them to /marketing. Admins are unrestricted.
+    if (isMarketingOnly && !isMarketingPath(location.pathname))
+        return <Navigate to="/marketing" replace />
 
     return <>{children}</>
 }

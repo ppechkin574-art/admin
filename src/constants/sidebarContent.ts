@@ -74,6 +74,19 @@ export const menuItemsGen2 = [
   },
 ];
 
+// Allow-list of routes a `marketing`-only user may access. Used to
+// filter the sidebar/header and to gate routes in ProtectedRoute.
+// Keep in sync with the backend `allow_admin_or_marketing` surface
+// (/admin/analytics/* + /admin/notifications/send).
+export const MARKETING_PATHS = ["/marketing", "/push"] as const;
+
+// True when an href belongs to the marketing allow-list (handles both
+// exact matches and nested sub-paths like "/marketing/foo").
+export const isMarketingPath = (href: string): boolean =>
+  MARKETING_PATHS.some(
+    (p) => href === p || href.startsWith(`${p}/`),
+  );
+
 export const menuItemsGen1 = [
   { label: "Связки предметов", href: "/subject-combinations", icon: LinkIcon },
   { label: "Тренажеры", href: "/trainers", icon: Dumbbell },

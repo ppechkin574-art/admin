@@ -2,15 +2,24 @@ import { useState } from "react";
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
 import { LogOut, User, Menu, X, ChevronDown } from 'lucide-react'
 import { useNavigate, NavLink } from 'react-router-dom'
-import { menuItemsGen2, menuItemsGen1 } from '@/constants/sidebarContent'
+import { menuItemsGen2, menuItemsGen1, isMarketingPath } from '@/constants/sidebarContent'
 
 const Header = () =>
 {
-    const { user, logout, isAuthenticated } = useKeycloakAuth()
+    const { user, logout, isAuthenticated, isMarketingOnly } = useKeycloakAuth()
     const navigate = useNavigate()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [gen2Open, setGen2Open] = useState(true)
     const [gen1Open, setGen1Open] = useState(true)
+
+    // Marketing-only users see ONLY the marketing items in the mobile
+    // menu; admins see the full menu exactly as before.
+    const gen2Items = isMarketingOnly
+        ? menuItemsGen2.filter(item => isMarketingPath(item.href))
+        : menuItemsGen2
+    const gen1Items = isMarketingOnly
+        ? menuItemsGen1.filter(item => isMarketingPath(item.href))
+        : menuItemsGen1
 
     const handleLogout = async () =>
     {
@@ -130,25 +139,27 @@ const Header = () =>
                                         </button>
                                         {gen2Open && (
                                             <div className="mt-1 space-y-1">
-                                                {menuItemsGen2.map(renderNavLink)}
+                                                {gen2Items.map(renderNavLink)}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div>
-                                        <button
-                                            onClick={() => setGen1Open(!gen1Open)}
-                                            className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
-                                        >
-                                            <span>Существующие разделы</span>
-                                            <ChevronDown className={`h-4 w-4 transition-transform ${gen1Open ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {gen1Open && (
-                                            <div className="mt-1 space-y-1">
-                                                {menuItemsGen1.map(renderNavLink)}
-                                            </div>
-                                        )}
-                                    </div>
+                                    {gen1Items.length > 0 && (
+                                        <div>
+                                            <button
+                                                onClick={() => setGen1Open(!gen1Open)}
+                                                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700"
+                                            >
+                                                <span>Существующие разделы</span>
+                                                <ChevronDown className={`h-4 w-4 transition-transform ${gen1Open ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            {gen1Open && (
+                                                <div className="mt-1 space-y-1">
+                                                    {gen1Items.map(renderNavLink)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </nav>
                             ) : (
                                 <div className="px-3 py-4 text-sm text-gray-500 text-center">

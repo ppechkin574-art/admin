@@ -7,6 +7,15 @@ type AuthContextValue = {
     isAuthenticated: boolean
     user: any | null
     token: string | null
+    /** Realm roles from the JWT (`realm_access.roles`). */
+    roles: string[]
+    /** True when the user has the `admin` realm role (full access). */
+    isAdmin: boolean
+    /**
+     * True when the user has the `marketing` role but NOT `admin`.
+     * These users are restricted to the marketing sections only.
+     */
+    isMarketingOnly: boolean
     login: () => Promise<void>
     logout: () => void
 }
@@ -100,11 +109,24 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const logout = () =>
         keycloak.logout({ redirectUri: window.location.origin + '/login' })
 
+    // Realm roles come from the parsed JWT (`realm_access.roles`), which
+    // the auth store persists as `user`. Falls back to the live keycloak
+    // instance so role info is available even before the store rehydrates.
+    const roles: string[] =
+        (user?.realm_access?.roles as string[] | undefined) ??
+        (keycloak.tokenParsed?.realm_access?.roles as string[] | undefined) ??
+        []
+    const isAdmin = roles.includes('admin')
+    const isMarketingOnly = roles.includes('marketing') && !isAdmin
+
     const value: AuthContextValue = {
         isInitialized,
         isAuthenticated,
         user,
         token,
+        roles,
+        isAdmin,
+        isMarketingOnly,
         login,
         logout
     }
