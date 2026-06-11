@@ -260,7 +260,7 @@ export const MarketingDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <KpiCard
                     label="Всего юзеров"
-                    value={formatNumber(activity?.total_users ?? audienceStats.total)}
+                    value={formatNumber(audience?.total ?? audienceStats.total)}
                     icon={UsersIcon}
                     accent="blue"
                 />
