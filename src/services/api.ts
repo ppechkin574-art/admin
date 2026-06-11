@@ -534,6 +534,46 @@ export const streakPushTemplateService = {
 };
 
 // ────────────────────────────────────────────────────────────────────
+// Daily notification template — singleton settings for the daily push
+// scheduler. Admin edits title/body/hour/minute/timezone; scheduler
+// re-reads on every tick so changes propagate without a redeploy.
+// ────────────────────────────────────────────────────────────────────
+export interface DailyNotificationTemplate {
+  enabled: boolean;
+  title: string;
+  body: string;
+  hour: number;
+  minute: number;
+  timezone: string;
+  updated_at: string;
+}
+
+export interface DailyNotificationTriggerResult {
+  requested: number;
+  delivered: number;
+  failed: number;
+  skipped_disabled: boolean;
+}
+
+export const dailyNotificationService = {
+  get: (): Promise<DailyNotificationTemplate> =>
+    api.get("/admin/daily-notification-template").then((r) => r.data),
+  update: (
+    payload: Partial<{
+      enabled: boolean;
+      title: string;
+      body: string;
+      hour: number;
+      minute: number;
+      timezone: string;
+    }>,
+  ): Promise<DailyNotificationTemplate> =>
+    api.put("/admin/daily-notification-template", payload).then((r) => r.data),
+  trigger: (): Promise<DailyNotificationTriggerResult> =>
+    api.post("/admin/daily-notification-template/trigger").then((r) => r.data),
+};
+
+// ────────────────────────────────────────────────────────────────────
 // App update config — per-platform minimum build number + store URLs that
 // drive the mobile force-update gate. If a user's installed build is below
 // the platform minimum the app shows a blocking "update required" screen.
