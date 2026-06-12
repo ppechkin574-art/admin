@@ -21,6 +21,7 @@ import {
   Wallet,
   FileStack,
   ArrowUpCircle,
+  Shield,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -28,6 +29,7 @@ export const menuItemsGen2 = [
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
   { label: "Пользователи", href: "/users", icon: Users },
+  { label: "Безопасность", href: "/security", icon: Shield },
   { label: "Маркетинг", href: "/marketing", icon: BarChart3 },
   { label: "Финансы", href: "/finance", icon: Wallet },
   { label: "Скорость API", href: "/performance", icon: Gauge },

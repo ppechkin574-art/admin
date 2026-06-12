@@ -910,4 +910,42 @@ export const pushService = {
       .then((res) => res.data),
 };
 
+export const securityService = {
+  getOverview: (): Promise<any> =>
+    api.get('/admin/security/overview').then(r => r.data),
+
+  getEvents: (params?: {
+    page?: number; limit?: number; status?: string; event_type?: string;
+    min_risk?: number; user_id?: string; ip?: string; device_id?: string;
+    from_date?: string; to_date?: string;
+  }): Promise<any> =>
+    api.get('/admin/security/events', { params }).then(r => r.data),
+
+  getRiskyUsers: (params?: {
+    page?: number; limit?: number; search?: string; status?: string; min_risk?: number;
+  }): Promise<any> =>
+    api.get('/admin/security/users', { params }).then(r => r.data),
+
+  getUserRiskProfile: (userId: string): Promise<any> =>
+    api.get(`/admin/security/users/${userId}`).then(r => r.data),
+
+  getUserActivity: (userId: string, params?: { page?: number; limit?: number }): Promise<any> =>
+    api.get(`/admin/security/users/${userId}/activity`, { params }).then(r => r.data),
+
+  getUserPointsHistory: (userId: string, params?: { page?: number; limit?: number }): Promise<any> =>
+    api.get(`/admin/security/users/${userId}/points-history`, { params }).then(r => r.data),
+
+  markEventReviewed: (eventId: number): Promise<any> =>
+    api.post(`/admin/security/events/${eventId}/mark-reviewed`).then(r => r.data),
+
+  restrictUser: (userId: string, data: { reason: string; until?: string }): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/restrict`, data).then(r => r.data),
+
+  blockUser: (userId: string, data: { reason: string }): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/block`, data).then(r => r.data),
+
+  unrestrictUser: (userId: string): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/unrestrict`).then(r => r.data),
+}
+
 export default api;

@@ -51,6 +51,8 @@ import { MarketingDashboard } from './pages/marketing/MarketingDashboard'
 import { PushNotifications } from './pages/marketing/PushNotifications'
 import { PerformanceDashboard } from './pages/performance/PerformanceDashboard'
 import { FinancePage } from './pages/finance/FinancePage'
+import { SecurityDashboard } from './pages/security/SecurityDashboard'
+import { SecurityUserDetail } from './pages/security/SecurityUserDetail'
 
 function App()
 {
@@ -196,6 +198,11 @@ function App()
             <Route path="create" element={<UserForm />} />
             <Route path=":id" element={<UserDetail />} />
             <Route path=":id/edit" element={<UserForm />} />
+          </Route>
+
+          <Route path="/security">
+            <Route index element={<SecurityDashboard />} />
+            <Route path="users/:userId" element={<SecurityUserDetail />} />
           </Route>
 
           <Route path="/marketing" element={<MarketingDashboard />} />
