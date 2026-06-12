@@ -68,17 +68,30 @@ const formatDate = (iso: string | null): string => {
 
 const daysRemaining = (user: User): number | null => {
     if (user.plan !== 'PRO' || !user.subscription_end) return null
-    const diff = Math.ceil((new Date(user.subscription_end).getTime() - Date.now()) / 86_400_000)
-    return diff
+    const end = new Date(user.subscription_end).getTime()
+    if (Number.isNaN(end)) return null
+    const now = Date.now()
+    if (end <= now) return 0
+    return Math.floor((end - now) / 86_400_000)
+}
+
+// Trial = subscription was set within 5 days of account creation (3-day onboarding period).
+// Once paid (Month = +30 days), the gap exceeds 5 days and this returns false.
+const isTrial = (user: User): boolean => {
+    if (!user.subscription_end || !user.created_at) return false
+    const subEnd = new Date(user.subscription_end).getTime()
+    const createdAt = new Date(user.created_at).getTime()
+    return (subEnd - createdAt) < 5 * 86_400_000
 }
 
 const subLabel = (user: User): React.ReactNode => {
     if (user.plan !== 'PRO') return <Badge type="secondary">FREE</Badge>
     const days = daysRemaining(user)
-    if (days === null) return <Badge type="primary">PRO</Badge>
-    if (days <= 0) return <Badge type="error">PRO · истёк</Badge>
-    if (days <= 7) return <Badge type="warning">PRO · {days}д</Badge>
-    return <Badge type="primary">PRO · {days}д</Badge>
+    if (days === null) return <Badge type="primary">Month</Badge>
+    if (days <= 0) return <Badge type="error">Month · истёк</Badge>
+    if (isTrial(user)) return <Badge type="warning">Пробный · {days}д</Badge>
+    if (days <= 7) return <Badge type="warning">Month · {days}д</Badge>
+    return <Badge type="primary">Month · {days}д</Badge>
 }
 
 export const UserList: React.FC = () => {

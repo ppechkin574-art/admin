@@ -187,7 +187,7 @@ export const UserDetail: React.FC = () => {
             const newEnd = updated.subscription_end || refreshed.subscription_end
             const endStr = newEnd ? formatDate(newEnd) : ''
             const action = isProActive ? 'продлён' : 'выдан'
-            toast.success(`PRO ${action} на ${daysLabel(days)}${endStr ? ` (до ${endStr})` : ''}`)
+            toast.success(`Month ${action} на ${daysLabel(days)}${endStr ? ` (до ${endStr})` : ''}`)
         } catch (e: any) {
             const msg = e?.response?.data?.detail || 'Не удалось выдать PRO'
             toast.error(msg)
@@ -241,12 +241,16 @@ export const UserDetail: React.FC = () => {
 
     // Computed views over the user's subscription. Centralised so the
     // Subscription section and the action handlers agree on what
-    // "active PRO" means (plan===PRO && subscription_end is in future).
+    // "active Month" means (plan===PRO && subscription_end is in future).
     const remainingDays = daysRemaining(user.subscription_end)
     const isProActive =
         user.plan === 'PRO' &&
         remainingDays != null &&
         remainingDays > 0
+    // Trial = subscription was set within 5 days of account creation.
+    const isTrialActive = isProActive &&
+        !!user.subscription_end && !!user.created_at &&
+        (new Date(user.subscription_end).getTime() - new Date(user.created_at).getTime()) < 5 * 86_400_000
 
     return (
         <div className="space-y-6 p-6">
@@ -307,23 +311,19 @@ export const UserDetail: React.FC = () => {
             <Section title="Подписка">
                 <Field label="Тариф">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <Badge type={user.plan === 'PRO' ? 'primary' : 'secondary'}>
-                            {user.plan || 'FREE'}
-                        </Badge>
+                        {user.plan !== 'PRO'
+                            ? <Badge type="secondary">FREE</Badge>
+                            : isTrialActive
+                                ? <Badge type="warning">Пробный</Badge>
+                                : <Badge type="primary">Month</Badge>}
                         {/* Countdown badge — appears only when PRO is active.
-                            Red+warning icon if ≤7 days left (renewal-attention
-                            zone), neutral otherwise. Pinned to remaining-days
-                            because an admin scanning the user list cares more
-                            about "do we need to act soon" than the raw date. */}
-                        {isProActive && remainingDays != null && (
+                            Warning if ≤7 days left, success otherwise. */}
+                        {isProActive && remainingDays != null && remainingDays > 0 && (
                             <Badge type={remainingDays <= 7 ? 'warning' : 'success'}>
                                 {remainingDays <= 7 ? '⚠ ' : ''}
-                                {daysLabel(remainingDays)} {remainingDays === 0 ? 'осталось' : 'осталось'}
+                                {daysLabel(remainingDays)} осталось
                             </Badge>
                         )}
-                        {/* Explicit "expired" state when subscription_end is in the
-                            past but plan attr still says PRO — happens when the
-                            backend auto-downgrade hasn't run yet or got skipped. */}
                         {user.plan === 'PRO' && remainingDays === 0 && (
                             <Badge type="error">Истекла</Badge>
                         )}
@@ -393,7 +393,7 @@ export const UserDetail: React.FC = () => {
                         >
                             {subBusy
                                 ? (isProActive ? 'Продлеваю…' : 'Выдаю…')
-                                : (isProActive ? `Продлить +${grantDays}д` : `Выдать PRO на ${grantDays}д`)}
+                                : (isProActive ? `Продлить +${grantDays}д` : `Выдать Month на ${grantDays}д`)}
                         </Button>
                         <Button
                             variant="danger"
