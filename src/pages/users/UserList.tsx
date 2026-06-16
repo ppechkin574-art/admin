@@ -88,7 +88,11 @@ const subLabel = (user: User): React.ReactNode => {
     if (user.plan !== 'PRO') return <Badge type="secondary">FREE</Badge>
     const days = daysRemaining(user)
     if (days === null) return <Badge type="primary">Month</Badge>
-    if (days <= 0) return <Badge type="error">Month · истёк</Badge>
+    if (days <= 0) {
+        return isTrial(user)
+            ? <Badge type="error">Пробный · истёк</Badge>
+            : <Badge type="error">Month · истёк</Badge>
+    }
     if (isTrial(user)) return <Badge type="warning">Пробный · {days}д</Badge>
     if (days <= 7) return <Badge type="warning">Month · {days}д</Badge>
     return <Badge type="primary">Month · {days}д</Badge>
@@ -146,7 +150,11 @@ export const UserList: React.FC = () => {
             free: users.filter(u => u.plan !== 'PRO').length,
             expiringSoon: users.filter(u => {
                 const d = daysRemaining(u)
-                return d !== null && d >= 0 && d <= 7
+                return d !== null && d > 0 && d <= 7
+            }).length,
+            expired: users.filter(u => {
+                const d = daysRemaining(u)
+                return d !== null && d === 0
             }).length,
             newToday: users.filter(u => u.created_at && new Date(u.created_at).toDateString() === today).length,
         }
@@ -326,12 +334,13 @@ export const UserList: React.FC = () => {
             </div>
 
             {/* ── Stats bar ──────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-4">
                 {[
                     { label: 'Всего', value: stats.total, color: 'text-gray-700' },
                     { label: 'PRO', value: stats.pro, color: 'text-blue-600' },
                     { label: 'FREE', value: stats.free, color: 'text-gray-500' },
                     { label: 'Истекает ≤7д', value: stats.expiringSoon, color: 'text-amber-600' },
+                    { label: 'PRO истекло', value: stats.expired, color: 'text-red-600' },
                     { label: 'Новые сегодня', value: stats.newToday, color: 'text-green-600' },
                 ].map(s => (
                     <div key={s.label} className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-center">
