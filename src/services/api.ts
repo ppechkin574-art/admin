@@ -616,6 +616,23 @@ export interface AppUpdateConfig {
   android_min_build: number;
   ios_store_url: string;
   android_store_url: string;
+  // Highest build actually live in each store (operator-maintained guard).
+  // Saving min_build above it is rejected by the backend (422).
+  ios_last_known_build: number;
+  android_last_known_build: number;
+  // Soft-update tier: dismissible prompt shown when
+  // min_build <= running build < recommended_build. 0 = no soft prompt.
+  ios_recommended_build: number;
+  android_recommended_build: number;
+}
+
+// One change-history entry for the force-update config (audit trail).
+export interface AppUpdateConfigAudit {
+  id: number;
+  changed_at: string | null;
+  changed_by: string | null;
+  before_values: Partial<AppUpdateConfig>;
+  after_values: Partial<AppUpdateConfig>;
 }
 
 export const appUpdateConfigService = {
@@ -625,6 +642,10 @@ export const appUpdateConfigService = {
     payload: Partial<AppUpdateConfig>,
   ): Promise<AppUpdateConfig> =>
     api.put("/admin/app-update-config", payload).then((r) => r.data),
+  history: (limit = 50): Promise<AppUpdateConfigAudit[]> =>
+    api
+      .get("/admin/app-update-config/history", { params: { limit } })
+      .then((r) => r.data),
 };
 
 export const moduleService = {
