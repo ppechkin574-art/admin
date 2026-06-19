@@ -27,8 +27,17 @@ interface User {
   subscription_cancelled: boolean;
   attendance_streak_days: number;
   attendance_total_points: number;
+  // Leaderboard "stars" (user_points.total_points) + place. Backend now
+  // sources these from user_points, matching what the app shows.
   points: number;
   rank: number | null;
+  // Best-effort device/version/activity signals, enriched from the latest
+  // analytics event (device-token platform fallback). Any may be null when
+  // the user never sent an event / registered a push token (FCM disabled).
+  device_platform: string | null;
+  device_os_version: string | null;
+  app_version: string | null;
+  last_active_at: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -51,6 +60,12 @@ interface UserState {
   deleteUser: (id: string) => Promise<void>;
   grantPro: (id: string, days?: number) => Promise<void>;
   resetToFree: (id: string) => Promise<void>;
+  adjustPoints: (
+    id: string,
+    mode: "delta" | "set",
+    value: number,
+    reason?: string,
+  ) => Promise<{ total_points: number; rank: number; applied_delta: number }>;
 
   clearCache: () => void;
   clearError: () => void;
@@ -181,6 +196,13 @@ export const useUserStore = create<UserState>((set, get) => ({
   resetToFree: async (id: string) => {
     await userService.resetSubscription(id)
     get().cache.clear()
+  },
+
+  adjustPoints: async (id, mode, value, reason) => {
+    const res = await userService.adjustPoints(id, mode, value, reason)
+    // Points/rank changed → drop the cached list so the next fetch is fresh.
+    get().cache.clear()
+    return res
   },
 
   clearCache: () => set({ cache: new Map() }),

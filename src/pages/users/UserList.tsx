@@ -4,11 +4,12 @@ import { useUserStore } from '@/stores/userStore'
 import toast from 'react-hot-toast'
 import {
     ArrowUpDown, ChevronDown, ChevronUp, Crown,
-    Eye, EyeOff, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon, X,
+    Eye, EyeOff, Lock, RefreshCw, Star, Trash2, Unlock, Users as UsersIcon, X,
 } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
+import Modal from '@/components/common/Modal'
 import { leaderboardHiddenService } from '@/services/api'
 
 interface User {
@@ -30,11 +31,15 @@ interface User {
     attendance_total_points: number
     points: number
     rank: number | null
+    device_platform: string | null
+    device_os_version: string | null
+    app_version: string | null
+    last_active_at: string | null
     created_at: string
     updated_at: string | null
 }
 
-type SortKey = 'name' | 'plan' | 'created_at' | 'attendance_streak_days' | 'points'
+type SortKey = 'name' | 'plan' | 'created_at' | 'attendance_streak_days' | 'points' | 'last_active_at'
 type PlanFilter = '' | 'PRO' | 'FREE'
 
 const ROLE_OPTIONS = [
@@ -94,9 +99,43 @@ const subLabel = (user: User): React.ReactNode => {
     return <Badge type="primary">Month · {days}д</Badge>
 }
 
+// Device platform → colored badge. Source is best-effort (latest analytics
+// event / push-token registration), so missing values render a faint dash.
+const platformLabel = (p: string | null): React.ReactNode => {
+    if (!p) return <span className="text-gray-300">—</span>
+    const n = p.toLowerCase()
+    if (n.includes('ios') || n.includes('iphone') || n.includes('ipad')) return <Badge type="info">iOS</Badge>
+    if (n.includes('android')) return <Badge type="success">Android</Badge>
+    return <Badge type="secondary">{p}</Badge>
+}
+
+// "last_active_at" → human relative string. Used as a PROXY for install
+// status (no real installed/uninstalled signal exists — FCM is disabled).
+const relativeTime = (iso: string | null): string => {
+    if (!iso) return '—'
+    const t = new Date(iso).getTime()
+    if (Number.isNaN(t)) return '—'
+    const diff = Date.now() - t
+    if (diff < 0) return 'только что'
+    if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))} мин назад`
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} ч назад`
+    const days = Math.floor(diff / 86_400_000)
+    if (days < 30) return `${days} дн назад`
+    return formatDate(iso)
+}
+
+// Freshness tint: green ≤7д, neutral ≤30д, faded beyond / unknown.
+const activityClass = (iso: string | null): string => {
+    if (!iso) return 'text-gray-300'
+    const days = (Date.now() - new Date(iso).getTime()) / 86_400_000
+    if (days <= 7) return 'text-green-600'
+    if (days <= 30) return 'text-gray-600'
+    return 'text-gray-400'
+}
+
 export const UserList: React.FC = () => {
     const navigate = useNavigate()
-    const { users, loading, fetchUsers, refreshUsers, updateUser, deleteUser, grantPro, resetToFree } = useUserStore()
+    const { users, loading, fetchUsers, refreshUsers, updateUser, deleteUser, grantPro, resetToFree, adjustPoints } = useUserStore()
 
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
@@ -110,6 +149,13 @@ export const UserList: React.FC = () => {
     const [bulkLoading, setBulkLoading] = useState(false)
     const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
     const subMenuRef = useRef<HTMLDivElement>(null)
+
+    // ── points-edit modal ───────────────────────────────────────────────────
+    const [pointsUser, setPointsUser] = useState<User | null>(null)
+    const [pointsMode, setPointsMode] = useState<'delta' | 'set'>('delta')
+    const [pointsValue, setPointsValue] = useState('')
+    const [pointsReason, setPointsReason] = useState('')
+    const [pointsSaving, setPointsSaving] = useState(false)
 
     useEffect(() => { fetchUsers({}) }, [fetchUsers])
 
@@ -245,6 +291,29 @@ export const UserList: React.FC = () => {
             await refreshUsers({})
         } catch { toast.error('Не удалось удалить аккаунт') }
     }, [deleteUser, refreshUsers])
+
+    // ── points editing ────────────────────────────────────────────────────
+    const openPoints = (user: User) => {
+        setPointsUser(user)
+        setPointsMode('delta')
+        setPointsValue('')
+        setPointsReason('')
+    }
+
+    const handlePointsSave = async () => {
+        if (!pointsUser) return
+        const val = parseInt(pointsValue, 10)
+        if (Number.isNaN(val)) { toast.error('Введите число'); return }
+        if (pointsMode === 'set' && val < 0) { toast.error('В режиме «задать» значение ≥ 0'); return }
+        setPointsSaving(true)
+        try {
+            const res = await adjustPoints(pointsUser.id, pointsMode, val, pointsReason.trim() || undefined)
+            toast.success(`Баллы: ${res.total_points}${res.rank ? ` · место #${res.rank}` : ''}`)
+            await refreshUsers({})
+            setPointsUser(null)
+        } catch { toast.error('Не удалось изменить баллы') }
+        finally { setPointsSaving(false) }
+    }
 
     // ── bulk actions ────────────────────────────────────────────────────────
     const selectedUsers = useMemo(() => users.filter(u => selected.has(u.id)), [users, selected])
@@ -453,8 +522,8 @@ export const UserList: React.FC = () => {
             )}
 
             {/* ── Table ──────────────────────────────────────────────────── */}
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+                <table className="w-full text-sm min-w-[1180px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th className="w-10 px-3 py-3">
@@ -467,21 +536,23 @@ export const UserList: React.FC = () => {
                                 />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[18%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[14%]"
                                 onClick={() => handleSort('name')}
                             >
                                 Имя <SortIcon k="name" />
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[14%]">Телефон</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Роль</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[11%]">Телефон</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[8%]">Роль</th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[14%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[11%]"
                                 onClick={() => handleSort('plan')}
                             >
                                 Подписка <SortIcon k="plan" />
                             </th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[8%]">Устройство</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[7%]">Версия</th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[9%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[6%]"
                                 onClick={() => handleSort('attendance_streak_days')}
                             >
                                 Стрик <SortIcon k="attendance_streak_days" />
@@ -493,26 +564,33 @@ export const UserList: React.FC = () => {
                                 Очки <SortIcon k="points" />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[11%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[9%]"
+                                onClick={() => handleSort('last_active_at')}
+                                title="Последняя активность — прокси install-статуса (нет прямого сигнала об удалении)"
+                            >
+                                Активность <SortIcon k="last_active_at" />
+                            </th>
+                            <th
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[8%]"
                                 onClick={() => handleSort('created_at')}
                             >
                                 Регистрация <SortIcon k="created_at" />
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[8%]">Статус</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Действия</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[7%]">Статус</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[11%]">Действия</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {loading && paginated.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                                <td colSpan={13} className="px-4 py-12 text-center text-gray-400">
                                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                                     Загрузка...
                                 </td>
                             </tr>
                         ) : paginated.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                                <td colSpan={13} className="px-4 py-12 text-center text-gray-400">
                                     Пользователи не найдены
                                 </td>
                             </tr>
@@ -555,11 +633,35 @@ export const UserList: React.FC = () => {
                                         )}
                                     </div>
                                 </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-col gap-0.5">
+                                        {platformLabel(user.device_platform)}
+                                        {user.device_os_version && (
+                                            <span className="text-xs text-gray-400">{user.device_os_version}</span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 text-gray-600 tabular-nums text-xs">
+                                    {user.app_version || <span className="text-gray-300">—</span>}
+                                </td>
                                 <td className="px-4 py-3 text-gray-600">
                                     {user.attendance_streak_days > 0 ? `${user.attendance_streak_days} дн.` : '—'}
                                 </td>
-                                <td className="px-4 py-3 text-gray-600 tabular-nums">
-                                    {user.points > 0 ? user.points : '—'}
+                                <td className="px-4 py-3 tabular-nums">
+                                    <button
+                                        onClick={() => openPoints(user)}
+                                        className="group inline-flex items-center gap-1 text-gray-700 hover:text-blue-600"
+                                        title="Изменить баллы"
+                                    >
+                                        <Star className="h-3.5 w-3.5 text-yellow-400 group-hover:text-blue-500" />
+                                        {user.points > 0 ? user.points : 0}
+                                        {user.rank != null && user.points > 0 && (
+                                            <span className="text-xs text-gray-400">#{user.rank}</span>
+                                        )}
+                                    </button>
+                                </td>
+                                <td className={`px-4 py-3 tabular-nums text-xs ${activityClass(user.last_active_at)}`}>
+                                    {relativeTime(user.last_active_at)}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">
                                     {formatDate(user.created_at)}
@@ -582,6 +684,9 @@ export const UserList: React.FC = () => {
                                                 ? <Lock className="h-4 w-4 text-orange-500" />
                                                 : <Unlock className="h-4 w-4 text-green-600" />}
                                             title={user.is_active ? 'Заблокировать' : 'Разблокировать'} />
+                                        <Button variant="ghost" size="sm" onClick={() => openPoints(user)}
+                                            icon={<Star className="h-4 w-4 text-yellow-500" />}
+                                            title="Изменить баллы" />
                                         <div className="relative">
                                             <Button variant="ghost" size="sm"
                                                 onClick={() => setOpenSubMenu(openSubMenu === user.id ? null : user.id)}
@@ -666,6 +771,92 @@ export const UserList: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* ── Points edit modal ──────────────────────────────────────── */}
+            {pointsUser && (
+                <Modal
+                    isOpen
+                    onClose={() => setPointsUser(null)}
+                    title={`Баллы — ${pointsUser.name || pointsUser.phone || 'без имени'}`}
+                    subtitle={`Сейчас: ${pointsUser.points}${pointsUser.rank ? ` · место #${pointsUser.rank}` : ''} в лидерборде`}
+                    maxWidth="md"
+                >
+                    <div className="space-y-4">
+                        {/* Mode toggle */}
+                        <div className="flex rounded-md border border-gray-300 overflow-hidden text-sm">
+                            <button
+                                onClick={() => setPointsMode('delta')}
+                                className={`flex-1 px-3 py-2 ${pointsMode === 'delta' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                Добавить / убавить
+                            </button>
+                            <button
+                                onClick={() => setPointsMode('set')}
+                                className={`flex-1 px-3 py-2 ${pointsMode === 'set' ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                Задать точное
+                            </button>
+                        </div>
+
+                        {/* Value */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {pointsMode === 'delta' ? 'На сколько изменить (можно отрицательное)' : 'Новое значение баллов'}
+                            </label>
+                            <input
+                                type="number"
+                                value={pointsValue}
+                                onChange={e => setPointsValue(e.target.value)}
+                                placeholder={pointsMode === 'delta' ? 'напр. 50 или -20' : 'напр. 100'}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                autoFocus
+                            />
+                            {pointsMode === 'delta' && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {[10, 50, 100, -10, -50].map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => setPointsValue(String(n))}
+                                            className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                        >
+                                            {n > 0 ? `+${n}` : n}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => { setPointsMode('set'); setPointsValue('0') }}
+                                        className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                                    >
+                                        Обнулить
+                                    </button>
+                                </div>
+                            )}
+                            {pointsMode === 'delta' && pointsValue !== '' && !Number.isNaN(parseInt(pointsValue, 10)) && (
+                                <p className="text-xs text-gray-500 mt-1.5">
+                                    Итог: <span className="font-medium text-gray-700">{Math.max(0, pointsUser.points + parseInt(pointsValue, 10))}</span> баллов
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Reason */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Причина (попадёт в аудит-лог)</label>
+                            <input
+                                value={pointsReason}
+                                onChange={e => setPointsReason(e.target.value)}
+                                placeholder="напр. компенсация за баг, ручная корректировка"
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button variant="secondary" onClick={() => setPointsUser(null)}>Отмена</Button>
+                            <Button variant="primary" loading={pointsSaving} onClick={handlePointsSave} icon={<Star className="h-4 w-4" />}>
+                                Сохранить
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </ListContainer>
     )
 }

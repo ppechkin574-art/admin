@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AIMA Admin · Пользователи — доп. данные (превью)</title>
+<style>
+  :root{
+    --gray50:#f9fafb; --gray100:#f3f4f6; --gray200:#e5e7eb; --gray300:#d1d5db;
+    --gray400:#9ca3af; --gray500:#6b7280; --gray600:#4b5563; --gray700:#374151; --gray900:#111827;
+    --blue50:#eff6ff; --blue100:#dbeafe; --blue200:#bfdbfe; --blue500:#3b82f6; --blue600:#2563eb; --blue700:#1d4ed8;
+    --green600:#16a34a; --green100:#dcfce7; --green700:#15803d;
+    --amber600:#d97706; --yellow100:#fef9c3; --yellow400:#facc15; --yellow800:#854d0e;
+    --red100:#fee2e2; --red200:#fecaca; --red600:#dc2626; --red700:#b91c1c;
+    --info-bg:#e0f2fe; --info-fg:#075985;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--gray100);color:var(--gray900);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px;}
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin-bottom:18px;color:#92400e;font-size:13px;line-height:1.5}
+  .note b{color:#78350f}
+  h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:8px;margin:0 0 16px}
+  h1 .muted{font-size:13px;font-weight:400;color:var(--gray400)}
+  .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+  .card{background:#fff;border:1px solid var(--gray200);border-radius:10px;padding:12px;text-align:center}
+  .card .v{font-size:24px;font-weight:700}
+  .card .l{font-size:11px;color:var(--gray500);margin-top:2px}
+  .panel{background:#fff;border:1px solid var(--gray200);border-radius:10px;overflow:hidden}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:1180px}
+  thead{background:var(--gray50);border-bottom:1px solid var(--gray200)}
+  th{text-align:left;font-weight:500;color:var(--gray500);padding:12px 16px;white-space:nowrap}
+  td{padding:12px 16px;border-top:1px solid var(--gray100);vertical-align:middle}
+  tbody tr:hover{background:var(--gray50)}
+  .name{font-weight:500;color:var(--gray900)}
+  .sub{font-size:11px;color:var(--gray400)}
+  .num{font-variant-numeric:tabular-nums}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;line-height:18px}
+  .b-sec{background:var(--gray100);color:var(--gray600)}
+  .b-pri{background:var(--blue100);color:var(--blue700)}
+  .b-info{background:var(--info-bg);color:var(--info-fg)}
+  .b-succ{background:var(--green100);color:var(--green700)}
+  .b-warn{background:var(--yellow100);color:var(--yellow800)}
+  .b-err{background:var(--red100);color:var(--red700)}
+  .dash{color:var(--gray300)}
+  .act-green{color:var(--green600)} .act-gray{color:var(--gray600)} .act-faint{color:var(--gray400)}
+  .ptbtn{display:inline-flex;align-items:center;gap:4px;background:none;border:0;cursor:pointer;color:var(--gray700);font:inherit;font-variant-numeric:tabular-nums}
+  .ptbtn:hover{color:var(--blue600)}
+  .star{color:var(--yellow400)}
+  .rank{font-size:11px;color:var(--gray400)}
+  .actions{display:flex;gap:2px}
+  .ico{width:30px;height:30px;border-radius:6px;border:0;background:none;cursor:pointer;color:var(--gray500);display:inline-flex;align-items:center;justify-content:center}
+  .ico:hover{background:var(--gray100);color:var(--gray900)}
+  .legend{margin-top:10px;font-size:12px;color:var(--gray500);display:flex;gap:18px;flex-wrap:wrap}
+  .col-new{position:relative}
+  .col-new::after{content:"NEW";position:absolute;top:4px;right:6px;font-size:8px;font-weight:700;color:#fff;background:var(--blue500);padding:1px 4px;border-radius:4px;letter-spacing:.5px}
+
+  /* modal */
+  .modal-section{margin-top:34px}
+  .modal-section h2{font-size:14px;color:var(--gray500);font-weight:600;margin:0 0 12px;text-transform:uppercase;letter-spacing:.4px}
+  .overlay{background:rgba(0,0,0,.5);border-radius:12px;padding:40px;display:flex;justify-content:center}
+  .modal{width:420px;background:#fff;border-radius:10px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+  .modal-h{padding:16px 24px;border-bottom:1px solid var(--gray200)}
+  .modal-h .t{font-size:17px;font-weight:500}
+  .modal-h .s{font-size:13px;color:var(--gray500);margin-top:3px}
+  .modal-b{padding:18px 24px;display:flex;flex-direction:column;gap:16px}
+  .toggle{display:flex;border:1px solid var(--gray300);border-radius:8px;overflow:hidden}
+  .toggle button{flex:1;padding:9px;border:0;background:#fff;color:var(--gray600);cursor:pointer;font:inherit}
+  .toggle button.on{background:var(--blue500);color:#fff}
+  label.fld{font-size:13px;font-weight:500;color:var(--gray700);display:block;margin-bottom:6px}
+  input.in{width:100%;border:1px solid var(--gray300);border-radius:8px;padding:9px 12px;font:inherit}
+  input.in:focus{outline:none;border-color:var(--blue400);box-shadow:0 0 0 2px var(--blue100)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:11px;padding:4px 8px;border:1px solid var(--gray200);border-radius:6px;background:#fff;color:var(--gray600);cursor:pointer}
+  .chip.red{border-color:var(--red200);color:var(--red600)}
+  .preview-line{font-size:12px;color:var(--gray500);margin-top:6px}
+  .preview-line b{color:var(--gray700)}
+  .modal-f{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+  .btn{padding:9px 16px;border-radius:8px;border:0;cursor:pointer;font:inherit;font-weight:500}
+  .btn-sec{background:var(--gray200);color:var(--gray700)}
+  .btn-pri{background:var(--blue600);color:#fff;display:inline-flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="note">
+    <b>Превью</b> — статичный макет экрана «Пользователи» с новыми данными. Реальные значения подставит backend.
+    Новые колонки помечены <span style="background:var(--blue500);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:4px">NEW</span>.
+    <br>• <b>Устройство</b> и <b>Версия</b> — best-effort (последнее событие аналитики / push-токен); где данных нет — «—».
+    • <b>Активность</b> — прокси «живо/удалено» (прямого сигнала об удалении нет, FCM выключен): зелёным ≤7 дней, серым старше.
+    • <b>Очки</b> — звёздочки лидерборда (теперь из <code>user_points</code>, как видит сам пользователь); клик по звёздочке или ⭐ в действиях открывает правку.
+  </div>
+
+  <h1>👥 Пользователи <span class="muted">(6 из 49)</span></h1>
+
+  <div class="cards">
+    <div class="card"><div class="v" style="color:var(--gray700)">49</div><div class="l">Всего</div></div>
+    <div class="card"><div class="v" style="color:var(--blue600)">38</div><div class="l">PRO</div></div>
+    <div class="card"><div class="v" style="color:var(--gray500)">11</div><div class="l">FREE</div></div>
+    <div class="card"><div class="v" style="color:var(--amber600)">35</div><div class="l">Истекает ≤7д</div></div>
+    <div class="card"><div class="v" style="color:var(--green600)">2</div><div class="l">Новые сегодня</div></div>
+  </div>
+
+  <div class="panel scroll">
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox"></th>
+          <th>Имя ⇅</th>
+          <th>Телефон</th>
+          <th>Роль</th>
+          <th>Подписка ⇅</th>
+          <th class="col-new">Устройство</th>
+          <th class="col-new">Версия</th>
+          <th>Стрик ⇅</th>
+          <th>Очки ⇅</th>
+          <th class="col-new">Активность ⇅</th>
+          <th>Регистрация ⇅</th>
+          <th>Статус</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><div class="name">Саят</div><div class="sub">11 класс</div></td>
+          <td class="num" style="color:var(--gray600)">+77477177626</td>
+          <td><span class="badge b-sec">Ученик</span></td>
+          <td><span class="badge b-err">Month · истёк</span></td>
+          <td><span class="badge b-info">iOS</span><div class="sub">17.4</div></td>
+          <td class="num sub">1.2.9+14</td>
+          <td style="color:var(--gray600)">7 дн.</td>
+          <td><button class="ptbtn"><span class="star">★</span> 1240 <span class="rank">#3</span></button></td>
+          <td class="num act-green">2 ч назад</td>
+          <td class="num sub">14.06.2026</td>
+          <td><span class="badge b-succ">Активен</span></td>
+          <td><div class="actions"><button class="ico">👁</button><button class="ico">🔒</button><button class="ico star">★</button><button class="ico">👑</button><button class="ico">🗑</button></div></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><div class="name">Аружан</div><div class="sub">10 класс</div></td>
+          <td class="num" style="color:var(--gray600)">+77011112233</td>
+          <td><span class="badge b-sec">Ученик</span></td>
+          <td><span class="badge b-pri">Month · 24д</span></td>
+          <td><span class="badge b-succ">Android</span><div class="sub">14</div></td>
+          <td class="num sub">1.2.9+14</td>
+          <td style="color:var(--gray600)">21 дн.</td>
+          <td><button class="ptbtn"><span class="star">★</span> 3015 <span class="rank">#1</span></button></td>
+          <td class="num act-green">15 мин назад</td>
+          <td class="num sub">02.05.2026</td>
+          <td><span class="badge b-succ">Активен</span></td>
+          <td><div class="actions"><button class="ico">👁</button><button class="ico">🔒</button><button class="ico star">★</button><button class="ico">👑</button><button class="ico">🗑</button></div></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><div class="name">jssjwbw</div></td>
+          <td class="num" style="color:var(--gray600)">+77752543965</td>
+          <td><span class="badge b-sec">Ученик</span></td>
+          <td><span class="badge b-sec">FREE</span></td>
+          <td><span class="badge b-info">iOS</span><div class="sub">16.2</div></td>
+          <td class="num sub">1.2.7+12</td>
+          <td style="color:var(--gray600)">—</td>
+          <td><button class="ptbtn"><span class="star">★</span> 120 <span class="rank">#27</span></button></td>
+          <td class="num act-gray">12 дн назад</td>
+          <td class="num sub">28.05.2026</td>
+          <td><span class="badge b-succ">Активен</span></td>
+          <td><div class="actions"><button class="ico">👁</button><button class="ico">🔒</button><button class="ico star">★</button><button class="ico">👑</button><button class="ico">🗑</button></div></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><div class="name">Дамир</div><div class="sub">9 класс</div></td>
+          <td class="num" style="color:var(--gray600)">+77079998877</td>
+          <td><span class="badge b-sec">Ученик</span></td>
+          <td><span class="badge b-warn">Пробный · 1д</span></td>
+          <td><span class="badge b-succ">Android</span><div class="sub">13</div></td>
+          <td class="num sub">1.2.8+13</td>
+          <td style="color:var(--gray600)">3 дн.</td>
+          <td><button class="ptbtn"><span class="star">★</span> 0</button></td>
+          <td class="num act-faint">68 дн назад</td>
+          <td class="num sub">10.04.2026</td>
+          <td><span class="badge b-err">Заблокирован</span></td>
+          <td><div class="actions"><button class="ico">👁</button><button class="ico">🔓</button><button class="ico star">★</button><button class="ico">👑</button><button class="ico">🗑</button></div></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><div class="name">Гульнара</div><div class="sub">Родитель</div></td>
+          <td class="num" style="color:var(--gray600)">+77051234567</td>
+          <td><span class="badge b-sec">Родитель</span></td>
+          <td><span class="badge b-pri">Month · 18д</span></td>
+          <td><span class="dash">—</span></td>
+          <td class="num"><span class="dash">—</span></td>
+          <td style="color:var(--gray600)">—</td>
+          <td><button class="ptbtn"><span class="star">★</span> 0</button></td>
+          <td class="num act-faint">—</td>
+          <td class="num sub">19.05.2026</td>
+          <td><span class="badge b-succ">Активен</span></td>
+          <td><div class="actions"><button class="ico">👁</button><button class="ico">🔒</button><button class="ico star">★</button><button class="ico">👑</button><button class="ico">🗑</button></div></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><div class="name">Ерлан</div><div class="sub">11 класс</div></td>
+          <td class="num" style="color:var(--gray600)">+77784455667</td>
+          <td><span class="badge b-sec">Ученик</span></td>
+          <td><span class="badge b-pri">Month · 30д</span></td>
+          <td><span class="badge b-info">iOS</span><div class="sub">18.0</div></td>
+          <td class="num sub">1.2.9+14</td>
+          <td style="color:var(--gray600)">45 дн.</td>
+          <td><button class="ptbtn"><span class="star">★</span> 2180 <span class="rank">#2</span></button></td>
+          <td class="num act-green">1 дн назад</td>
+          <td class="num sub">01.05.2026</td>
+          <td><span class="badge b-succ">Активен</span></td>
+          <td><div class="actions"><button class="ico">👁</button><button class="ico">🔒</button><button class="ico star">★</button><button class="ico">👑</button><button class="ico">🗑</button></div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="legend">
+    <span><b style="color:var(--green600)">●</b> активность ≤7 дн</span>
+    <span><b style="color:var(--gray600)">●</b> ≤30 дн</span>
+    <span><b style="color:var(--gray400)">●</b> старше / нет данных</span>
+    <span><span class="dash">—</span> нет данных (юзер не слал событий / нет push-токена)</span>
+  </div>
+
+  <!-- ── Modal preview ──────────────────────────────────────────── -->
+  <div class="modal-section">
+    <h2>Модалка правки баллов (по клику на ★)</h2>
+    <div class="overlay">
+      <div class="modal">
+        <div class="modal-h">
+          <div class="t">Баллы — Саят</div>
+          <div class="s">Сейчас: 1240 · место #3 в лидерборде</div>
+        </div>
+        <div class="modal-b">
+          <div class="toggle">
+            <button class="on">Добавить / убавить</button>
+            <button>Задать точное</button>
+          </div>
+          <div>
+            <label class="fld">На сколько изменить (можно отрицательное)</label>
+            <input class="in" type="number" value="50" placeholder="напр. 50 или -20" />
+            <div class="chips">
+              <span class="chip">+10</span><span class="chip">+50</span><span class="chip">+100</span>
+              <span class="chip">-10</span><span class="chip">-50</span>
+              <span class="chip red">Обнулить</span>
+            </div>
+            <div class="preview-line">Итог: <b>1290</b> баллов</div>
+          </div>
+          <div>
+            <label class="fld">Причина (попадёт в аудит-лог)</label>
+            <input class="in" value="компенсация за баг с начислением" />
+          </div>
+          <div class="modal-f">
+            <button class="btn btn-sec">Отмена</button>
+            <button class="btn btn-pri">★ Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

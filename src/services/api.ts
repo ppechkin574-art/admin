@@ -847,6 +847,20 @@ export const userService = {
     api
       .post(`/admin/users/${id}/reset-subscription`)
       .then((res) => res.data),
+
+  // Manually adjust a user's leaderboard points (user_points.total_points —
+  // the in-app "stars"). mode "delta" adds `value` (may be negative); mode
+  // "set" replaces the total with `value` (>= 0); UI "reset" = set 0. Backend
+  // writes a PointsAuditLog row and busts the user's cached points/rank.
+  adjustPoints: (
+    id: string,
+    mode: "delta" | "set",
+    value: number,
+    reason?: string,
+  ): Promise<{ total_points: number; rank: number; applied_delta: number }> =>
+    api
+      .patch(`/admin/users/${id}/points`, { mode, value, reason })
+      .then((res) => res.data),
 };
 
 // Marketing dashboard data sources. Wraps the existing
