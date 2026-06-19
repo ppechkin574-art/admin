@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Wallet, Smartphone, Apple, RefreshCw } from 'lucide-react'
+import { Wallet, Smartphone, Apple, RefreshCw, Receipt } from 'lucide-react'
 import { analyticsService } from '@/services/api'
 import Button from '@/components/common/Button'
 
@@ -26,6 +26,217 @@ const GATEWAY_META: Record<
 
 const fmtMoney = (v: number) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(v) + ' ₸'
+
+// ───────────────── iOS IAP events (попытки / успех / провал) ─────────────────
+
+type IapItem = {
+    id: number
+    created_at: string | null
+    event_type: string
+    status: string
+    user_id: string | null
+    user_name: string | null
+    user_phone: string | null
+    product_id: string | null
+    transaction_id: string | null
+    amount: number | null
+    environment: string | null
+    detail: string | null
+}
+
+const IAP_STATUS: Record<string, { label: string; cls: string }> = {
+    success: { label: 'успех', cls: 'bg-green-50 text-green-700' },
+    failed: { label: 'провал', cls: 'bg-red-50 text-red-700' },
+    flagged: { label: 'флаг', cls: 'bg-amber-50 text-amber-700' },
+}
+
+const IAP_EVENT: Record<string, string> = {
+    purchase: 'Покупка',
+    renew: 'Продление',
+    expire: 'Подписка истекла',
+    refund: 'Возврат',
+    revoke: 'Отзыв',
+    verify_rejected: 'Чек отклонён',
+    activate_failed: 'Ошибка активации',
+    shared_account: 'Чек на чужом аккаунте',
+}
+
+const IAP_DAYS = [
+    { label: '7 дней', days: 7 },
+    { label: '30 дней', days: 30 },
+    { label: '90 дней', days: 90 },
+]
+
+const fmtDateTime = (s: string | null) =>
+    s
+        ? new Date(s).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })
+        : '—'
+
+const IapEventsSection: React.FC = () => {
+    const [summary, setSummary] = useState({ total: 0, success: 0, failed: 0, flagged: 0 })
+    const [items, setItems] = useState<IapItem[]>([])
+    const [statusFilter, setStatusFilter] = useState('')
+    const [days, setDays] = useState(30)
+    const [loading, setLoading] = useState(false)
+
+    const load = useCallback(async () => {
+        setLoading(true)
+        try {
+            const res = await analyticsService.iapEvents({
+                platform: 'apple',
+                status: statusFilter || undefined,
+                days,
+                limit: 100,
+            })
+            setSummary(res?.summary ?? { total: 0, success: 0, failed: 0, flagged: 0 })
+            setItems(res?.items ?? [])
+        } catch {
+            setSummary({ total: 0, success: 0, failed: 0, flagged: 0 })
+            setItems([])
+        } finally {
+            setLoading(false)
+        }
+    }, [statusFilter, days])
+
+    useEffect(() => {
+        void load()
+    }, [load])
+
+    const cards = [
+        { key: '', label: 'Всего событий', value: summary.total, cls: 'text-gray-900' },
+        { key: 'success', label: 'Успешных', value: summary.success, cls: 'text-green-700' },
+        { key: 'failed', label: 'Провалов', value: summary.failed, cls: 'text-red-700' },
+        { key: 'flagged', label: 'Флаги (шеринг)', value: summary.flagged, cls: 'text-amber-700' },
+    ]
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <Receipt className="h-5 w-5 text-indigo-600" />
+                        iOS оплаты — события
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Покупки, продления, возвраты, отказы и проверки чека. Клик по карточке — фильтр.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <select
+                        value={days}
+                        onChange={(e) => setDays(Number(e.target.value))}
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                        {IAP_DAYS.map((w) => (
+                            <option key={w.days} value={w.days}>
+                                {w.label}
+                            </option>
+                        ))}
+                    </select>
+                    <Button
+                        variant="secondary"
+                        className="gap-2"
+                        onClick={() => void load()}
+                        disabled={loading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Обновить
+                    </Button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {cards.map((c) => (
+                    <button
+                        key={c.label}
+                        onClick={() => setStatusFilter(c.key)}
+                        className={`text-left rounded-xl border p-3 transition ${
+                            statusFilter === c.key
+                                ? 'border-indigo-400 ring-1 ring-indigo-200'
+                                : 'border-gray-100 hover:border-gray-200'
+                        }`}
+                    >
+                        <div className="text-xs uppercase tracking-wide text-gray-500">
+                            {c.label}
+                        </div>
+                        <div className={`text-2xl font-bold mt-0.5 ${c.cls}`}>{c.value}</div>
+                    </button>
+                ))}
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left text-xs uppercase tracking-wide text-gray-400 border-b border-gray-100">
+                            <th className="py-2 pr-3">Время</th>
+                            <th className="py-2 pr-3">Пользователь</th>
+                            <th className="py-2 pr-3">Событие</th>
+                            <th className="py-2 pr-3">Статус</th>
+                            <th className="py-2 pr-3">Сумма</th>
+                            <th className="py-2 pr-3">Среда</th>
+                            <th className="py-2 pr-3">Детали</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items.length === 0 && (
+                            <tr>
+                                <td colSpan={7} className="py-6 text-center text-gray-400">
+                                    {loading ? 'Загрузка…' : 'Событий за период нет'}
+                                </td>
+                            </tr>
+                        )}
+                        {items.map((it) => {
+                            const st = IAP_STATUS[it.status] ?? {
+                                label: it.status,
+                                cls: 'bg-gray-50 text-gray-600',
+                            }
+                            return (
+                                <tr
+                                    key={it.id}
+                                    className="border-b border-gray-50 hover:bg-gray-50/50"
+                                >
+                                    <td className="py-2 pr-3 whitespace-nowrap text-gray-500">
+                                        {fmtDateTime(it.created_at)}
+                                    </td>
+                                    <td className="py-2 pr-3">
+                                        <div className="font-medium text-gray-800">
+                                            {it.user_name || '—'}
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                            {it.user_phone || it.user_id || ''}
+                                        </div>
+                                    </td>
+                                    <td className="py-2 pr-3 text-gray-700">
+                                        {IAP_EVENT[it.event_type] ?? it.event_type}
+                                    </td>
+                                    <td className="py-2 pr-3">
+                                        <span
+                                            className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${st.cls}`}
+                                        >
+                                            {st.label}
+                                        </span>
+                                    </td>
+                                    <td className="py-2 pr-3 text-gray-700">
+                                        {it.amount ? fmtMoney(it.amount) : '—'}
+                                    </td>
+                                    <td className="py-2 pr-3 text-xs text-gray-400">
+                                        {it.environment || '—'}
+                                    </td>
+                                    <td
+                                        className="py-2 pr-3 text-xs text-gray-400 max-w-[260px] truncate"
+                                        title={it.detail || ''}
+                                    >
+                                        {it.detail || ''}
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
 
 export const FinancePage: React.FC = () => {
     const [rows, setRows] = useState<GatewayRow[]>([])
@@ -146,6 +357,9 @@ export const FinancePage: React.FC = () => {
                     )
                 })}
             </div>
+
+            {/* iOS IAP events — attempts / success / failed */}
+            <IapEventsSection />
 
             <div className="text-xs text-gray-400 max-w-3xl">
                 Точные выплаты Google (после комиссии) — Play Console → Financial reports.
