@@ -902,6 +902,40 @@ export const analyticsService = {
     message: string
   }> =>
     api.post("/admin/payments/poll-pending").then((res) => res.data),
+
+  // iOS IAP events for the Finance page: attempts / success / failed summary +
+  // paginated event list with user name+phone resolved. Source on the backend
+  // is `subscription_event_log` (purchase, renew, expire, refund, revoke,
+  // verify_rejected, shared_account flags).
+  iapEvents: (
+    params: {
+      platform?: string
+      status?: string
+      days?: number
+      limit?: number
+      offset?: number
+    } = {}
+  ): Promise<{
+    summary: { total: number; success: number; failed: number; flagged: number }
+    total: number
+    limit: number
+    offset: number
+    items: Array<{
+      id: number
+      created_at: string | null
+      event_type: string
+      status: string
+      user_id: string | null
+      user_name: string | null
+      user_phone: string | null
+      product_id: string | null
+      transaction_id: string | null
+      amount: number | null
+      environment: string | null
+      detail: string | null
+    }>
+  }> =>
+    api.get("/admin/payments/iap-events", { params }).then((res) => res.data),
 };
 
 // Push notifications — broadcast a message to a slice of the user
