@@ -944,6 +944,7 @@ export interface CoverageRow {
   subject_id: number
   subject_name: string
   none: number
+  queued: number
   draft: number
   done: number
   total: number
@@ -958,6 +959,12 @@ export interface GlossaryRow {
 export const translationService = {
   coverage: (): Promise<{ items: CoverageRow[] }> =>
     api.get("/admin/translation/coverage").then((r) => r.data),
+  // Operator «Перевести» — queue this subject's untranslated questions for the
+  // background translation worker.
+  queue: (subjectId: number): Promise<{ queued: number }> =>
+    api
+      .post("/admin/translation/queue", null, { params: { subject_id: subjectId } })
+      .then((r) => r.data),
   export: (subjectId: number, status = "none", limit = 200): Promise<any> =>
     api
       .get("/admin/translation/export", {
