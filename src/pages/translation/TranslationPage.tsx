@@ -331,6 +331,17 @@ export const TranslationPage: React.FC = () => {
         if (previewOpened) await loadPreview()
     }
 
+    const requeueSubject = async () => {
+        if (subjectId == null) return
+        const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? 'этот предмет'
+        if (!window.confirm(`Переперевести ВСЕ вопросы предмета «${subjectName}»?\n\nТекущие переводы будут перезаписаны.`)) return
+        const res = await translationService.requeueSubject(subjectId)
+        await translationService.resume()
+        setPaused(false)
+        setMsg(`${res.queued} вопросов поставлено в очередь на повторный перевод`)
+        await loadCoverage()
+    }
+
     const requeueBulkPreview = async () => {
         if (!previewSelectedIds.size) return
         setPreviewRequeuing(true)
@@ -521,6 +532,16 @@ export const TranslationPage: React.FC = () => {
                                 onClick={() => void cancelTranslation()}
                             >
                                 <X className="h-4 w-4" /> Отменить
+                            </Button>
+                        )}
+                        {cov && cov.done + cov.draft > 0 && (
+                            <Button
+                                variant="secondary"
+                                className="gap-2 text-amber-700 border-amber-200 hover:bg-amber-50"
+                                onClick={() => void requeueSubject()}
+                                title="Поставить все переведённые вопросы предмета в очередь заново"
+                            >
+                                <RotateCcw className="h-4 w-4" /> Переперевести все
                             </Button>
                         )}
                         <Button variant="secondary" className="gap-2" onClick={() => void loadCoverage()}>

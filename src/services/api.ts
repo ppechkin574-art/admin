@@ -1013,6 +1013,8 @@ export const translationService = {
       .then((r) => r.data),
   requeueBulk: (questionIds: number[]): Promise<{ queued: number }> =>
     api.post("/admin/translation/requeue-bulk", { question_ids: questionIds }).then((r) => r.data),
+  requeueSubject: (subjectId: number): Promise<{ queued: number }> =>
+    api.post("/admin/translation/requeue-subject", null, { params: { subject_id: subjectId } }).then((r) => r.data),
   // Background worker control: pause flag drives «Продолжить» / «Отменить».
   control: (): Promise<{ paused: boolean }> =>
     api.get("/admin/translation/control").then((r) => r.data),
