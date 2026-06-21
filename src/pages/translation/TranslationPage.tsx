@@ -9,6 +9,8 @@ import {
     Loader2,
     CheckCircle2,
     RotateCcw,
+    Play,
+    X,
 } from 'lucide-react'
 import {
     translationService,
@@ -85,10 +87,16 @@ export const TranslationPage: React.FC = () => {
     const [previewSample, setPreviewSample] = useState(10)
     const [previewOpened, setPreviewOpened] = useState(false)
     const [previewLoading, setPreviewLoading] = useState(false)
+    const [paused, setPaused] = useState(true)
 
     const loadCoverage = useCallback(async () => {
         const c = await translationService.coverage().catch(() => ({ items: [] }))
         setCoverage(c.items ?? [])
+    }, [])
+
+    const loadControl = useCallback(async () => {
+        const c = await translationService.control().catch(() => ({ paused: true }))
+        setPaused(!!c.paused)
     }, [])
 
     const loadPreview = useCallback(async () => {
@@ -119,7 +127,8 @@ export const TranslationPage: React.FC = () => {
             setSubjectId((prev) => prev ?? (subs[0]?.id ?? null))
         })()
         void loadCoverage()
-    }, [loadCoverage])
+        void loadControl()
+    }, [loadCoverage, loadControl])
 
     useEffect(() => {
         if (subjectId == null) return
@@ -134,13 +143,16 @@ export const TranslationPage: React.FC = () => {
         })()
     }, [subjectId])
 
-    // Авто-обновление покрытия, пока идёт перевод (в очереди есть вопросы).
+    // Авто-обновление покрытия + статуса паузы, пока в очереди есть вопросы.
     useEffect(() => {
         const c = coverage.find((x) => x.subject_id === subjectId)
         if (subjectId == null || !c || c.queued <= 0) return
-        const t = setInterval(() => void loadCoverage(), 15000)
+        const t = setInterval(() => {
+            void loadCoverage()
+            void loadControl()
+        }, 15000)
         return () => clearInterval(t)
-    }, [subjectId, coverage, loadCoverage])
+    }, [subjectId, coverage, loadCoverage, loadControl])
 
     // Перезагрузка перевью при смене фильтров/предмета (после первого открытия).
     useEffect(() => {
@@ -150,7 +162,9 @@ export const TranslationPage: React.FC = () => {
 
     const cov = coverage.find((c) => c.subject_id === subjectId)
     const pct = cov && cov.total > 0 ? Math.round((cov.done / cov.total) * 100) : 0
-    const translating = (cov?.queued ?? 0) > 0
+    const queuedN = cov?.queued ?? 0
+    const translating = queuedN > 0 && !paused
+    const pausedWithQueue = queuedN > 0 && paused
     const allDone = !!cov && cov.total > 0 && cov.done === cov.total
 
     const saveConfig = async () => {
@@ -185,9 +199,26 @@ export const TranslationPage: React.FC = () => {
 
     const requeueOne = async (qid: number) => {
         await translationService.requeue(qid)
-        setMsg(`Вопрос #${qid} снова в очереди — фоновый переводчик переведёт его заново`)
+        await translationService.resume() // иначе на паузе вопрос просто повиснет
+        setPaused(false)
+        setMsg(`Вопрос #${qid} снова в очереди — переведётся заново в течение пары минут`)
         await loadCoverage()
         if (previewOpened) await loadPreview()
+    }
+
+    const resumeTranslation = async () => {
+        await translationService.resume()
+        setPaused(false)
+        setMsg('Перевод запущен — фоновый воркер начнёт обработку очереди (в течение пары минут)')
+        await loadCoverage()
+    }
+
+    const cancelTranslation = async () => {
+        const res = await translationService.cancelTranslation()
+        setPaused(true)
+        setMsg(`Перевод остановлен — ${res.cleared} вопросов убрано из очереди`)
+        await loadCoverage()
+        await loadControl()
     }
 
     const downloadExport = async () => {
@@ -275,6 +306,11 @@ export const TranslationPage: React.FC = () => {
                                 <Languages className="h-4 w-4" />
                                 Перевести ({cov.none})
                             </Button>
+                        ) : pausedWithQueue ? (
+                            <Button className="gap-2" onClick={() => void resumeTranslation()}>
+                                <Play className="h-4 w-4" />
+                                Продолжить ({queuedN})
+                            </Button>
                         ) : translating ? (
                             <Button className="gap-2" disabled>
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -284,6 +320,15 @@ export const TranslationPage: React.FC = () => {
                             <Button className="gap-2" disabled>
                                 <Languages className="h-4 w-4" />
                                 Перевести
+                            </Button>
+                        )}
+                        {queuedN > 0 && (
+                            <Button
+                                variant="secondary"
+                                className="gap-2 text-red-600"
+                                onClick={() => void cancelTranslation()}
+                            >
+                                <X className="h-4 w-4" /> Отменить
                             </Button>
                         )}
                         <Button variant="secondary" className="gap-2" onClick={() => void loadCoverage()}>
@@ -315,10 +360,15 @@ export const TranslationPage: React.FC = () => {
                         </div>
                         <div className="mt-3 text-sm text-indigo-800 bg-indigo-50 rounded-lg px-4 py-2.5">
                             🔄 Перевод идёт сам в фоне — осталось <b>{cov?.queued ?? 0}</b>. Нажимать ничего не
-                            нужно: можно закрыть вкладку и вернуться позже. Кнопка «Перевести» снова станет
-                            активной, когда появятся новые непереведённые вопросы.
+                            нужно: можно закрыть вкладку и вернуться позже. «Отменить» — остановит и очистит
+                            очередь.
                         </div>
                     </>
+                ) : pausedWithQueue ? (
+                    <div className="mt-2 text-sm text-amber-800 bg-amber-50 rounded-lg px-4 py-2.5">
+                        ⏸ На паузе — <b>{queuedN}</b> вопросов в очереди. Нажми «Продолжить», чтобы фоновый
+                        переводчик начал обработку.
+                    </div>
                 ) : allDone ? (
                     <div className="inline-flex items-center gap-2 text-sm font-medium text-green-700 mt-2">
                         <CheckCircle2 className="h-4 w-4" /> Перевод завершён
