@@ -22,6 +22,7 @@ import {
   FileStack,
   ArrowUpCircle,
   Shield,
+  Languages,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -32,6 +33,7 @@ export const menuItemsGen2 = [
   { label: "Безопасность", href: "/security", icon: Shield },
   { label: "Маркетинг", href: "/marketing", icon: BarChart3 },
   { label: "Финансы", href: "/finance", icon: Wallet },
+  { label: "Перевод", href: "/translation", icon: Languages },
   { label: "Скорость API", href: "/performance", icon: Gauge },
   { label: "Push-уведомления", href: "/push", icon: Bell },
   {
