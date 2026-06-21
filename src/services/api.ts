@@ -996,6 +996,13 @@ export const translationService = {
     api
       .post("/admin/translation/requeue", null, { params: { question_id: questionId } })
       .then((r) => r.data),
+  // Background worker control: pause flag drives «Продолжить» / «Отменить».
+  control: (): Promise<{ paused: boolean }> =>
+    api.get("/admin/translation/control").then((r) => r.data),
+  resume: (): Promise<{ paused: boolean }> =>
+    api.post("/admin/translation/control/resume").then((r) => r.data),
+  cancelTranslation: (): Promise<{ cleared: number; paused: boolean }> =>
+    api.post("/admin/translation/control/cancel").then((r) => r.data),
   // RU↔KK pairs for in-admin spot-checking (sample = every Nth question).
   preview: (
     subjectId: number,
