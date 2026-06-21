@@ -77,13 +77,17 @@ const IapEventsSection: React.FC = () => {
     const [items, setItems] = useState<IapItem[]>([])
     const [statusFilter, setStatusFilter] = useState('')
     const [days, setDays] = useState(30)
+    // Which store's IAP events to show. Backend `subscription_event_log` tags
+    // rows with platform="apple" (App Store) or platform="google" (Google Play),
+    // and the /admin/payments/iap-events endpoint filters on this value.
+    const [platform, setPlatform] = useState('apple')
     const [loading, setLoading] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
         try {
             const res = await analyticsService.iapEvents({
-                platform: 'apple',
+                platform,
                 status: statusFilter || undefined,
                 days,
                 limit: 100,
@@ -96,7 +100,7 @@ const IapEventsSection: React.FC = () => {
         } finally {
             setLoading(false)
         }
-    }, [statusFilter, days])
+    }, [statusFilter, days, platform])
 
     useEffect(() => {
         void load()
@@ -115,13 +119,21 @@ const IapEventsSection: React.FC = () => {
                 <div>
                     <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                         <Receipt className="h-5 w-5 text-indigo-600" />
-                        iOS оплаты — события
+                        IAP оплаты — события · {platform === 'apple' ? 'App Store' : 'Google Play'}
                     </h2>
                     <p className="text-xs text-gray-500 mt-1">
                         Покупки, продления, возвраты, отказы и проверки чека. Клик по карточке — фильтр.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <select
+                        value={platform}
+                        onChange={(e) => setPlatform(e.target.value)}
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                        <option value="apple">App Store (iOS)</option>
+                        <option value="google">Google Play (Android)</option>
+                    </select>
                     <select
                         value={days}
                         onChange={(e) => setDays(Number(e.target.value))}
