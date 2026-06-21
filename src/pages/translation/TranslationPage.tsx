@@ -8,6 +8,7 @@ import {
     Eye,
     Loader2,
     CheckCircle2,
+    RotateCcw,
 } from 'lucide-react'
 import {
     translationService,
@@ -49,6 +50,18 @@ const Seg: React.FC<{
                 {o.label}
             </button>
         ))}
+    </div>
+)
+
+const PairRow: React.FC<{ label: string; ru: string; kk: string }> = ({ label, ru, kk }) => (
+    <div>
+        <div className="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">{label}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:border-r md:pr-4 border-gray-200 text-[13px] text-gray-600 whitespace-pre-wrap break-words">
+                {ru || '—'}
+            </div>
+            <div className="text-[13px] text-gray-800 whitespace-pre-wrap break-words">{kk || '—'}</div>
+        </div>
     </div>
 )
 
@@ -170,6 +183,13 @@ export const TranslationPage: React.FC = () => {
         await loadCoverage()
     }
 
+    const requeueOne = async (qid: number) => {
+        await translationService.requeue(qid)
+        setMsg(`Вопрос #${qid} снова в очереди — фоновый переводчик переведёт его заново`)
+        await loadCoverage()
+        if (previewOpened) await loadPreview()
+    }
+
     const downloadExport = async () => {
         if (subjectId == null) return
         setLoading(true)
@@ -250,14 +270,22 @@ export const TranslationPage: React.FC = () => {
                 <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                     <span className="text-xs uppercase tracking-wide text-gray-500">Покрытие перевода</span>
                     <div className="flex items-center gap-2">
-                        <Button
-                            className="gap-2"
-                            onClick={() => void queueSubject()}
-                            disabled={!cov?.none}
-                        >
-                            <Languages className="h-4 w-4" />
-                            Перевести{cov?.none ? ` (${cov.none})` : ''}
-                        </Button>
+                        {cov?.none ? (
+                            <Button className="gap-2" onClick={() => void queueSubject()}>
+                                <Languages className="h-4 w-4" />
+                                Перевести ({cov.none})
+                            </Button>
+                        ) : translating ? (
+                            <Button className="gap-2" disabled>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Идёт перевод…
+                            </Button>
+                        ) : (
+                            <Button className="gap-2" disabled>
+                                <Languages className="h-4 w-4" />
+                                Перевести
+                            </Button>
+                        )}
                         <Button variant="secondary" className="gap-2" onClick={() => void loadCoverage()}>
                             <RefreshCw className="h-4 w-4" /> Обновить
                         </Button>
@@ -277,15 +305,20 @@ export const TranslationPage: React.FC = () => {
                     </b>
                 </div>
                 {translating ? (
-                    <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
-                        <span className="inline-flex items-center gap-2 text-sm font-medium text-indigo-700">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Переводится… {cov?.done ?? 0} / {cov?.total ?? 0} · {pct}%
-                        </span>
-                        <span className="text-xs text-gray-400">
-                            обновляется автоматически каждые 15 с — можно закрыть вкладку
-                        </span>
-                    </div>
+                    <>
+                        <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+                            <span className="inline-flex items-center gap-2 text-sm font-medium text-indigo-700">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Переводится… {cov?.done ?? 0} / {cov?.total ?? 0} · {pct}%
+                            </span>
+                            <span className="text-xs text-gray-400">обновляется автоматически каждые 15 с</span>
+                        </div>
+                        <div className="mt-3 text-sm text-indigo-800 bg-indigo-50 rounded-lg px-4 py-2.5">
+                            🔄 Перевод идёт сам в фоне — осталось <b>{cov?.queued ?? 0}</b>. Нажимать ничего не
+                            нужно: можно закрыть вкладку и вернуться позже. Кнопка «Перевести» снова станет
+                            активной, когда появятся новые непереведённые вопросы.
+                        </div>
+                    </>
                 ) : allDone ? (
                     <div className="inline-flex items-center gap-2 text-sm font-medium text-green-700 mt-2">
                         <CheckCircle2 className="h-4 w-4" /> Перевод завершён
@@ -476,52 +509,85 @@ export const TranslationPage: React.FC = () => {
                 <div className="space-y-3">
                     {preview.map((q) => (
                         <div key={q.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
-                                <span className="text-xs text-gray-500 font-semibold">Вопрос #{q.id}</span>
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700">
-                                    {previewStatus === 'draft' ? 'черновик' : 'готово'}
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2">
-                                <div className="p-3 md:border-r border-gray-200">
-                                    <div className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">
-                                        Русский
-                                    </div>
-                                    <div className="text-sm whitespace-pre-wrap break-words">
-                                        {q.question.ru || '—'}
-                                    </div>
-                                </div>
-                                <div className="p-3 border-t md:border-t-0 border-gray-200">
-                                    <div className="text-[11px] uppercase tracking-wide text-indigo-500 font-semibold mb-1">
-                                        Казахский
-                                    </div>
-                                    <div className="text-sm whitespace-pre-wrap break-words">
-                                        {q.question.kk || '—'}
-                                    </div>
+                            <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                                <span className="text-sm text-gray-700 font-bold">Вопрос #{q.id}</span>
+                                <div className="flex items-center gap-2.5">
+                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                                        {previewStatus === 'draft' ? 'черновик' : 'готово'}
+                                    </span>
+                                    <button
+                                        onClick={() => void requeueOne(q.id)}
+                                        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg px-2.5 py-1 hover:bg-indigo-50"
+                                        title="Поставить этот вопрос в очередь на повторный перевод"
+                                    >
+                                        <RotateCcw className="h-3.5 w-3.5" /> Перевести заново
+                                    </button>
                                 </div>
                             </div>
+
+                            <div className="px-4 py-3 border-b border-gray-100">
+                                <div className="text-[11px] uppercase tracking-wide text-gray-500 font-bold mb-2">
+                                    Текст вопроса
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="md:border-r md:pr-4 border-gray-200">
+                                        <div className="text-[10px] uppercase tracking-wide text-gray-400 font-bold mb-1">
+                                            Русский
+                                        </div>
+                                        <div className="text-sm whitespace-pre-wrap break-words">
+                                            {q.question.ru || '—'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] uppercase tracking-wide text-indigo-500 font-bold mb-1">
+                                            Казахский
+                                        </div>
+                                        <div className="text-sm whitespace-pre-wrap break-words">
+                                            {q.question.kk || '—'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {q.variants.length > 0 && (
-                                <div className="px-4 py-2 border-t border-gray-100 space-y-1">
+                                <div className="px-4 py-3 border-b border-gray-100">
+                                    <div className="text-[11px] uppercase tracking-wide text-gray-500 font-bold mb-2">
+                                        Варианты ответа
+                                    </div>
                                     {q.variants.map((v) => (
-                                        <div key={v.id} className="text-[13px] flex gap-2">
-                                            <span className={v.is_correct ? 'text-green-600 font-bold' : 'text-gray-300'}>
+                                        <div
+                                            key={v.id}
+                                            className="grid grid-cols-[20px_1fr_1fr] gap-2 py-1.5 border-t border-dashed border-gray-100 first:border-t-0 text-[13.5px]"
+                                        >
+                                            <span className={`text-center ${v.is_correct ? 'text-green-600 font-bold' : 'text-gray-300'}`}>
                                                 {v.is_correct ? '✓' : '•'}
                                             </span>
-                                            <span className="break-words">
-                                                <span className="text-gray-500">{v.ru || '—'}</span>
-                                                <span className="text-gray-300"> → </span>
-                                                <span className="text-gray-800">{v.kk || '—'}</span>
+                                            <span className="text-gray-600 break-words">{v.ru || '—'}</span>
+                                            <span className="text-gray-900 break-words border-l border-gray-200 pl-2.5">
+                                                {v.kk || '—'}
                                             </span>
                                         </div>
                                     ))}
                                 </div>
                             )}
-                            {(q.hint.ru || q.hint.kk) && (
-                                <div className="px-4 py-2 border-t border-gray-100 text-[13px] text-gray-500">
-                                    <span className="font-semibold">Подсказка:</span> {q.hint.ru || '—'}
-                                    <span className="text-gray-300"> → </span>
-                                    <span className="text-gray-700">{q.hint.kk || '—'}</span>
-                                </div>
+
+                            {(q.hint.ru || q.hint.kk || q.explanation.ru || q.explanation.kk || q.task_description.ru || q.task_description.kk) && (
+                                <details className="px-4 py-2.5">
+                                    <summary className="cursor-pointer text-[13px] font-semibold text-indigo-600 select-none">
+                                        Подсказка и пояснение
+                                    </summary>
+                                    <div className="mt-3 space-y-3">
+                                        {(q.hint.ru || q.hint.kk) && (
+                                            <PairRow label="Подсказка" ru={q.hint.ru} kk={q.hint.kk} />
+                                        )}
+                                        {(q.explanation.ru || q.explanation.kk) && (
+                                            <PairRow label="Пояснение" ru={q.explanation.ru} kk={q.explanation.kk} />
+                                        )}
+                                        {(q.task_description.ru || q.task_description.kk) && (
+                                            <PairRow label="Инструкция" ru={q.task_description.ru} kk={q.task_description.kk} />
+                                        )}
+                                    </div>
+                                </details>
                             )}
                         </div>
                     ))}

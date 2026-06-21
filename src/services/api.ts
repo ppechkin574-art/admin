@@ -991,6 +991,11 @@ export const translationService = {
       .then((r) => r.data),
   import: (payload: unknown): Promise<{ applied: number; skipped: number[] }> =>
     api.post("/admin/translation/import", payload).then((r) => r.data),
+  // «Перевести заново» — re-queue one question so the worker redoes its kk.
+  requeue: (questionId: number): Promise<{ ok: boolean }> =>
+    api
+      .post("/admin/translation/requeue", null, { params: { question_id: questionId } })
+      .then((r) => r.data),
   // RU↔KK pairs for in-admin spot-checking (sample = every Nth question).
   preview: (
     subjectId: number,
