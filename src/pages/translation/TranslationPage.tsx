@@ -1,10 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Languages, Download, Upload, RefreshCw, Trash2 } from 'lucide-react'
+import {
+    Languages,
+    Download,
+    Upload,
+    RefreshCw,
+    Trash2,
+    Eye,
+    Loader2,
+    CheckCircle2,
+} from 'lucide-react'
 import {
     translationService,
     subjectService,
     CoverageRow,
     GlossaryRow,
+    PreviewItem,
 } from '@/services/api'
 import Button from '@/components/common/Button'
 
@@ -55,11 +65,37 @@ export const TranslationPage: React.FC = () => {
     const [exportStatus, setExportStatus] = useState('none')
     const [msg, setMsg] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    // «Просмотр переводов»
+    const [preview, setPreview] = useState<PreviewItem[]>([])
+    const [previewMeta, setPreviewMeta] = useState<{ total: number; shown: number } | null>(null)
+    const [previewStatus, setPreviewStatus] = useState('done')
+    const [previewSample, setPreviewSample] = useState(10)
+    const [previewOpened, setPreviewOpened] = useState(false)
+    const [previewLoading, setPreviewLoading] = useState(false)
 
     const loadCoverage = useCallback(async () => {
         const c = await translationService.coverage().catch(() => ({ items: [] }))
         setCoverage(c.items ?? [])
     }, [])
+
+    const loadPreview = useCallback(async () => {
+        if (subjectId == null) return
+        setPreviewLoading(true)
+        try {
+            const res = await translationService.preview(subjectId, {
+                status: previewStatus,
+                sample: previewSample,
+                limit: 50,
+            })
+            setPreview(res.items)
+            setPreviewMeta({ total: res.total, shown: res.shown })
+        } catch {
+            setPreview([])
+            setPreviewMeta(null)
+        } finally {
+            setPreviewLoading(false)
+        }
+    }, [subjectId, previewStatus, previewSample])
 
     useEffect(() => {
         void (async () => {
@@ -85,8 +121,24 @@ export const TranslationPage: React.FC = () => {
         })()
     }, [subjectId])
 
+    // Авто-обновление покрытия, пока идёт перевод (в очереди есть вопросы).
+    useEffect(() => {
+        const c = coverage.find((x) => x.subject_id === subjectId)
+        if (subjectId == null || !c || c.queued <= 0) return
+        const t = setInterval(() => void loadCoverage(), 15000)
+        return () => clearInterval(t)
+    }, [subjectId, coverage, loadCoverage])
+
+    // Перезагрузка перевью при смене фильтров/предмета (после первого открытия).
+    useEffect(() => {
+        if (!previewOpened) return
+        void loadPreview()
+    }, [previewOpened, loadPreview])
+
     const cov = coverage.find((c) => c.subject_id === subjectId)
     const pct = cov && cov.total > 0 ? Math.round((cov.done / cov.total) * 100) : 0
+    const translating = (cov?.queued ?? 0) > 0
+    const allDone = !!cov && cov.total > 0 && cov.done === cov.total
 
     const saveConfig = async () => {
         if (subjectId == null) return
@@ -159,6 +211,13 @@ export const TranslationPage: React.FC = () => {
 
     return (
         <div className="p-6 space-y-5 max-w-5xl">
+            <style>{`
+              .tl-bar-anim{
+                background-image:linear-gradient(45deg,rgba(255,255,255,.25) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.25) 50%,rgba(255,255,255,.25) 75%,transparent 75%,transparent);
+                background-size:1rem 1rem;animation:tl-stripes 1s linear infinite;
+              }
+              @keyframes tl-stripes{from{background-position:0 0}to{background-position:1rem 0}}
+            `}</style>
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -206,12 +265,32 @@ export const TranslationPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-600" style={{ width: `${pct}%` }} />
+                        <div
+                            className={`h-full bg-indigo-600 transition-[width] duration-500 ${
+                                translating ? 'tl-bar-anim' : ''
+                            }`}
+                            style={{ width: `${Math.max(pct, translating ? 4 : 0)}%` }}
+                        />
                     </div>
-                    <b className="text-sm">
+                    <b className="text-sm whitespace-nowrap">
                         {cov?.done ?? 0} / {cov?.total ?? 0} · {pct}%
                     </b>
                 </div>
+                {translating ? (
+                    <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+                        <span className="inline-flex items-center gap-2 text-sm font-medium text-indigo-700">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Переводится… {cov?.done ?? 0} / {cov?.total ?? 0} · {pct}%
+                        </span>
+                        <span className="text-xs text-gray-400">
+                            обновляется автоматически каждые 15 с — можно закрыть вкладку
+                        </span>
+                    </div>
+                ) : allDone ? (
+                    <div className="inline-flex items-center gap-2 text-sm font-medium text-green-700 mt-2">
+                        <CheckCircle2 className="h-4 w-4" /> Перевод завершён
+                    </div>
+                ) : null}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                     <div className="rounded-xl border border-gray-100 p-3">
                         <div className="text-xs text-gray-500">Не переведено</div>
@@ -335,6 +414,118 @@ export const TranslationPage: React.FC = () => {
                 <p className="text-xs text-gray-400">
                     Скачай → открой сессию с Claude → перетащи файл → попроси перевести → загрузи полученный файл обратно.
                 </p>
+            </div>
+
+            {/* PREVIEW TRANSLATED */}
+            <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <Eye className="h-5 w-5 text-indigo-600" /> Просмотр переводов
+                    </h2>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Seg
+                            value={String(previewSample)}
+                            options={[
+                                { v: '10', label: 'Каждый 10-й' },
+                                { v: '1', label: 'Все' },
+                            ]}
+                            onChange={(v) => setPreviewSample(Number(v))}
+                        />
+                        <Seg
+                            value={previewStatus}
+                            options={[
+                                { v: 'done', label: 'Готово' },
+                                { v: 'draft', label: 'Черновик' },
+                            ]}
+                            onChange={setPreviewStatus}
+                        />
+                        <Button
+                            variant="secondary"
+                            className="gap-2"
+                            onClick={() => {
+                                setPreviewOpened(true)
+                                void loadPreview()
+                            }}
+                        >
+                            <RefreshCw className="h-4 w-4" /> Показать
+                        </Button>
+                    </div>
+                </div>
+
+                {previewMeta && (
+                    <p className="text-xs text-gray-500">
+                        Показано {previewMeta.shown} из {previewMeta.total}
+                        {previewSample > 1 ? ` (каждый ${previewSample}-й)` : ''}. Слева русский, справа казахский.
+                    </p>
+                )}
+
+                {previewLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
+                    </div>
+                )}
+                {!previewOpened && (
+                    <p className="text-sm text-gray-400 py-3">
+                        Жми «Показать» — увидишь переводы для выборочной проверки качества.
+                    </p>
+                )}
+                {!previewLoading && previewOpened && preview.length === 0 && (
+                    <p className="text-sm text-gray-400 py-3">Нет переведённых вопросов в этом статусе.</p>
+                )}
+
+                <div className="space-y-3">
+                    {preview.map((q) => (
+                        <div key={q.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+                                <span className="text-xs text-gray-500 font-semibold">Вопрос #{q.id}</span>
+                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                                    {previewStatus === 'draft' ? 'черновик' : 'готово'}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2">
+                                <div className="p-3 md:border-r border-gray-200">
+                                    <div className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-1">
+                                        Русский
+                                    </div>
+                                    <div className="text-sm whitespace-pre-wrap break-words">
+                                        {q.question.ru || '—'}
+                                    </div>
+                                </div>
+                                <div className="p-3 border-t md:border-t-0 border-gray-200">
+                                    <div className="text-[11px] uppercase tracking-wide text-indigo-500 font-semibold mb-1">
+                                        Казахский
+                                    </div>
+                                    <div className="text-sm whitespace-pre-wrap break-words">
+                                        {q.question.kk || '—'}
+                                    </div>
+                                </div>
+                            </div>
+                            {q.variants.length > 0 && (
+                                <div className="px-4 py-2 border-t border-gray-100 space-y-1">
+                                    {q.variants.map((v) => (
+                                        <div key={v.id} className="text-[13px] flex gap-2">
+                                            <span className={v.is_correct ? 'text-green-600 font-bold' : 'text-gray-300'}>
+                                                {v.is_correct ? '✓' : '•'}
+                                            </span>
+                                            <span className="break-words">
+                                                <span className="text-gray-500">{v.ru || '—'}</span>
+                                                <span className="text-gray-300"> → </span>
+                                                <span className="text-gray-800">{v.kk || '—'}</span>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {(q.hint.ru || q.hint.kk) && (
+                                <div className="px-4 py-2 border-t border-gray-100 text-[13px] text-gray-500">
+                                    <span className="font-semibold">Подсказка:</span> {q.hint.ru || '—'}
+                                    <span className="text-gray-300"> → </span>
+                                    <span className="text-gray-700">{q.hint.kk || '—'}</span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     )
