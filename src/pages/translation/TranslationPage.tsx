@@ -171,6 +171,10 @@ export const TranslationPage: React.FC = () => {
     const [previewLoading, setPreviewLoading] = useState(false)
     const [paused, setPaused] = useState(true)
 
+    // Preview bulk-requeue state
+    const [previewSelectedIds, setPreviewSelectedIds] = useState<Set<number>>(new Set())
+    const [previewRequeuing, setPreviewRequeuing] = useState(false)
+
     // Review (draft approval) state
     const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null)
     const [reviewPage, setReviewPage] = useState(1)
@@ -250,6 +254,7 @@ export const TranslationPage: React.FC = () => {
     useEffect(() => {
         if (!previewOpened) return
         void loadPreview()
+        setPreviewSelectedIds(new Set())
     }, [previewOpened, loadPreview])
 
     const loadReview = useCallback(async () => {
@@ -324,6 +329,41 @@ export const TranslationPage: React.FC = () => {
         setMsg(`Вопрос #${qid} снова в очереди — переведётся заново в течение пары минут`)
         await loadCoverage()
         if (previewOpened) await loadPreview()
+    }
+
+    const requeueBulkPreview = async () => {
+        if (!previewSelectedIds.size) return
+        setPreviewRequeuing(true)
+        try {
+            const res = await translationService.requeueBulk(Array.from(previewSelectedIds))
+            await translationService.resume()
+            setPaused(false)
+            setMsg(`${res.queued} вопросов поставлено в очередь на повторный перевод`)
+            setPreviewSelectedIds(new Set())
+            await loadCoverage()
+            await loadPreview()
+        } finally {
+            setPreviewRequeuing(false)
+        }
+    }
+
+    const togglePreviewSelect = (id: number) => {
+        setPreviewSelectedIds((prev) => {
+            const next = new Set(prev)
+            next.has(id) ? next.delete(id) : next.add(id)
+            return next
+        })
+    }
+
+    const togglePreviewSelectAll = () => {
+        const pageIds = preview.map((q) => q.id)
+        const allSelected = pageIds.every((id) => previewSelectedIds.has(id))
+        setPreviewSelectedIds((prev) => {
+            const next = new Set(prev)
+            if (allSelected) pageIds.forEach((id) => next.delete(id))
+            else pageIds.forEach((id) => next.add(id))
+            return next
+        })
     }
 
     const approveSelected = async () => {
@@ -708,11 +748,45 @@ export const TranslationPage: React.FC = () => {
                     <p className="text-sm text-gray-400 py-3">Нет переведённых вопросов в этом статусе.</p>
                 )}
 
+                {/* Bulk requeue bar — shown when list is loaded */}
+                {previewOpened && preview.length > 0 && (
+                    <div className="flex items-center justify-between gap-3 py-2 border-b border-gray-100">
+                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                className="rounded border-gray-300 text-indigo-600"
+                                checked={preview.length > 0 && preview.every((q) => previewSelectedIds.has(q.id))}
+                                onChange={togglePreviewSelectAll}
+                            />
+                            Выбрать всё на странице
+                        </label>
+                        <Button
+                            variant="secondary"
+                            className="gap-2 text-indigo-700 border-indigo-200"
+                            disabled={previewSelectedIds.size === 0 || previewRequeuing}
+                            onClick={() => void requeueBulkPreview()}
+                        >
+                            {previewRequeuing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <RotateCcw className="h-4 w-4" />
+                            )}
+                            Переперевести выбранные{previewSelectedIds.size > 0 ? ` (${previewSelectedIds.size})` : ''}
+                        </Button>
+                    </div>
+                )}
+
                 <div className="space-y-3">
                     {preview.map((q) => (
-                        <div key={q.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                            <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-                                <span className="text-sm text-gray-700 font-bold">Вопрос #{q.id}</span>
+                        <div key={q.id} className={`border rounded-xl overflow-hidden transition-colors ${previewSelectedIds.has(q.id) ? 'border-indigo-300 bg-indigo-50/20' : 'border-gray-200'}`}>
+                            <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-300 text-indigo-600 flex-shrink-0"
+                                    checked={previewSelectedIds.has(q.id)}
+                                    onChange={() => togglePreviewSelect(q.id)}
+                                />
+                                <span className="text-sm text-gray-700 font-bold flex-1">Вопрос #{q.id}</span>
                                 <div className="flex items-center gap-2.5">
                                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700">
                                         {previewStatus === 'draft' ? 'черновик' : 'готово'}

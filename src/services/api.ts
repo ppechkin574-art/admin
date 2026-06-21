@@ -1011,6 +1011,8 @@ export const translationService = {
     api
       .post("/admin/translation/requeue", null, { params: { question_id: questionId } })
       .then((r) => r.data),
+  requeueBulk: (questionIds: number[]): Promise<{ queued: number }> =>
+    api.post("/admin/translation/requeue-bulk", { question_ids: questionIds }).then((r) => r.data),
   // Background worker control: pause flag drives «Продолжить» / «Отменить».
   control: (): Promise<{ paused: boolean }> =>
     api.get("/admin/translation/control").then((r) => r.data),
