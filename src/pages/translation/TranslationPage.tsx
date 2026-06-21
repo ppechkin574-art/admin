@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
     Languages,
     Download,
@@ -11,6 +11,10 @@ import {
     RotateCcw,
     Play,
     X,
+    ShieldCheck,
+    ChevronLeft,
+    ChevronRight,
+    Check,
 } from 'lucide-react'
 import {
     translationService,
@@ -18,8 +22,86 @@ import {
     CoverageRow,
     GlossaryRow,
     PreviewItem,
+    QualityFlag,
+    QualityFlagType,
+    ReviewResult,
 } from '@/services/api'
 import Button from '@/components/common/Button'
+
+// ─── Quality flag helpers ───────────────────────────────────────────────────
+
+const FLAG_LABELS: Record<QualityFlagType, string> = {
+    agreement: 'Согласование',
+    government: 'Управление',
+    morphological: 'Морфология',
+    syntactic: 'Синтаксис',
+    semantic: 'Смысловая',
+    untranslatable: 'Не переведено',
+}
+const FLAG_COLORS: Record<QualityFlagType, string> = {
+    agreement: 'decoration-amber-500',
+    government: 'decoration-orange-500',
+    morphological: 'decoration-red-500',
+    syntactic: 'decoration-purple-500',
+    semantic: 'decoration-rose-600',
+    untranslatable: 'decoration-gray-500',
+}
+const FLAG_BADGE: Record<QualityFlagType, string> = {
+    agreement: 'bg-amber-50 text-amber-700 border-amber-200',
+    government: 'bg-orange-50 text-orange-700 border-orange-200',
+    morphological: 'bg-red-50 text-red-700 border-red-200',
+    syntactic: 'bg-purple-50 text-purple-700 border-purple-200',
+    semantic: 'bg-rose-50 text-rose-700 border-rose-200',
+    untranslatable: 'bg-gray-100 text-gray-600 border-gray-200',
+}
+
+/** Render KK text with flagged phrases underlined + tooltip. */
+function HighlightedText({
+    text,
+    flags,
+    field,
+}: {
+    text: string
+    flags: QualityFlag[]
+    field: string
+}) {
+    if (!text) return <span className="text-gray-300">—</span>
+    const relevant = flags.filter((f) => f.field === field && f.phrase)
+    if (!relevant.length) return <>{text}</>
+
+    // Build non-overlapping segments sorted by position
+    type Seg = { start: number; end: number; flag: QualityFlag }
+    const segs: Seg[] = []
+    for (const flag of relevant) {
+        const idx = text.indexOf(flag.phrase)
+        if (idx === -1) continue
+        segs.push({ start: idx, end: idx + flag.phrase.length, flag })
+    }
+    segs.sort((a, b) => a.start - b.start)
+
+    const parts: React.ReactNode[] = []
+    let pos = 0
+    for (const seg of segs) {
+        if (seg.start < pos) continue // overlapping — skip
+        if (seg.start > pos) parts.push(text.slice(pos, seg.start))
+        parts.push(
+            <span
+                key={seg.start}
+                className={`underline ${FLAG_COLORS[seg.flag.type]} decoration-wavy cursor-help relative group`}
+                title={`${FLAG_LABELS[seg.flag.type]}: ${seg.flag.note}`}
+            >
+                {seg.flag.phrase}
+                <span className="absolute bottom-full left-0 mb-1 hidden group-hover:flex z-10 max-w-[220px] text-xs bg-gray-900 text-white rounded-lg px-2.5 py-1.5 whitespace-normal shadow-lg">
+                    <span className="font-semibold mr-1">{FLAG_LABELS[seg.flag.type]}:</span>
+                    {seg.flag.note}
+                </span>
+            </span>,
+        )
+        pos = seg.end
+    }
+    if (pos < text.length) parts.push(text.slice(pos))
+    return <>{parts}</>
+}
 
 const TONES = [
     { v: 'official', label: 'Официальный' },
@@ -88,6 +170,16 @@ export const TranslationPage: React.FC = () => {
     const [previewOpened, setPreviewOpened] = useState(false)
     const [previewLoading, setPreviewLoading] = useState(false)
     const [paused, setPaused] = useState(true)
+
+    // Review (draft approval) state
+    const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null)
+    const [reviewPage, setReviewPage] = useState(1)
+    const [reviewFilter, setReviewFilter] = useState<'all' | 'flagged' | 'clean'>('all')
+    const [reviewLoading, setReviewLoading] = useState(false)
+    const [reviewOpened, setReviewOpened] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+    const [approving, setApproving] = useState(false)
+    const reviewRef = useRef<HTMLDivElement>(null)
 
     const loadCoverage = useCallback(async () => {
         const c = await translationService.coverage().catch(() => ({ items: [] }))
@@ -160,6 +252,34 @@ export const TranslationPage: React.FC = () => {
         void loadPreview()
     }, [previewOpened, loadPreview])
 
+    const loadReview = useCallback(async () => {
+        if (subjectId == null) return
+        setReviewLoading(true)
+        setSelectedIds(new Set())
+        try {
+            const res = await translationService.reviewDrafts(subjectId, {
+                page: reviewPage,
+                page_size: 20,
+                filter: reviewFilter,
+            })
+            setReviewResult(res)
+        } catch {
+            setReviewResult(null)
+        } finally {
+            setReviewLoading(false)
+        }
+    }, [subjectId, reviewPage, reviewFilter])
+
+    useEffect(() => {
+        if (!reviewOpened) return
+        void loadReview()
+    }, [reviewOpened, loadReview])
+
+    // Reset page on filter change
+    useEffect(() => {
+        setReviewPage(1)
+    }, [reviewFilter, subjectId])
+
     const cov = coverage.find((c) => c.subject_id === subjectId)
     const pct = cov && cov.total > 0 ? Math.round((cov.done / cov.total) * 100) : 0
     const queuedN = cov?.queued ?? 0
@@ -204,6 +324,38 @@ export const TranslationPage: React.FC = () => {
         setMsg(`Вопрос #${qid} снова в очереди — переведётся заново в течение пары минут`)
         await loadCoverage()
         if (previewOpened) await loadPreview()
+    }
+
+    const approveSelected = async () => {
+        if (!selectedIds.size) return
+        setApproving(true)
+        try {
+            const res = await translationService.approve(Array.from(selectedIds))
+            setMsg(`Одобрено ${res.approved} переводов`)
+            await loadCoverage()
+            await loadReview()
+        } finally {
+            setApproving(false)
+        }
+    }
+
+    const toggleSelect = (id: number) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev)
+            next.has(id) ? next.delete(id) : next.add(id)
+            return next
+        })
+    }
+
+    const toggleSelectAll = () => {
+        const pageIds = reviewResult?.items.map((q) => q.id) ?? []
+        const allSelected = pageIds.every((id) => selectedIds.has(id))
+        setSelectedIds((prev) => {
+            const next = new Set(prev)
+            if (allSelected) pageIds.forEach((id) => next.delete(id))
+            else pageIds.forEach((id) => next.add(id))
+            return next
+        })
     }
 
     const resumeTranslation = async () => {
@@ -642,6 +794,278 @@ export const TranslationPage: React.FC = () => {
                         </div>
                     ))}
                 </div>
+            </div>
+            {/* REVIEW DRAFTS */}
+            <div ref={reviewRef} className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5 text-emerald-600" /> Проверка черновиков
+                    </h2>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* Filter tabs */}
+                        {(['all', 'flagged', 'clean'] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setReviewFilter(f)}
+                                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                                    reviewFilter === f
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                                {f === 'all' ? 'Все' : f === 'flagged' ? '🟡 С пометками' : '✅ Чистые'}
+                                {reviewResult && f === 'all' && ` (${reviewResult.total})`}
+                            </button>
+                        ))}
+                        <Button
+                            variant="secondary"
+                            className="gap-2"
+                            onClick={() => {
+                                setReviewOpened(true)
+                                void loadReview()
+                            }}
+                        >
+                            <RefreshCw className="h-4 w-4" /> Загрузить
+                        </Button>
+                    </div>
+                </div>
+
+                {!reviewOpened && (
+                    <p className="text-sm text-gray-400 py-3">
+                        Нажми «Загрузить» — увидишь черновики с пометками для одобрения перед публикацией.
+                    </p>
+                )}
+
+                {reviewLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
+                    </div>
+                )}
+
+                {reviewOpened && !reviewLoading && reviewResult && (
+                    <>
+                        {/* Bulk actions bar */}
+                        <div className="flex items-center justify-between gap-3 py-2 border-b border-gray-100">
+                            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-300 text-emerald-600"
+                                    checked={
+                                        reviewResult.items.length > 0 &&
+                                        reviewResult.items.every((q) => selectedIds.has(q.id))
+                                    }
+                                    onChange={toggleSelectAll}
+                                />
+                                Выбрать всё на странице
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400">
+                                    Стр {reviewResult.page} из {reviewResult.pages} · {reviewResult.total} черновиков
+                                </span>
+                                <Button
+                                    className="gap-2"
+                                    disabled={selectedIds.size === 0 || approving}
+                                    onClick={() => void approveSelected()}
+                                >
+                                    {approving ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Check className="h-4 w-4" />
+                                    )}
+                                    Одобрить выбранные{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {reviewResult.items.length === 0 && (
+                            <p className="text-sm text-gray-400 py-4 text-center">
+                                Нет черновиков в этом фильтре.
+                            </p>
+                        )}
+
+                        {/* Question cards */}
+                        <div className="space-y-3">
+                            {reviewResult.items.map((q) => {
+                                const flags = q.quality_flags ?? []
+                                const hasFlaggedField = (field: string) =>
+                                    flags.some((f) => f.field === field)
+                                const variantField = (id: number) => `variant_${id}`
+                                const isSelected = selectedIds.has(q.id)
+
+                                return (
+                                    <div
+                                        key={q.id}
+                                        className={`border rounded-xl overflow-hidden transition-colors ${
+                                            isSelected
+                                                ? 'border-emerald-400 bg-emerald-50/30'
+                                                : flags.length > 0
+                                                ? 'border-amber-200'
+                                                : 'border-gray-200'
+                                        }`}
+                                    >
+                                        {/* Card header */}
+                                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-300 text-emerald-600 flex-shrink-0"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelect(q.id)}
+                                            />
+                                            <span className="text-sm font-bold text-gray-700 flex-1">
+                                                Вопрос #{q.id}
+                                            </span>
+                                            {flags.length > 0 ? (
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    {flags.map((f, i) => (
+                                                        <span
+                                                            key={i}
+                                                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${FLAG_BADGE[f.type]}`}
+                                                        >
+                                                            {FLAG_LABELS[f.type]}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
+                                                    ✅ Чисто
+                                                </span>
+                                            )}
+                                            <div className="flex items-center gap-1.5 ml-1">
+                                                <button
+                                                    onClick={() => void (async () => {
+                                                        setApproving(true)
+                                                        try {
+                                                            await translationService.approve([q.id])
+                                                            await loadCoverage()
+                                                            await loadReview()
+                                                        } finally {
+                                                            setApproving(false)
+                                                        }
+                                                    })()}
+                                                    title="Одобрить этот перевод"
+                                                    className="inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-700 border border-emerald-200 rounded-lg px-2 py-1 hover:bg-emerald-50"
+                                                >
+                                                    <Check className="h-3.5 w-3.5" /> Одобрить
+                                                </button>
+                                                <button
+                                                    onClick={() => void requeueOne(q.id)}
+                                                    title="Переперевести заново"
+                                                    className="inline-flex items-center gap-1 text-[12px] font-semibold text-indigo-600 border border-indigo-200 rounded-lg px-2 py-1 hover:bg-indigo-50"
+                                                >
+                                                    <RotateCcw className="h-3.5 w-3.5" /> Заново
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Question text */}
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <div className="text-[10px] uppercase tracking-wide font-bold text-gray-400 mb-2">
+                                                Текст вопроса
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="md:border-r md:pr-4 border-gray-200 text-[13px] text-gray-500 whitespace-pre-wrap break-words">
+                                                    {q.question.ru || '—'}
+                                                </div>
+                                                <div className={`text-[13px] text-gray-900 whitespace-pre-wrap break-words ${hasFlaggedField('question_text') ? 'bg-amber-50/60 -mx-1 px-1 rounded' : ''}`}>
+                                                    <HighlightedText
+                                                        text={q.question.kk}
+                                                        flags={flags}
+                                                        field="question_text"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Variants */}
+                                        {q.variants.length > 0 && (
+                                            <div className="px-4 py-3 border-b border-gray-100">
+                                                <div className="text-[10px] uppercase tracking-wide font-bold text-gray-400 mb-2">
+                                                    Варианты
+                                                </div>
+                                                {q.variants.map((v) => (
+                                                    <div
+                                                        key={v.id}
+                                                        className="grid grid-cols-[18px_1fr_1fr] gap-2 py-1.5 border-t border-dashed border-gray-100 first:border-t-0 text-[13px]"
+                                                    >
+                                                        <span
+                                                            className={`text-center ${v.is_correct ? 'text-green-600 font-bold' : 'text-gray-300'}`}
+                                                        >
+                                                            {v.is_correct ? '✓' : '•'}
+                                                        </span>
+                                                        <span className="text-gray-500 break-words">{v.ru || '—'}</span>
+                                                        <span className={`text-gray-900 border-l border-gray-200 pl-2.5 break-words ${hasFlaggedField(variantField(v.id)) ? 'bg-amber-50/60' : ''}`}>
+                                                            <HighlightedText
+                                                                text={v.kk}
+                                                                flags={flags}
+                                                                field={variantField(v.id)}
+                                                            />
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Hint / explanation (collapsed) */}
+                                        {(q.hint.kk || q.explanation.kk || q.task_description.kk) && (
+                                            <details className="px-4 py-2.5">
+                                                <summary className="cursor-pointer text-[13px] font-semibold text-indigo-600 select-none">
+                                                    Подсказка и пояснение
+                                                </summary>
+                                                <div className="mt-3 space-y-3">
+                                                    {(q.hint.ru || q.hint.kk) && (
+                                                        <div>
+                                                            <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Подсказка</div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div className="text-[13px] text-gray-500 md:border-r md:pr-4 border-gray-200">{q.hint.ru || '—'}</div>
+                                                                <div className="text-[13px] text-gray-900">
+                                                                    <HighlightedText text={q.hint.kk} flags={flags} field="hint" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {(q.explanation.ru || q.explanation.kk) && (
+                                                        <div>
+                                                            <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Пояснение</div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div className="text-[13px] text-gray-500 md:border-r md:pr-4 border-gray-200">{q.explanation.ru || '—'}</div>
+                                                                <div className="text-[13px] text-gray-900">
+                                                                    <HighlightedText text={q.explanation.kk} flags={flags} field="explanation" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </details>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {/* Pagination */}
+                        {reviewResult.pages > 1 && (
+                            <div className="flex items-center justify-between pt-2">
+                                <button
+                                    disabled={reviewResult.page <= 1}
+                                    onClick={() => setReviewPage((p) => p - 1)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-4 w-4" /> Предыдущая
+                                </button>
+                                <span className="text-sm text-gray-500">
+                                    Стр {reviewResult.page} / {reviewResult.pages}
+                                </span>
+                                <button
+                                    disabled={reviewResult.page >= reviewResult.pages}
+                                    onClick={() => setReviewPage((p) => p + 1)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                >
+                                    Следующая <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     )

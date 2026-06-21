@@ -960,13 +960,28 @@ export interface PreviewPair {
   ru: string
   kk: string
 }
+export type QualityFlagType = 'agreement' | 'government' | 'morphological' | 'syntactic' | 'semantic' | 'untranslatable'
+export interface QualityFlag {
+  field: string  // "question_text" | "variant_<id>" | "hint" | "task_description" | "explanation"
+  phrase: string
+  type: QualityFlagType
+  note: string
+}
 export interface PreviewItem {
   id: number
+  quality_flags?: QualityFlag[]
   question: PreviewPair
   variants: { id: number; ru: string; kk: string; is_correct: boolean }[]
   hint: PreviewPair
   task_description: PreviewPair
   explanation: PreviewPair
+}
+export interface ReviewResult {
+  items: PreviewItem[]
+  total: number
+  page: number
+  pages: number
+  page_size: number
 }
 export interface PreviewResult {
   items: PreviewItem[]
@@ -1042,6 +1057,24 @@ export const translationService = {
     body: { tone: string; length: string; instruction?: string | null }
   ): Promise<unknown> =>
     api.put(`/admin/translation/config/${subjectId}`, body).then((r) => r.data),
+  // Review endpoint: paginated draft list with quality flags.
+  reviewDrafts: (
+    subjectId: number,
+    opts: { page?: number; page_size?: number; filter?: 'all' | 'flagged' | 'clean' } = {}
+  ): Promise<ReviewResult> =>
+    api
+      .get('/admin/translation/review', {
+        params: {
+          subject_id: subjectId,
+          page: opts.page ?? 1,
+          page_size: opts.page_size ?? 20,
+          filter: opts.filter ?? 'all',
+        },
+      })
+      .then((r) => r.data),
+  // Bulk approve: draft → done, clears quality flags.
+  approve: (questionIds: number[]): Promise<{ approved: number }> =>
+    api.post('/admin/translation/approve', { question_ids: questionIds }).then((r) => r.data),
 };
 
 // Push notifications — broadcast a message to a slice of the user
