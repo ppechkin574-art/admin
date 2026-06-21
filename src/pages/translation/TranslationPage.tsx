@@ -109,6 +109,15 @@ export const TranslationPage: React.FC = () => {
         setGlossary((g) => g.filter((x) => x.id !== id))
     }
 
+    const queueSubject = async () => {
+        if (subjectId == null) return
+        const res = await translationService.queue(subjectId)
+        setMsg(
+            `В очередь поставлено ${res.queued} вопросов — фоновый переводчик подхватит, зайди позже`,
+        )
+        await loadCoverage()
+    }
+
     const downloadExport = async () => {
         if (subjectId == null) return
         setLoading(true)
@@ -179,11 +188,21 @@ export const TranslationPage: React.FC = () => {
 
             {/* COVERAGE */}
             <div className="bg-white rounded-2xl shadow-sm p-5">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                     <span className="text-xs uppercase tracking-wide text-gray-500">Покрытие перевода</span>
-                    <Button variant="secondary" className="gap-2" onClick={() => void loadCoverage()}>
-                        <RefreshCw className="h-4 w-4" /> Обновить
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            className="gap-2"
+                            onClick={() => void queueSubject()}
+                            disabled={!cov?.none}
+                        >
+                            <Languages className="h-4 w-4" />
+                            Перевести{cov?.none ? ` (${cov.none})` : ''}
+                        </Button>
+                        <Button variant="secondary" className="gap-2" onClick={() => void loadCoverage()}>
+                            <RefreshCw className="h-4 w-4" /> Обновить
+                        </Button>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
@@ -193,10 +212,14 @@ export const TranslationPage: React.FC = () => {
                         {cov?.done ?? 0} / {cov?.total ?? 0} · {pct}%
                     </b>
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                     <div className="rounded-xl border border-gray-100 p-3">
                         <div className="text-xs text-gray-500">Не переведено</div>
                         <div className="text-2xl font-bold text-gray-700">{cov?.none ?? 0}</div>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 p-3">
+                        <div className="text-xs text-gray-500">В очереди</div>
+                        <div className="text-2xl font-bold text-indigo-600">{cov?.queued ?? 0}</div>
                     </div>
                     <div className="rounded-xl border border-gray-100 p-3">
                         <div className="text-xs text-gray-500">Черновик</div>
