@@ -938,6 +938,60 @@ export const analyticsService = {
     api.get("/admin/payments/iap-events", { params }).then((res) => res.data),
 };
 
+// Kazakh question-translation workflow. The translator is a Claude session:
+// export → hand the file to Claude → import the translated file back.
+export interface CoverageRow {
+  subject_id: number
+  subject_name: string
+  none: number
+  draft: number
+  done: number
+  total: number
+}
+export interface GlossaryRow {
+  id: number
+  subject_id: number | null
+  term_ru: string
+  term_kk: string
+  note: string | null
+}
+export const translationService = {
+  coverage: (): Promise<{ items: CoverageRow[] }> =>
+    api.get("/admin/translation/coverage").then((r) => r.data),
+  export: (subjectId: number, status = "none", limit = 200): Promise<any> =>
+    api
+      .get("/admin/translation/export", {
+        params: { subject_id: subjectId, status, limit },
+      })
+      .then((r) => r.data),
+  import: (payload: unknown): Promise<{ applied: number; skipped: number[] }> =>
+    api.post("/admin/translation/import", payload).then((r) => r.data),
+  listGlossary: (subjectId?: number): Promise<GlossaryRow[]> =>
+    api
+      .get("/admin/translation/glossary", {
+        params: subjectId != null ? { subject_id: subjectId } : {},
+      })
+      .then((r) => r.data),
+  addGlossary: (body: {
+    subject_id: number | null
+    term_ru: string
+    term_kk: string
+    note?: string | null
+  }): Promise<{ id: number }> =>
+    api.post("/admin/translation/glossary", body).then((r) => r.data),
+  deleteGlossary: (id: number): Promise<void> =>
+    api.delete(`/admin/translation/glossary/${id}`).then(() => undefined),
+  getConfig: (
+    subjectId: number
+  ): Promise<{ tone: string; length: string; instruction: string | null }> =>
+    api.get(`/admin/translation/config/${subjectId}`).then((r) => r.data),
+  setConfig: (
+    subjectId: number,
+    body: { tone: string; length: string; instruction?: string | null }
+  ): Promise<unknown> =>
+    api.put(`/admin/translation/config/${subjectId}`, body).then((r) => r.data),
+};
+
 // Push notifications — broadcast a message to a slice of the user
 // base. Backend lives at POST /admin/notifications/send (see
 // aima-backend@5216971). The legacy /admin/notifications/test/send

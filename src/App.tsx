@@ -51,6 +51,7 @@ import { MarketingDashboard } from './pages/marketing/MarketingDashboard'
 import { PushNotifications } from './pages/marketing/PushNotifications'
 import { PerformanceDashboard } from './pages/performance/PerformanceDashboard'
 import { FinancePage } from './pages/finance/FinancePage'
+import { TranslationPage } from './pages/translation/TranslationPage'
 import { SecurityDashboard } from './pages/security/SecurityDashboard'
 import { SecurityUserDetail } from './pages/security/SecurityUserDetail'
 
@@ -209,6 +210,7 @@ function App()
           <Route path="/push" element={<PushNotifications />} />
           <Route path="/performance" element={<PerformanceDashboard />} />
           <Route path="/finance" element={<FinancePage />} />
+          <Route path="/translation" element={<TranslationPage />} />
           <Route path="/app-screens" element={<AppScreensPage />} />
           <Route path="/app-update" element={<AppUpdateConfigPage />} />
 
