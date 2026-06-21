@@ -956,6 +956,24 @@ export interface GlossaryRow {
   term_kk: string
   note: string | null
 }
+export interface PreviewPair {
+  ru: string
+  kk: string
+}
+export interface PreviewItem {
+  id: number
+  question: PreviewPair
+  variants: { id: number; ru: string; kk: string; is_correct: boolean }[]
+  hint: PreviewPair
+  task_description: PreviewPair
+  explanation: PreviewPair
+}
+export interface PreviewResult {
+  items: PreviewItem[]
+  total: number
+  shown: number
+  sample: number
+}
 export const translationService = {
   coverage: (): Promise<{ items: CoverageRow[] }> =>
     api.get("/admin/translation/coverage").then((r) => r.data),
@@ -973,6 +991,21 @@ export const translationService = {
       .then((r) => r.data),
   import: (payload: unknown): Promise<{ applied: number; skipped: number[] }> =>
     api.post("/admin/translation/import", payload).then((r) => r.data),
+  // RU↔KK pairs for in-admin spot-checking (sample = every Nth question).
+  preview: (
+    subjectId: number,
+    opts: { status?: string; sample?: number; limit?: number } = {}
+  ): Promise<PreviewResult> =>
+    api
+      .get("/admin/translation/preview", {
+        params: {
+          subject_id: subjectId,
+          status: opts.status ?? "done",
+          sample: opts.sample ?? 1,
+          limit: opts.limit ?? 50,
+        },
+      })
+      .then((r) => r.data),
   listGlossary: (subjectId?: number): Promise<GlossaryRow[]> =>
     api
       .get("/admin/translation/glossary", {
