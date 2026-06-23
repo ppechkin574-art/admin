@@ -1079,6 +1079,9 @@ export const translationService = {
   // Bulk approve: draft → done, clears quality flags.
   approve: (questionIds: number[]): Promise<{ approved: number }> =>
     api.post('/admin/translation/approve', { question_ids: questionIds }).then((r) => r.data),
+  // Approve ALL drafts for a subject (respects active filter).
+  approveAll: (subjectId: number, filter: 'all' | 'flagged' | 'clean' = 'all'): Promise<{ approved: number }> =>
+    api.post('/admin/translation/approve-all', null, { params: { subject_id: subjectId, filter } }).then((r) => r.data),
 };
 
 // Push notifications — broadcast a message to a slice of the user

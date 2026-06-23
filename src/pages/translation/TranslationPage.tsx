@@ -377,6 +377,22 @@ export const TranslationPage: React.FC = () => {
         })
     }
 
+    const approveAllDrafts = async () => {
+        if (subjectId == null) return
+        const total = reviewResult?.total ?? 0
+        const label = reviewFilter === 'flagged' ? 'помеченные' : reviewFilter === 'clean' ? 'чистые' : 'все'
+        if (!window.confirm(`Одобрить ${label} черновики (${total} вопросов) и опубликовать их пользователям?`)) return
+        setApproving(true)
+        try {
+            const res = await translationService.approveAll(subjectId, reviewFilter)
+            setMsg(`Одобрено ${res.approved} переводов`)
+            await loadCoverage()
+            await loadReview()
+        } finally {
+            setApproving(false)
+        }
+    }
+
     const approveSelected = async () => {
         if (!selectedIds.size) return
         setApproving(true)
@@ -922,6 +938,20 @@ export const TranslationPage: React.FC = () => {
                         >
                             <RefreshCw className="h-4 w-4" /> Загрузить
                         </Button>
+                        {reviewOpened && reviewResult && reviewResult.total > 0 && (
+                            <Button
+                                className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                                disabled={approving}
+                                onClick={() => void approveAllDrafts()}
+                            >
+                                {approving ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <CheckCircle2 className="h-4 w-4" />
+                                )}
+                                Одобрить все ({reviewResult.total})
+                            </Button>
+                        )}
                     </div>
                 </div>
 
