@@ -459,6 +459,49 @@ export const TranslationPage: React.FC = () => {
             setLoading(false)
         }
     }
+
+    const downloadTranslations = async () => {
+        if (subjectId == null) return
+        setLoading(true)
+        try {
+            const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? String(subjectId)
+            const result = await translationService.preview(subjectId, { status: 'draft', sample: 1, limit: 1000 })
+            const doneResult = await translationService.preview(subjectId, { status: 'done', sample: 1, limit: 1000 })
+            const allItems = [...(doneResult.items ?? []), ...(result.items ?? [])]
+            if (!allItems.length) { setMsg('Нет переведённых вопросов'); setLoading(false); return }
+
+            const BOM = '﻿'
+            const esc = (v: string) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
+            const rows: string[] = ['ID,Статус,Вопрос (RU),Вопрос (KK),Вариант 1 (RU),Вариант 1 (KK),Вариант 2 (RU),Вариант 2 (KK),Вариант 3 (RU),Вариант 3 (KK),Вариант 4 (RU),Вариант 4 (KK),Подсказка (RU),Подсказка (KK)']
+            const doneIds = new Set(doneResult.items.map((i) => i.id))
+            for (const item of allItems) {
+                const status = doneIds.has(item.id) ? 'Готово' : 'Черновик'
+                const v = item.variants ?? []
+                rows.push([
+                    item.id, status,
+                    esc(item.question.ru), esc(item.question.kk),
+                    esc(v[0]?.ru ?? ''), esc(v[0]?.kk ?? ''),
+                    esc(v[1]?.ru ?? ''), esc(v[1]?.kk ?? ''),
+                    esc(v[2]?.ru ?? ''), esc(v[2]?.kk ?? ''),
+                    esc(v[3]?.ru ?? ''), esc(v[3]?.kk ?? ''),
+                    esc(item.hint.ru), esc(item.hint.kk),
+                ].join(','))
+            }
+            const csv = BOM + rows.join('\r\n')
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `translations-${subjectName}-${new Date().toISOString().slice(0, 10)}.csv`
+            a.click()
+            URL.revokeObjectURL(url)
+            setMsg(`Скачано ${allItems.length} переводов (CSV для Google Sheets)`)
+        } catch {
+            setMsg('Ошибка скачивания переводов')
+        } finally {
+            setLoading(false)
+        }
+    }
     const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -717,6 +760,9 @@ export const TranslationPage: React.FC = () => {
                     </select>
                     <Button className="gap-2" onClick={() => void downloadExport()} disabled={loading}>
                         <Download className="h-4 w-4" /> Скачать на перевод
+                    </Button>
+                    <Button variant="secondary" className="gap-2" onClick={() => void downloadTranslations()} disabled={loading}>
+                        <Download className="h-4 w-4" /> Скачать переводы (CSV)
                     </Button>
                     <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium cursor-pointer hover:bg-gray-50">
                         <Upload className="h-4 w-4" /> Загрузить переводы
