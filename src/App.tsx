@@ -54,6 +54,7 @@ import { FinancePage } from './pages/finance/FinancePage'
 import { TranslationPage } from './pages/translation/TranslationPage'
 import { SecurityDashboard } from './pages/security/SecurityDashboard'
 import { SecurityUserDetail } from './pages/security/SecurityUserDetail'
+import { SecurityPolicy } from './pages/security/SecurityPolicy'
 
 function App()
 {
@@ -203,6 +204,7 @@ function App()
 
           <Route path="/security">
             <Route index element={<SecurityDashboard />} />
+            <Route path="policy" element={<SecurityPolicy />} />
             <Route path="users/:userId" element={<SecurityUserDetail />} />
           </Route>
 
