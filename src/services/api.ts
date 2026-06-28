@@ -1136,8 +1136,8 @@ export const securityService = {
   getUserPointsHistory: (userId: string, params?: { page?: number; limit?: number }): Promise<any> =>
     api.get(`/admin/security/users/${userId}/points-history`, { params }).then(r => r.data),
 
-  markEventReviewed: (eventId: number): Promise<any> =>
-    api.post(`/admin/security/events/${eventId}/mark-reviewed`).then(r => r.data),
+  markEventReviewed: (eventId: number, reviewedBy = 'admin'): Promise<any> =>
+    api.post(`/admin/security/events/${eventId}/mark-reviewed`, { reviewed_by: reviewedBy }).then(r => r.data),
 
   restrictUser: (userId: string, data: { reason: string; until?: string }): Promise<any> =>
     api.post(`/admin/security/users/${userId}/restrict`, data).then(r => r.data),
