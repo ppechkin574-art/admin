@@ -307,9 +307,10 @@ export const SecurityDashboard: React.FC = () => {
     (minRisk > 0 ? 1 : 0) + (onlyUnreviewed ? 1 : 0)
 
   const tabs = [
-    { label: 'События', path: '/security' },
+    { label: 'События',      path: '/security' },
     { label: 'Пользователи', path: '/security/users-list' },
-    { label: 'Политики', path: '/security/policy' },
+    { label: 'Уведомления',  path: '/security/notifications' },
+    { label: 'Политики',     path: '/security/policy' },
   ]
 
   return (

@@ -181,9 +181,10 @@ export const SecurityUsersList: React.FC = () => {
   const activeFiltersCount = (search ? 1 : 0) + (statusFilter ? 1 : 0) + (minRisk > 0 ? 1 : 0)
 
   const tabs = [
-    { label: 'События', path: '/security' },
+    { label: 'События',      path: '/security' },
     { label: 'Пользователи', path: '/security/users-list' },
-    { label: 'Политики', path: '/security/policy' },
+    { label: 'Уведомления',  path: '/security/notifications' },
+    { label: 'Политики',     path: '/security/policy' },
   ]
 
   const toggleAll = () => {

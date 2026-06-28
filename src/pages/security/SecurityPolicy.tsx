@@ -20,21 +20,21 @@ const STORAGE_KEY = 'security_policy_v2'
 
 const DEFAULTS: PolicyData = {
   rules: [
-    { bold: 'Автоматическая блокировка', text: '— только при risk_score ≥ 90 И подтверждении хотя бы одним детектором.' },
-    { bold: 'Никогда не блокировать автоматически', text: 'при единственном событии — нужно минимум 2 разных детектора.' },
-    { bold: 'Все действия администратора логируются', text: 'в fraud_events с event_type="admin_action".' },
-    { bold: 'False positive', text: '— при снятии флага обязательно убедиться что Risk Score сброшен (кнопка «Сбросить Risk Score»).' },
-    { bold: 'Watchlist', text: '— не блокирует пользователя, только увеличивает мониторинг. Минимальный risk_score для добавления: 30.' },
+    { bold: 'Блокировка — только вручную.', text: 'Система НЕ блокирует пользователей автоматически. Любая блокировка выполняется только после явного одобрения администратором в разделе «Уведомления».' },
+    { bold: 'Уведомление создаётся автоматически,', text: 'но решение принимает только человек. При risk_score ≥ 50 событие попадает в «Уведомления» и ждёт проверки.' },
+    { bold: 'Все действия администратора логируются', text: 'в fraud_events с event_type="admin_action". Аудит доступен в профиле пользователя.' },
+    { bold: 'False positive', text: '— при снятии флага обязательно убедиться что Risk Score сброшен (кнопка «Сбросить Risk Score» в профиле).' },
+    { bold: 'Watchlist', text: '— не ограничивает пользователя, только усиливает мониторинг. Минимальный risk_score для добавления: 30.' },
   ],
   actions: [
-    { action: 'Watchlist (наблюдение)',          condition: 'risk_score > 30',           reversible: true },
-    { action: 'Заморозить очки лидерборда',       condition: 'risk_score > 50',           reversible: true },
-    { action: 'Отключить реферальные бонусы',     condition: 'risk_score > 50',           reversible: true },
-    { action: 'Сбросить Risk Score',              condition: 'risk_score > 60',           reversible: true },
-    { action: 'Ограничить (24ч – 7д)',            condition: 'risk_score > 70',           reversible: true },
-    { action: 'Заблокировать (постоянно)',         condition: 'risk_score > 90 + 2 детектора', reversible: false },
-    { action: 'Снять ограничение / разблокировать', condition: 'Только после ревью',     reversible: true },
-    { action: 'Отметить как ложное срабатывание', condition: 'Любой',                    reversible: true },
+    { action: 'Watchlist (наблюдение)',                    condition: 'risk_score > 30',  reversible: true },
+    { action: 'Заморозить очки лидерборда',                condition: 'risk_score > 50',  reversible: true },
+    { action: 'Отключить реферальные бонусы',              condition: 'risk_score > 50',  reversible: true },
+    { action: 'Сбросить Risk Score',                       condition: 'risk_score > 60',  reversible: true },
+    { action: 'Ограничить (24ч – 7д)',                     condition: 'risk_score > 65',  reversible: true },
+    { action: 'Одобрить блокировку (только вручную)',      condition: 'risk_score > 80 + проверка в «Уведомлениях»', reversible: false },
+    { action: 'Снять ограничение / разблокировать',        condition: 'Только после ревью администратором', reversible: true },
+    { action: 'Отметить как ложное срабатывание',          condition: 'Любой',            reversible: true },
   ],
   detectors: [
     { name: 'Повторная отправка попытки',           event_type: 'repeated_attempt',   weight: 75 },
@@ -101,6 +101,7 @@ export const SecurityPolicy: React.FC = () => {
   const tabs = [
     { label: 'События',      path: '/security' },
     { label: 'Пользователи', path: '/security/users-list' },
+    { label: 'Уведомления',  path: '/security/notifications' },
     { label: 'Политики',     path: '/security/policy' },
   ]
 
