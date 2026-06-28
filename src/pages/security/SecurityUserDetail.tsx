@@ -11,7 +11,7 @@ import {
   Eye,
   EyeOff,
   Gift,
-  GiftOff,
+  CircleSlash,
   RefreshCw,
   RotateCcw,
   Shield,
@@ -305,7 +305,7 @@ export const SecurityUserDetail: React.FC = () => {
                 )}
                 {profile.referral_disabled && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                    <GiftOff className="h-3 w-3" /> Реферал откл.
+                    <CircleSlash className="h-3 w-3" /> Реферал откл.
                   </span>
                 )}
               </div>
@@ -389,7 +389,7 @@ export const SecurityUserDetail: React.FC = () => {
             {/* Referral */}
             <div className={`rounded-lg border p-3 flex items-center justify-between gap-2 ${profile.referral_disabled ? 'border-gray-300 bg-gray-50' : 'border-gray-200'}`}>
               <div className="flex items-center gap-2">
-                {profile.referral_disabled ? <GiftOff className="h-4 w-4 text-gray-500" /> : <Gift className="h-4 w-4 text-gray-400" />}
+                {profile.referral_disabled ? <CircleSlash className="h-4 w-4 text-gray-500" /> : <Gift className="h-4 w-4 text-gray-400" />}
                 <div>
                   <div className="text-xs font-medium text-gray-700">Реферальные бонусы</div>
                   <div className="text-xs text-gray-400">{profile.referral_disabled ? 'Отключены' : 'Активны'}</div>

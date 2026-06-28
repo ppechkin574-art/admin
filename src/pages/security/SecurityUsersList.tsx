@@ -8,7 +8,7 @@ import {
   Ban,
   Eye,
   Gift,
-  GiftOff,
+  CircleSlash,
   RefreshCw,
   RotateCcw,
   Shield,
@@ -384,7 +384,7 @@ export const SecurityUsersList: React.FC = () => {
                         <span title="Очки заморожены" className="text-blue-500"><Snowflake className="h-3.5 w-3.5" /></span>
                       )}
                       {user.referral_disabled && (
-                        <span title="Реферал отключён" className="text-gray-400"><GiftOff className="h-3.5 w-3.5" /></span>
+                        <span title="Реферал отключён" className="text-gray-400"><CircleSlash className="h-3.5 w-3.5" /></span>
                       )}
                       {!user.is_watchlisted && !user.points_frozen && !user.referral_disabled && (
                         <span className="text-xs text-gray-300">—</span>
