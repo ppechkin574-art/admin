@@ -28,6 +28,9 @@ export interface UserRiskProfile {
   restricted_until: string | null;
   blocked_at: string | null;
   restriction_reason: string | null;
+  is_watchlisted: boolean;
+  points_frozen: boolean;
+  referral_disabled: boolean;
   created_at: string;
   updated_at: string | null;
 }

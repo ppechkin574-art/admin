@@ -6,10 +6,17 @@ import {
   AlertTriangle,
   ArrowLeft,
   Ban,
+  CheckCircle,
   ExternalLink,
+  Eye,
+  EyeOff,
+  Gift,
+  GiftOff,
   RefreshCw,
+  RotateCcw,
   Shield,
   ShieldOff,
+  Snowflake,
   UserX,
 } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
@@ -23,6 +30,11 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   repeated_attempt: 'Повтор попытки',
   suspicious_login: 'Подозрительный вход',
   brute_force: 'Перебор кодов',
+  bot_speed_answers: 'Скорость бота',
+  pattern_answers: 'Шаблонные ответы',
+  login_success: 'Вход в систему',
+  login_failed: 'Неудачный вход',
+  admin_action: 'Действие администратора',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -161,6 +173,68 @@ export const SecurityUserDetail: React.FC = () => {
     }
   }
 
+  const handleMarkFalsePositive = async (eventId: number) => {
+    if (!window.confirm('Отметить как ложное срабатывание?')) return
+    try {
+      await securityService.markEventFalsePositive(eventId)
+      toast.success('Отмечено как ложная тревога')
+      setEvents(prev => prev.map(e => e.id === eventId ? { ...e, status: 'false_positive' } : e))
+    } catch {
+      toast.error('Не удалось обновить статус события')
+    }
+  }
+
+  const handleToggleWatchlist = async () => {
+    if (!userId || !profile) return
+    const next = !profile.is_watchlisted
+    if (!window.confirm(next ? 'Добавить в watchlist?' : 'Убрать из watchlist?')) return
+    try {
+      await securityService.setWatchlist(userId, next, 'admin')
+      toast.success(next ? 'Добавлен в watchlist' : 'Убран из watchlist')
+      setProfile(p => p ? { ...p, is_watchlisted: next } : p)
+    } catch {
+      toast.error('Не удалось изменить watchlist')
+    }
+  }
+
+  const handleTogglePointsFrozen = async () => {
+    if (!userId || !profile) return
+    const next = !profile.points_frozen
+    if (!window.confirm(next ? 'Заморозить начисление очков?' : 'Разморозить очки?')) return
+    try {
+      await securityService.setPointsFrozen(userId, next, 'admin')
+      toast.success(next ? 'Очки заморожены' : 'Очки разморожены')
+      setProfile(p => p ? { ...p, points_frozen: next } : p)
+    } catch {
+      toast.error('Не удалось изменить заморозку очков')
+    }
+  }
+
+  const handleToggleReferralDisabled = async () => {
+    if (!userId || !profile) return
+    const next = !profile.referral_disabled
+    if (!window.confirm(next ? 'Отключить реферальные вознаграждения?' : 'Включить реферальные вознаграждения?')) return
+    try {
+      await securityService.setReferralDisabled(userId, next, 'admin')
+      toast.success(next ? 'Реферальные вознаграждения отключены' : 'Реферальные вознаграждения включены')
+      setProfile(p => p ? { ...p, referral_disabled: next } : p)
+    } catch {
+      toast.error('Не удалось изменить реферальные вознаграждения')
+    }
+  }
+
+  const handleResetRiskScore = async () => {
+    if (!userId) return
+    if (!window.confirm('Сбросить risk score до 0? Это не снимает блокировку и не удаляет события.')) return
+    try {
+      await securityService.resetRiskScore(userId, 'admin')
+      toast.success('Risk score сброшен')
+      loadData()
+    } catch {
+      toast.error('Не удалось сбросить risk score')
+    }
+  }
+
   const eventsTotalPages = Math.ceil(eventsTotal / pageSize) || 1
   const pointsTotalPages = Math.ceil(pointsTotal / pageSize) || 1
 
@@ -219,41 +293,31 @@ export const SecurityUserDetail: React.FC = () => {
                 }`}>
                   Risk: {profile.current_risk_score}
                 </span>
+                {profile.is_watchlisted && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    <Eye className="h-3 w-3" /> Watchlist
+                  </span>
+                )}
+                {profile.points_frozen && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <Snowflake className="h-3 w-3" /> Очки заморожены
+                  </span>
+                )}
+                {profile.referral_disabled && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                    <GiftOff className="h-3 w-3" /> Реферал откл.
+                  </span>
+                )}
               </div>
             </div>
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRestrict}
-                icon={<UserX className="h-4 w-4" />}
-              >
-                Ограничить
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleBlock}
-                icon={<Ban className="h-4 w-4" />}
-              >
-                Заблокировать
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleUnrestrict}
-                icon={<ShieldOff className="h-4 w-4" />}
-              >
-                Снять ограничение
-              </Button>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(`/users/${userId}`)}
-                icon={<ExternalLink className="h-4 w-4" />}
+                onClick={() => loadData()}
+                icon={<RefreshCw className="h-4 w-4" />}
               >
-                Перейти к профилю
+                Обновить
               </Button>
             </div>
           </div>
@@ -282,6 +346,103 @@ export const SecurityUserDetail: React.FC = () => {
                 <div className="text-sm font-medium text-orange-700">{formatDateTime(profile.restricted_until)}</div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Admin Actions */}
+      {profile && (
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-gray-400" />
+            Административные действия
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Watchlist */}
+            <div className={`rounded-lg border p-3 flex items-center justify-between gap-2 ${profile.is_watchlisted ? 'border-purple-200 bg-purple-50' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2">
+                {profile.is_watchlisted ? <Eye className="h-4 w-4 text-purple-600" /> : <EyeOff className="h-4 w-4 text-gray-400" />}
+                <div>
+                  <div className="text-xs font-medium text-gray-700">Watchlist</div>
+                  <div className="text-xs text-gray-400">{profile.is_watchlisted ? 'В списке наблюдения' : 'Не наблюдается'}</div>
+                </div>
+              </div>
+              <Button variant={profile.is_watchlisted ? 'secondary' : 'outline'} size="sm" onClick={handleToggleWatchlist}>
+                {profile.is_watchlisted ? 'Убрать' : 'Добавить'}
+              </Button>
+            </div>
+
+            {/* Freeze points */}
+            <div className={`rounded-lg border p-3 flex items-center justify-between gap-2 ${profile.points_frozen ? 'border-blue-200 bg-blue-50' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2">
+                <Snowflake className={`h-4 w-4 ${profile.points_frozen ? 'text-blue-600' : 'text-gray-400'}`} />
+                <div>
+                  <div className="text-xs font-medium text-gray-700">Очки лидерборда</div>
+                  <div className="text-xs text-gray-400">{profile.points_frozen ? 'Заморожены' : 'Начисляются'}</div>
+                </div>
+              </div>
+              <Button variant={profile.points_frozen ? 'secondary' : 'outline'} size="sm" onClick={handleTogglePointsFrozen}>
+                {profile.points_frozen ? 'Разморозить' : 'Заморозить'}
+              </Button>
+            </div>
+
+            {/* Referral */}
+            <div className={`rounded-lg border p-3 flex items-center justify-between gap-2 ${profile.referral_disabled ? 'border-gray-300 bg-gray-50' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-2">
+                {profile.referral_disabled ? <GiftOff className="h-4 w-4 text-gray-500" /> : <Gift className="h-4 w-4 text-gray-400" />}
+                <div>
+                  <div className="text-xs font-medium text-gray-700">Реферальные бонусы</div>
+                  <div className="text-xs text-gray-400">{profile.referral_disabled ? 'Отключены' : 'Активны'}</div>
+                </div>
+              </div>
+              <Button variant={profile.referral_disabled ? 'secondary' : 'outline'} size="sm" onClick={handleToggleReferralDisabled}>
+                {profile.referral_disabled ? 'Включить' : 'Отключить'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Danger actions */}
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetRiskScore}
+              icon={<RotateCcw className="h-4 w-4" />}
+            >
+              Сбросить Risk Score
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestrict}
+              icon={<UserX className="h-4 w-4" />}
+            >
+              Ограничить
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleBlock}
+              icon={<Ban className="h-4 w-4" />}
+            >
+              Заблокировать
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleUnrestrict}
+              icon={<ShieldOff className="h-4 w-4" />}
+            >
+              Снять ограничение
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/users/${userId}`)}
+              icon={<ExternalLink className="h-4 w-4" />}
+            >
+              Профиль пользователя
+            </Button>
           </div>
         </div>
       )}
@@ -400,15 +561,26 @@ export const SecurityUserDetail: React.FC = () => {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    {event.status === 'open' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMarkReviewed(event.id)}
-                        icon={<Shield className="h-4 w-4 text-green-600" />}
-                        title="Отметить проверенным"
-                      />
-                    )}
+                    <div className="flex items-center gap-1">
+                      {event.status === 'open' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMarkReviewed(event.id)}
+                            icon={<CheckCircle className="h-4 w-4 text-green-600" />}
+                            title="Отметить проверенным"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMarkFalsePositive(event.id)}
+                            icon={<Shield className="h-4 w-4 text-gray-400" />}
+                            title="Ложная тревога"
+                          />
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

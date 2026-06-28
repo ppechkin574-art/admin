@@ -1150,6 +1150,21 @@ export const securityService = {
 
   getBruteForceStatus: (userId: string): Promise<any> =>
     api.get(`/admin/security/users/${userId}/brute-force`).then(r => r.data),
+
+  setWatchlist: (userId: string, watchlisted: boolean, adminUsername: string): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/watchlist?watchlisted=${watchlisted}`, { admin_username: adminUsername }).then(r => r.data),
+
+  setPointsFrozen: (userId: string, frozen: boolean, adminUsername: string): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/freeze-points?frozen=${frozen}`, { admin_username: adminUsername }).then(r => r.data),
+
+  setReferralDisabled: (userId: string, disabled: boolean, adminUsername: string): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/referral?disabled=${disabled}`, { admin_username: adminUsername }).then(r => r.data),
+
+  resetRiskScore: (userId: string, adminUsername: string): Promise<any> =>
+    api.post(`/admin/security/users/${userId}/reset-risk`, { admin_username: adminUsername }).then(r => r.data),
+
+  markEventFalsePositive: (eventId: number, reviewedBy: string): Promise<any> =>
+    api.post(`/admin/security/events/${eventId}/mark-false-positive`, { reviewed_by: reviewedBy }).then(r => r.data),
 }
 
 export default api;
