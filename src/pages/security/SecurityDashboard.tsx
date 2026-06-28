@@ -71,6 +71,11 @@ const MIN_RISK_OPTIONS = [
   { value: 75, label: 'Риск ≥ 75' },
 ]
 
+const COL_WIDTHS_KEY = 'security_events_col_widths_v1'
+// [checkbox, date, user, ip, type, risk, reason, status, actions]
+const DEFAULT_COL_WIDTHS = [32, 140, 160, 110, 130, 70, 160, 110, 100]
+const COL_HEADERS = ['Дата / время', 'Пользователь', 'IP', 'Тип события', 'Risk', 'Причина', 'Статус', 'Действия']
+
 interface UserInfo {
   name: string
   phone: string | null
@@ -96,6 +101,20 @@ export const SecurityDashboard: React.FC = () => {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
+
+  // Resizable columns (persisted)
+  const [colWidths, setColWidths] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem(COL_WIDTHS_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length === DEFAULT_COL_WIDTHS.length) return parsed
+      }
+    } catch {}
+    return [...DEFAULT_COL_WIDTHS]
+  })
+  const colWidthsRef = useRef(colWidths)
+  const resizingRef = useRef<{ colIdx: number; startX: number; startW: number } | null>(null)
 
   const buildParams = (page = currentPage) => ({
     page,
@@ -139,6 +158,9 @@ export const SecurityDashboard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Sync colWidths ref so resize handlers see latest value without stale closures
+  useEffect(() => { colWidthsRef.current = colWidths }, [colWidths])
+
   // When events change, load user info for visible rows
   useEffect(() => {
     const ids = (events?.items ?? [])
@@ -171,6 +193,25 @@ export const SecurityDashboard: React.FC = () => {
     setCurrentPage(page)
     setSelectedIds(new Set())
     fetchEvents(buildParams(page))
+  }
+
+  const handleResizeStart = (e: React.MouseEvent, colIdx: number) => {
+    e.preventDefault()
+    resizingRef.current = { colIdx, startX: e.clientX, startW: colWidthsRef.current[colIdx] }
+    const onMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) return
+      const delta = ev.clientX - resizingRef.current.startX
+      const newW = Math.max(50, resizingRef.current.startW + delta)
+      setColWidths(prev => { const next = [...prev]; next[resizingRef.current!.colIdx] = newW; return next })
+    }
+    const onUp = () => {
+      localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(colWidthsRef.current))
+      resizingRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
 
   const handleBlockUser = async (userId: string) => {
@@ -392,11 +433,14 @@ export const SecurityDashboard: React.FC = () => {
       )}
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+        <table className="text-sm" style={{ tableLayout: 'fixed', width: colWidths.reduce((a, b) => a + b, 0) + 'px' }}>
+          <colgroup>
+            {colWidths.map((w, i) => <col key={i} style={{ width: w + 'px' }} />)}
+          </colgroup>
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-3 py-3 w-8">
+              <th className="px-3 py-3" style={{ width: colWidths[0] + 'px' }}>
                 <input
                   type="checkbox"
                   checked={allOpenSelected}
@@ -405,14 +449,20 @@ export const SecurityDashboard: React.FC = () => {
                   className="rounded border-gray-300 cursor-pointer"
                 />
               </th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Дата / время</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Пользователь</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">IP</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Тип события</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Risk</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Причина</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Статус</th>
-              <th className="px-3 py-3 text-left font-medium text-gray-500 text-xs">Действия</th>
+              {COL_HEADERS.map((label, i) => (
+                <th
+                  key={i}
+                  className="px-3 py-3 text-left font-medium text-gray-500 text-xs relative select-none"
+                  style={{ width: colWidths[i + 1] + 'px' }}
+                >
+                  <span className="block truncate pr-2">{label}</span>
+                  <div
+                    onMouseDown={e => handleResizeStart(e, i + 1)}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-300 z-10"
+                    title="Тянуть для изменения ширины"
+                  />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
