@@ -1163,7 +1163,7 @@ export const securityService = {
   resetRiskScore: (userId: string, adminUsername: string): Promise<any> =>
     api.post(`/admin/security/users/${userId}/reset-risk`, { admin_username: adminUsername }).then(r => r.data),
 
-  markEventFalsePositive: (eventId: number, reviewedBy: string): Promise<any> =>
+  markEventFalsePositive: (eventId: number, reviewedBy = 'admin'): Promise<any> =>
     api.post(`/admin/security/events/${eventId}/mark-false-positive`, { reviewed_by: reviewedBy }).then(r => r.data),
 }
 
