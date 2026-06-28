@@ -46,6 +46,7 @@ export const SecurityPolicy: React.FC = () => {
 
   const tabs = [
     { label: 'События', path: '/security' },
+    { label: 'Пользователи', path: '/security/users-list' },
     { label: 'Политики', path: '/security/policy' },
   ]
 

@@ -55,6 +55,7 @@ import { TranslationPage } from './pages/translation/TranslationPage'
 import { SecurityDashboard } from './pages/security/SecurityDashboard'
 import { SecurityUserDetail } from './pages/security/SecurityUserDetail'
 import { SecurityPolicy } from './pages/security/SecurityPolicy'
+import { SecurityUsersList } from './pages/security/SecurityUsersList'
 
 function App()
 {
@@ -204,6 +205,7 @@ function App()
 
           <Route path="/security">
             <Route index element={<SecurityDashboard />} />
+            <Route path="users-list" element={<SecurityUsersList />} />
             <Route path="policy" element={<SecurityPolicy />} />
             <Route path="users/:userId" element={<SecurityUserDetail />} />
           </Route>
