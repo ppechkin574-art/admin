@@ -70,6 +70,7 @@ export const SecurityUserDetail: React.FC = () => {
   const [profile, setProfile] = useState<UserRiskProfile | null>(null)
   const [events, setEvents] = useState<FraudEvent[]>([])
   const [pointsHistory, setPointsHistory] = useState<PointsHistoryItem[]>([])
+  const [bruteForce, setBruteForce] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,16 +85,18 @@ export const SecurityUserDetail: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const [profileData, eventsData, pointsData] = await Promise.all([
+      const [profileData, eventsData, pointsData, bfData] = await Promise.all([
         securityService.getUserRiskProfile(userId),
         securityService.getUserActivity(userId, { page: ePage, limit: pageSize }),
         securityService.getUserPointsHistory(userId, { page: pPage, limit: pageSize }),
+        securityService.getBruteForceStatus(userId).catch(() => null),
       ])
       setProfile(profileData)
       setEvents(eventsData?.items ?? eventsData ?? [])
       setEventsTotal(eventsData?.total ?? 0)
       setPointsHistory(pointsData?.items ?? pointsData ?? [])
       setPointsTotal(pointsData?.total ?? 0)
+      setBruteForce(bfData?.keycloak_brute_force ?? null)
     } catch (e: any) {
       setError(e.message || 'Ошибка загрузки данных')
     } finally {
@@ -280,6 +283,48 @@ export const SecurityUserDetail: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Keycloak Brute-Force Status */}
+      {bruteForce !== null && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span>🔐 Keycloak — Brute Force Detection</span>
+            {bruteForce.disabled && (
+              <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                АККАУНТ ЗАБЛОКИРОВАН KEYCLOAK
+              </span>
+            )}
+          </h3>
+          {Object.keys(bruteForce).length === 0 ? (
+            <p className="text-sm text-gray-400">Нет данных о попытках входа (brute-force protection не активирован или попыток не было)</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <div className="text-xs text-gray-400 mb-0.5">Неудачных попыток</div>
+                <div className={`text-sm font-bold ${bruteForce.numFailures > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                  {bruteForce.numFailures ?? 0}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 mb-0.5">Статус</div>
+                <div className={`text-sm font-bold ${bruteForce.disabled ? 'text-red-600' : 'text-green-600'}`}>
+                  {bruteForce.disabled ? 'Заблокирован' : 'Активен'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 mb-0.5">Последний IP</div>
+                <div className="text-sm font-medium text-gray-800">{bruteForce.lastIPFailure || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 mb-0.5">Последняя ошибка</div>
+                <div className="text-sm font-medium text-gray-800">
+                  {bruteForce.lastFailure ? new Date(bruteForce.lastFailure).toLocaleString('ru') : '—'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

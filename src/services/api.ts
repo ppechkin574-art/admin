@@ -1147,6 +1147,9 @@ export const securityService = {
 
   unrestrictUser: (userId: string): Promise<any> =>
     api.post(`/admin/security/users/${userId}/unrestrict`).then(r => r.data),
+
+  getBruteForceStatus: (userId: string): Promise<any> =>
+    api.get(`/admin/security/users/${userId}/brute-force`).then(r => r.data),
 }
 
 export default api;
