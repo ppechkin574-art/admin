@@ -9,13 +9,14 @@ import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 
 const SOURCE_LABELS: Record<string, string> = {
-  rapid_points_farm:    'Накрутка очков (быстрый экзамен)',
-  bot_speed_answers:    'Скорость бота (<2с на ответ)',
-  pattern_answers:      'Шаблонные ответы (≥80% одна позиция)',
-  repeated_attempt:     'Повтор попытки',
-  suspicious_login:     'Подозрительный вход (новый город/IP)',
-  brute_force:          'Брутфорс Keycloak',
-  concurrent_submission:'Конкурентная отправка',
+  rapid_points_farm:     'Накрутка очков (быстрый экзамен)',
+  bot_speed_answers:     'Скорость бота (<2с на ответ)',
+  pattern_answers:       'Шаблонные ответы (≥80% одна позиция)',
+  repeated_attempt:      'Повтор попытки',
+  suspicious_login:      'Подозрительный вход (новый город)',
+  brute_force:           'Брутфорс — перебор паролей',
+  concurrent_submission: 'Конкурентная отправка',
+  critical_risk_alert:   'Критический уровень риска (авто)',
 }
 
 type Urgency = 'critical' | 'high' | 'medium'
@@ -96,7 +97,11 @@ export const SecurityNotifications: React.FC = () => {
     setUserInfoMap(prev => ({ ...prev, ...updates }))
   }
 
-  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 30_000)
+    return () => clearInterval(interval)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const act = async (eventId: number, fn: () => Promise<void>, successMsg: string) => {
     setActioning(p => ({ ...p, [eventId]: true }))

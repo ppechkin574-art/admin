@@ -2,13 +2,30 @@ import { NavLink } from 'react-router-dom'
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
 import { menuItemsGen2, menuItemsGen1, isMarketingPath } from '@/constants/sidebarContent'
 import { ChevronDown } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { securityService } from '@/services/api'
 
 const Sidebar = () =>
 {
   const { isAuthenticated, isMarketingOnly } = useKeycloakAuth()
   const [gen2Open, setGen2Open] = useState(true)
   const [gen1Open, setGen1Open] = useState(true)
+  const [securityBadge, setSecurityBadge] = useState(0)
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const fetchBadge = async () => {
+      try {
+        const overview = await securityService.getOverview()
+        setSecurityBadge(overview?.open_events ?? 0)
+      } catch {
+        // badge is best-effort — don't crash sidebar
+      }
+    }
+    fetchBadge()
+    const interval = setInterval(fetchBadge, 60_000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
 
   // Marketing-only users see ONLY the marketing items; admins (and any
   // user with `admin`) see the full sidebar exactly as before.
@@ -22,6 +39,7 @@ const Sidebar = () =>
   const renderNavLink = (item: { label: string; href: string; icon: any }) =>
   {
     const Icon = item.icon
+    const isSecurity = item.href === '/security'
     return (
       <NavLink
         key={item.href}
@@ -35,7 +53,12 @@ const Sidebar = () =>
         }
       >
         <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
-        {item.label}
+        <span className="flex-1">{item.label}</span>
+        {isSecurity && securityBadge > 0 && (
+          <span className="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+            {securityBadge > 99 ? '99+' : securityBadge}
+          </span>
+        )}
       </NavLink>
     )
   }
