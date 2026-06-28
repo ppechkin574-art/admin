@@ -9,6 +9,14 @@ import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 
 const SOURCE_LABELS: Record<string, string> = {
+  rapid_attempts:        'Слишком много тестов за час (≥10 full ЕНТ)',
+  score_spike:           'Резкий прирост очков за 24ч',
+  multi_account_device:  'Несколько аккаунтов с одного устройства',
+  multi_account_ip:      'Несколько аккаунтов с одного IP (≥5/24ч)',
+  referral_device_farm:  'Реферальный фарм с одного устройства',
+  promo_bypass:          'Повторная попытка активации промокода',
+  missing_device_id:     'Вход без Device-ID (возможен бот/скрипт)',
+  pro_without_payment:   'PRO-подписка без оплаты (подозрительно)',
   rapid_points_farm:     'Накрутка очков (быстрый экзамен)',
   bot_speed_answers:     'Скорость бота (<2с на ответ)',
   pattern_answers:       'Шаблонные ответы (≥80% одна позиция)',
