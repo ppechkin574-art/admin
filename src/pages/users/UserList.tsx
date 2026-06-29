@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import {
     ArrowUpDown, ChevronDown, ChevronUp, Crown,
     Eye, EyeOff, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon, X,
+    Smartphone, Apple,
 } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
@@ -32,6 +33,8 @@ interface User {
     rank: number | null
     created_at: string
     updated_at: string | null
+    platforms: string[]          // e.g. ["ios", "android"] — from FCM token table
+    last_seen: string | null     // max FCM token updated_at
 }
 
 type SortKey = 'name' | 'plan' | 'created_at' | 'attendance_streak_days' | 'points'
@@ -64,6 +67,50 @@ const formatDate = (iso: string | null): string => {
     try {
         return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
     } catch { return '—' }
+}
+
+// Returns human-readable "last seen" label and online status.
+const lastSeenLabel = (iso: string | null): { label: string; online: boolean } => {
+    if (!iso) return { label: 'Нет данных', online: false }
+    const diff = Date.now() - new Date(iso).getTime()
+    const online = diff < 5 * 60 * 1000  // 5 minutes
+    if (online) return { label: 'Онлайн', online: true }
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return { label: `${mins} мин назад`, online: false }
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return { label: `${hrs} ч назад`, online: false }
+    const days = Math.floor(hrs / 24)
+    if (days < 30) return { label: `${days} дн назад`, online: false }
+    return { label: `>30 дней`, online: false }
+}
+
+const PlatformIcons: React.FC<{ platforms: string[] }> = ({ platforms }) => {
+    const has = (p: string) => platforms.map(x => x.toLowerCase()).includes(p)
+    return (
+        <div className="flex items-center gap-1">
+            {has('ios') && <Apple className="h-3.5 w-3.5 text-gray-500" aria-label="iOS" />}
+            {has('android') && <Smartphone className="h-3.5 w-3.5 text-green-600" aria-label="Android" />}
+            {platforms.length === 0 && <span className="text-gray-300 text-xs">—</span>}
+        </div>
+    )
+}
+
+const ActivityCell: React.FC<{ platforms: string[]; lastSeen: string | null }> = ({ platforms, lastSeen }) => {
+    const { label, online } = lastSeenLabel(lastSeen)
+    return (
+        <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+                {online
+                    ? <span className="flex items-center gap-1 text-xs font-medium text-green-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
+                        Онлайн
+                      </span>
+                    : <span className="text-xs text-gray-400">{label}</span>
+                }
+            </div>
+            <PlatformIcons platforms={platforms} />
+        </div>
+    )
 }
 
 const daysRemaining = (user: User): number | null => {
@@ -498,6 +545,7 @@ export const UserList: React.FC = () => {
                             >
                                 Регистрация <SortIcon k="created_at" />
                             </th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Активность</th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500 w-[8%]">Статус</th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Действия</th>
                         </tr>
@@ -505,14 +553,14 @@ export const UserList: React.FC = () => {
                     <tbody className="divide-y divide-gray-100">
                         {loading && paginated.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                                <td colSpan={11} className="px-4 py-12 text-center text-gray-400">
                                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                                     Загрузка...
                                 </td>
                             </tr>
                         ) : paginated.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                                <td colSpan={11} className="px-4 py-12 text-center text-gray-400">
                                     Пользователи не найдены
                                 </td>
                             </tr>
@@ -563,6 +611,9 @@ export const UserList: React.FC = () => {
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">
                                     {formatDate(user.created_at)}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <ActivityCell platforms={user.platforms || []} lastSeen={user.last_seen || null} />
                                 </td>
                                 <td className="px-4 py-3">
                                     <Badge type={user.is_active ? 'success' : 'error'}>

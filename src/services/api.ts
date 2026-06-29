@@ -816,6 +816,13 @@ export const lessonService = {
   },
 };
 
+export interface UserActivityStats {
+  active_hours: { hour: number; count: number }[];  // 24 slots
+  avg_session_minutes: number | null;
+  total_opens_30d: number;
+  last_platform: string | null;
+}
+
 export const userService = {
   getAll: (params?: { role?: string; search?: string }): Promise<any> =>
     api.get("/admin/users", { params }).then((res) => res.data),
@@ -847,6 +854,11 @@ export const userService = {
     api
       .post(`/admin/users/${id}/reset-subscription`)
       .then((res) => res.data),
+
+  // Activity stats: active hours histogram + avg session + last platform.
+  // Populated from user_activity_events (app-open events, 90-day retention).
+  getActivity: (id: string): Promise<UserActivityStats> =>
+    api.get(`/admin/users/${id}/activity`).then((res) => res.data),
 };
 
 // Marketing dashboard data sources. Wraps the existing

@@ -31,6 +31,8 @@ interface User {
   rank: number | null;
   created_at: string;
   updated_at: string | null;
+  platforms: string[];        // FCM device platforms: ["ios"], ["android"], ["ios","android"]
+  last_seen: string | null;   // Last FCM token update = last app open
 }
 
 interface UserState {

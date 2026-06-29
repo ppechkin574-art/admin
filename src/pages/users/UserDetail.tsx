@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useUserStore } from '@/stores/userStore'
-import { userService } from '@/services/api'
+import { userService, type UserActivityStats } from '@/services/api'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Lock, RefreshCw, Unlock, Crown, X } from 'lucide-react'
+import { ArrowLeft, Lock, RefreshCw, Unlock, Crown, X, Apple, Smartphone } from 'lucide-react'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 
@@ -40,6 +40,8 @@ interface User {
     rank: number | null
     created_at: string
     updated_at: string | null
+    platforms: string[]
+    last_seen: string | null
 }
 
 const formatDate = (iso: string | null): string => {
@@ -130,6 +132,7 @@ export const UserDetail: React.FC = () => {
     const [toggleBusy, setToggleBusy] = useState(false)
     const [subBusy, setSubBusy] = useState(false)
     const [grantDays, setGrantDays] = useState<number>(30)
+    const [activity, setActivity] = useState<UserActivityStats | null>(null)
 
     useEffect(() => {
         if (!id) return
@@ -150,6 +153,13 @@ export const UserDetail: React.FC = () => {
             cancelled = true
         }
     }, [id, fetchUserById])
+
+    useEffect(() => {
+        if (!id) return
+        userService.getActivity(id)
+            .then(a => setActivity(a))
+            .catch(() => { /* activity stats are optional */ })
+    }, [id])
 
     const handleToggleActive = async () => {
         if (!user) return
@@ -423,6 +433,73 @@ export const UserDetail: React.FC = () => {
                 <Field label="Место в рейтинге">
                     {user.rank ? `#${user.rank}` : '—'}
                 </Field>
+            </Section>
+
+            {/* Devices & Activity */}
+            <Section title="Устройства и активность">
+                <Field label="Платформы">
+                    <div className="flex items-center gap-2">
+                        {(user.platforms || []).length === 0
+                            ? <span className="text-gray-400">Нет данных</span>
+                            : <>
+                                {user.platforms.map(p => p.toLowerCase()).includes('ios') && (
+                                    <span className="inline-flex items-center gap-1 text-xs bg-gray-100 rounded-full px-2.5 py-1">
+                                        <Apple className="h-3.5 w-3.5" /> iOS
+                                    </span>
+                                )}
+                                {user.platforms.map(p => p.toLowerCase()).includes('android') && (
+                                    <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 rounded-full px-2.5 py-1">
+                                        <Smartphone className="h-3.5 w-3.5" /> Android
+                                    </span>
+                                )}
+                            </>
+                        }
+                    </div>
+                </Field>
+                <Field label="Последнее открытие приложения">
+                    {user.last_seen
+                        ? new Date(user.last_seen).toLocaleString('ru-RU')
+                        : <span className="text-gray-400">—</span>
+                    }
+                    <span className="block text-xs text-gray-400 mt-0.5">
+                        Фиксируется при регистрации FCM-токена (каждый запуск приложения)
+                    </span>
+                </Field>
+                {activity && (
+                    <>
+                        <Field label="Открытий за 30 дней">{activity.total_opens_30d || '0'}</Field>
+                        <Field label="Средняя сессия">
+                            {activity.avg_session_minutes != null
+                                ? `~${activity.avg_session_minutes} мин`
+                                : <span className="text-gray-400">Недостаточно данных</span>
+                            }
+                            <span className="block text-xs text-gray-400 mt-0.5">
+                                Два открытия с паузой &lt;30 мин = одна сессия
+                            </span>
+                        </Field>
+                        <Field label="Активные часы (за 30 дней)">
+                            <div className="flex items-end gap-0.5 h-10 mt-1">
+                                {activity.active_hours.map(slot => {
+                                    const maxCount = Math.max(...activity.active_hours.map(s => s.count), 1)
+                                    const pct = Math.round((slot.count / maxCount) * 100)
+                                    return (
+                                        <div
+                                            key={slot.hour}
+                                            className="flex-1 bg-primary-200 rounded-t hover:bg-primary-400 transition-colors cursor-default"
+                                            style={{ height: `${Math.max(pct, slot.count > 0 ? 8 : 2)}%` }}
+                                            title={`${slot.hour}:00 — ${slot.count} открытий`}
+                                        />
+                                    )
+                                })}
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                <span>0:00</span>
+                                <span>12:00</span>
+                                <span>23:00</span>
+                            </div>
+                        </Field>
+                    </>
+                )}
             </Section>
 
             {/* System */}
