@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
     Bell, Send, Users, Crown, Smartphone, History, AlertTriangle,
     Clock, Flame, Settings, CheckCircle, XCircle, Loader2,
-    ChevronDown, ChevronUp, Save, Play, WifiOff,
+    ChevronDown, ChevronUp, Save, Play, WifiOff, FlaskConical,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Button from '@/components/common/Button'
@@ -15,6 +15,8 @@ import {
     type PushSendResult,
     type StreakPushTemplate,
     type DailyNotificationTemplate,
+    type TestPushResult,
+    type TestPushPhoneResult,
 } from '@/services/api'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -468,6 +470,9 @@ export const PushNotifications: React.FC = () => {
 
     const [firebaseEnabled, setFirebaseEnabled] = useState<boolean | null>(null)
 
+    const [testSending, setTestSending] = useState(false)
+    const [testResult, setTestResult] = useState<TestPushResult | null>(null)
+
     useEffect(() => {
         streakPushTemplateService.get()
             .then(t => { setStreakTemplate(t); setStreakError(false) })
@@ -515,6 +520,22 @@ export const PushNotifications: React.FC = () => {
             setConfirming(false)
         } finally {
             setSending(false)
+        }
+    }
+
+    const handleTestSend = async () => {
+        if (!canSubmit) { toast.error('Сначала заполните заголовок и текст'); return }
+        setTestSending(true)
+        setTestResult(null)
+        try {
+            const result = await pushService.sendTest(titleTrimmed, bodyTrimmed)
+            setTestResult(result)
+            if (result.total_sent > 0) toast.success(`Тест-пуш доставлен на ${result.total_sent} устройств`)
+            else toast.error('Тест-пуш не доставлен — проверьте что приложение установлено на тестовых телефонах')
+        } catch (err: any) {
+            toast.error(`Ошибка: ${err?.response?.data?.detail || err?.message || 'Неизвестная ошибка'}`)
+        } finally {
+            setTestSending(false)
         }
     }
 
@@ -588,6 +609,89 @@ export const PushNotifications: React.FC = () => {
                         />
                     )}
                 </ScheduledCard>
+            </div>
+
+            {/* ── Test push section ── */}
+            <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-0.5">
+                    Тестовая отправка
+                </h3>
+                <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                        <div className="rounded-xl bg-amber-50 text-amber-600 p-2 flex-shrink-0">
+                            <FlaskConical className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">Проверить перед рассылкой</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Отправляет пуш только на тестовые телефоны (ваш + ревьюеры). Используйте тот же заголовок и текст что ниже — проверьте как выглядит уведомление перед broadcast.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-wrap gap-2">
+                            {['+77787943760', '+77001234566'].map(phone => (
+                                <span key={phone} className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
+                                    <Smartphone className="h-3 w-3 text-gray-400" />
+                                    {phone}
+                                </span>
+                            ))}
+                        </div>
+                        <Button
+                            variant="secondary"
+                            onClick={handleTestSend}
+                            disabled={testSending || !canSubmit}
+                            loading={testSending}
+                            icon={<Send className="h-4 w-4" />}
+                        >
+                            Отправить тест
+                        </Button>
+                    </div>
+
+                    {testResult && (
+                        <div className="rounded-xl border border-gray-100 overflow-hidden">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-500 text-left">
+                                        <th className="px-3 py-2 font-medium">Телефон</th>
+                                        <th className="px-3 py-2 font-medium text-center">Польз.</th>
+                                        <th className="px-3 py-2 font-medium text-center">Устройств</th>
+                                        <th className="px-3 py-2 font-medium text-center">Доставлено</th>
+                                        <th className="px-3 py-2 font-medium text-center">Ошибок</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {testResult.phones.map((r: TestPushPhoneResult) => (
+                                        <tr key={r.phone} className="bg-white">
+                                            <td className="px-3 py-2 font-mono text-gray-700">{r.phone}</td>
+                                            <td className="px-3 py-2 text-center">
+                                                {r.user_found
+                                                    ? <CheckCircle className="h-3.5 w-3.5 text-green-500 inline" />
+                                                    : <XCircle className="h-3.5 w-3.5 text-red-400 inline" />
+                                                }
+                                            </td>
+                                            <td className="px-3 py-2 text-center text-gray-600">{r.tokens_found}</td>
+                                            <td className="px-3 py-2 text-center">
+                                                <span className={r.sent > 0 ? 'text-green-700 font-semibold' : 'text-gray-400'}>{r.sent}</span>
+                                            </td>
+                                            <td className="px-3 py-2 text-center">
+                                                <span className={r.failed > 0 ? 'text-red-600 font-semibold' : 'text-gray-400'}>{r.failed}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="bg-gray-50 font-semibold text-gray-700">
+                                        <td className="px-3 py-2" colSpan={3}>Итого</td>
+                                        <td className="px-3 py-2 text-center text-green-700">{testResult.total_sent}</td>
+                                        <td className="px-3 py-2 text-center text-red-600">{testResult.total_failed}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* ── Broadcast form ── */}

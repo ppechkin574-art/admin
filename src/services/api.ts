@@ -1100,6 +1100,20 @@ export interface PushSendResult {
   removed_tokens: number;
 }
 
+export interface TestPushPhoneResult {
+  phone: string;
+  user_found: boolean;
+  tokens_found: number;
+  sent: number;
+  failed: number;
+}
+
+export interface TestPushResult {
+  phones: TestPushPhoneResult[];
+  total_sent: number;
+  total_failed: number;
+}
+
 export const pushService = {
   send: (
     title: string,
@@ -1108,6 +1122,11 @@ export const pushService = {
   ): Promise<PushSendResult> =>
     api
       .post("/admin/notifications/send", { title, body, target })
+      .then((res) => res.data),
+
+  sendTest: (title: string, body: string): Promise<TestPushResult> =>
+    api
+      .post("/admin/notifications/send-test", { title, body })
       .then((res) => res.data),
 };
 
