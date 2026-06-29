@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  Bot,
   CreditCard,
   FileText,
   Flame,
@@ -65,6 +66,11 @@ export const menuItemsGen2 = [
     label: "Настройки сервиса",
     href: "/admin/app-settings",
     icon: Settings,
+  },
+  {
+    label: "Маскот",
+    href: "/mascot",
+    icon: Bot,
   },
   {
     label: "Страницы приложения",

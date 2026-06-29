@@ -34,6 +34,7 @@ import { StreakRewardsList } from './pages/streakRewards'
 import { StreakPushTemplatePage } from './pages/streakPushTemplate'
 import { AppScreensPage } from './pages/appScreens/AppScreensPage'
 import { AppUpdateConfigPage } from './pages/appUpdate'
+import { MascotPage } from './pages/mascot/MascotPage'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -219,6 +220,7 @@ function App()
           <Route path="/translation" element={<TranslationPage />} />
           <Route path="/app-screens" element={<AppScreensPage />} />
           <Route path="/app-update" element={<AppUpdateConfigPage />} />
+          <Route path="/mascot" element={<MascotPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>
