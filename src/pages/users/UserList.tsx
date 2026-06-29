@@ -185,23 +185,31 @@ export const UserList: React.FC = () => {
     }, [])
 
     // ── Resizable columns ─────────────────────────────────────────────────
-    const COL_WIDTHS_KEY = 'userlist_col_widths_v1'
-    const DEFAULT_WIDTHS: Record<string, number> = {
+    const COL_KEYS = ['name','phone','role','plan','streak','points','registered','activity','status','actions'] as const
+    type ColKey = typeof COL_KEYS[number]
+    const DEFAULT_WIDTHS: Record<ColKey, number> = {
         name: 180, phone: 140, role: 100, plan: 150,
         streak: 90, points: 80, registered: 110,
         activity: 120, status: 110, actions: 110,
     }
-    const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    const COL_WIDTHS_KEY = 'userlist_col_widths_v1'
+
+    const [colWidths, setColWidths] = useState<Record<ColKey, number>>(() => {
         try {
             const raw = localStorage.getItem(COL_WIDTHS_KEY)
             if (raw) return { ...DEFAULT_WIDTHS, ...JSON.parse(raw) }
         } catch {}
         return { ...DEFAULT_WIDTHS }
     })
+
+    // Sum of all column widths + 40px checkbox — used as explicit table width
+    // so table-fixed treats each col's style width as absolute pixels, not ratios.
+    const totalTableWidth = 40 + COL_KEYS.reduce((s, k) => s + colWidths[k], 0)
+
     const colWidthsRef = useRef(colWidths)
     useEffect(() => { colWidthsRef.current = colWidths }, [colWidths])
 
-    const startResize = useCallback((col: string, e: React.MouseEvent) => {
+    const startResize = useCallback((col: ColKey, e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
         const startX = e.clientX
@@ -570,7 +578,12 @@ export const UserList: React.FC = () => {
 
             {/* ── Table ──────────────────────────────────────────────────── */}
             <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
-                <table className="text-sm table-fixed" style={{ minWidth: '900px' }}>
+                {/* tableLayout:fixed + explicit total width → each <col> width is absolute pixels, not ratio */}
+                <table className="text-sm" style={{ tableLayout: 'fixed', width: totalTableWidth }}>
+                    <colgroup>
+                        <col style={{ width: 40 }} />
+                        {COL_KEYS.map(k => <col key={k} style={{ width: colWidths[k] }} />)}
+                    </colgroup>
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th className="px-3 py-3" style={{ width: 40 }}>
@@ -583,62 +596,57 @@ export const UserList: React.FC = () => {
                                 />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
-                                style={{ width: colWidths.name }}
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative overflow-hidden"
                                 onClick={() => handleSort('name')}
                             >
                                 Имя <SortIcon k="name" />
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('name', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.phone }}>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative overflow-hidden">
                                 Телефон
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('phone', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.role }}>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative overflow-hidden">
                                 Роль
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('role', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
-                                style={{ width: colWidths.plan }}
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative overflow-hidden"
                                 onClick={() => handleSort('plan')}
                             >
                                 Подписка <SortIcon k="plan" />
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('plan', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
-                                style={{ width: colWidths.streak }}
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative overflow-hidden"
                                 onClick={() => handleSort('attendance_streak_days')}
                             >
                                 Стрик <SortIcon k="attendance_streak_days" />
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('streak', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
-                                style={{ width: colWidths.points }}
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative overflow-hidden"
                                 onClick={() => handleSort('points')}
                             >
                                 Очки <SortIcon k="points" />
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('points', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
-                                style={{ width: colWidths.registered }}
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative overflow-hidden"
                                 onClick={() => handleSort('created_at')}
                             >
                                 Регистрация <SortIcon k="created_at" />
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('registered', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.activity }}>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative overflow-hidden">
                                 Активность
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('activity', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.status }}>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative overflow-hidden">
                                 Статус
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('status', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500" style={{ width: colWidths.actions }}>Действия</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500">Действия</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
