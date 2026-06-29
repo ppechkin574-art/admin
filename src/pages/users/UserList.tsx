@@ -184,9 +184,48 @@ export const UserList: React.FC = () => {
         return () => document.removeEventListener('mousedown', handler)
     }, [])
 
+    // ── Resizable columns ─────────────────────────────────────────────────
+    const COL_WIDTHS_KEY = 'userlist_col_widths_v1'
+    const DEFAULT_WIDTHS: Record<string, number> = {
+        name: 180, phone: 140, role: 100, plan: 150,
+        streak: 90, points: 80, registered: 110,
+        activity: 120, status: 110, actions: 110,
+    }
+    const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+        try {
+            const raw = localStorage.getItem(COL_WIDTHS_KEY)
+            if (raw) return { ...DEFAULT_WIDTHS, ...JSON.parse(raw) }
+        } catch {}
+        return { ...DEFAULT_WIDTHS }
+    })
+    const colWidthsRef = useRef(colWidths)
+    useEffect(() => { colWidthsRef.current = colWidths }, [colWidths])
+
+    const startResize = useCallback((col: string, e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const startX = e.clientX
+        const startWidth = colWidthsRef.current[col]
+        const onMove = (ev: MouseEvent) => {
+            const w = Math.max(60, startWidth + ev.clientX - startX)
+            setColWidths(prev => ({ ...prev, [col]: w }))
+        }
+        const onUp = (ev: MouseEvent) => {
+            const w = Math.max(60, startWidth + ev.clientX - startX)
+            const next = { ...colWidthsRef.current, [col]: w }
+            setColWidths(next)
+            try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next)) } catch {}
+            document.removeEventListener('mousemove', onMove)
+            document.removeEventListener('mouseup', onUp)
+        }
+        document.addEventListener('mousemove', onMove)
+        document.addEventListener('mouseup', onUp)
+    }, [])
+
     // ── stats ──────────────────────────────────────────────────────────────
     const stats = useMemo(() => {
         const today = new Date().toDateString()
+        const FIVE_MIN = 5 * 60 * 1000
         return {
             total: users.length,
             pro: users.filter(u => u.plan === 'PRO').length,
@@ -196,6 +235,9 @@ export const UserList: React.FC = () => {
                 return d !== null && d >= 0 && d <= 7
             }).length,
             newToday: users.filter(u => u.created_at && new Date(u.created_at).toDateString() === today).length,
+            ios: users.filter(u => u.platforms?.map(p => p.toLowerCase()).includes('ios')).length,
+            android: users.filter(u => u.platforms?.map(p => p.toLowerCase()).includes('android')).length,
+            online: users.filter(u => u.last_seen && Date.now() - new Date(u.last_seen).getTime() < FIVE_MIN).length,
         }
     }, [users])
 
@@ -373,19 +415,46 @@ export const UserList: React.FC = () => {
             </div>
 
             {/* ── Stats bar ──────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-                {[
-                    { label: 'Всего', value: stats.total, color: 'text-gray-700' },
-                    { label: 'PRO', value: stats.pro, color: 'text-blue-600' },
-                    { label: 'FREE', value: stats.free, color: 'text-gray-500' },
-                    { label: 'Истекает ≤7д', value: stats.expiringSoon, color: 'text-amber-600' },
-                    { label: 'Новые сегодня', value: stats.newToday, color: 'text-green-600' },
-                ].map(s => (
-                    <div key={s.label} className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-center">
-                        <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-gray-700">{stats.total}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Всего</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-blue-600">{stats.pro}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">PRO</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-gray-400">{stats.free}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">FREE</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-amber-600">{stats.expiringSoon}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Истекает ≤7д</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-green-600">{stats.newToday}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Новые сегодня</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-gray-600 flex items-center justify-center gap-1">
+                        <Apple className="h-5 w-5" />{stats.ios}
                     </div>
-                ))}
+                    <div className="text-xs text-gray-500 mt-0.5">iOS</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-green-700 flex items-center justify-center gap-1">
+                        <Smartphone className="h-5 w-5" />{stats.android}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">Android</div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg px-3 py-3 text-center">
+                    <div className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                        {stats.online}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">Онлайн</div>
+                </div>
             </div>
 
             {/* ── Filters ────────────────────────────────────────────────── */}
@@ -500,11 +569,11 @@ export const UserList: React.FC = () => {
             )}
 
             {/* ── Table ──────────────────────────────────────────────────── */}
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+            <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+                <table className="text-sm table-fixed" style={{ minWidth: '900px' }}>
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th className="w-10 px-3 py-3">
+                            <th className="px-3 py-3" style={{ width: 40 }}>
                                 <input
                                     type="checkbox"
                                     checked={allPageSelected}
@@ -514,40 +583,62 @@ export const UserList: React.FC = () => {
                                 />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[18%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
+                                style={{ width: colWidths.name }}
                                 onClick={() => handleSort('name')}
                             >
                                 Имя <SortIcon k="name" />
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('name', e)} />
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[14%]">Телефон</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Роль</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.phone }}>
+                                Телефон
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('phone', e)} />
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.role }}>
+                                Роль
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('role', e)} />
+                            </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[14%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
+                                style={{ width: colWidths.plan }}
                                 onClick={() => handleSort('plan')}
                             >
                                 Подписка <SortIcon k="plan" />
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('plan', e)} />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[9%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
+                                style={{ width: colWidths.streak }}
                                 onClick={() => handleSort('attendance_streak_days')}
                             >
                                 Стрик <SortIcon k="attendance_streak_days" />
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('streak', e)} />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[8%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
+                                style={{ width: colWidths.points }}
                                 onClick={() => handleSort('points')}
                             >
                                 Очки <SortIcon k="points" />
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('points', e)} />
                             </th>
                             <th
-                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 w-[11%]"
+                                className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
+                                style={{ width: colWidths.registered }}
                                 onClick={() => handleSort('created_at')}
                             >
                                 Регистрация <SortIcon k="created_at" />
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('registered', e)} />
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Активность</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[8%]">Статус</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500 w-[10%]">Действия</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.activity }}>
+                                Активность
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('activity', e)} />
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.status }}>
+                                Статус
+                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('status', e)} />
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500" style={{ width: colWidths.actions }}>Действия</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -603,11 +694,15 @@ export const UserList: React.FC = () => {
                                         )}
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 text-gray-600">
-                                    {user.attendance_streak_days > 0 ? `${user.attendance_streak_days} дн.` : '—'}
+                                <td className="px-4 py-3">
+                                    {user.attendance_streak_days > 0
+                                        ? <span className="text-gray-700">{user.attendance_streak_days} дн.</span>
+                                        : <span className="text-gray-300 text-xs">0</span>}
                                 </td>
-                                <td className="px-4 py-3 text-gray-600 tabular-nums">
-                                    {user.points > 0 ? user.points : '—'}
+                                <td className="px-4 py-3 tabular-nums">
+                                    {user.points > 0
+                                        ? <span className="text-gray-700">{user.points}</span>
+                                        : <span className="text-gray-300 text-xs">0</span>}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 tabular-nums text-xs">
                                     {formatDate(user.created_at)}
