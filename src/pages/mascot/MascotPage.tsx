@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { Bot, Upload, Trash2, Palette, Eye, RotateCcw, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { adminService } from '@/services/api'
+import { useSubjectStore } from '@/stores/subjectStore'
 import { Subject } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -407,8 +407,7 @@ export const MascotPage: React.FC = () => {
   const [dragOverPos, setDragOverPos] = useState<PositionKey | null>(null)
 
   // ── Subject tab state ──
-  const [subjects, setSubjects]         = useState<Subject[]>([])
-  const [subjectsLoading, setSubjectsLoading] = useState(false)
+  const { subjects, loading: subjectsLoading, fetchSubjects } = useSubjectStore()
   const [subjectImages, setSubjectImages] = useState<Record<string, string | null>>(
     () => loadLS(LS.subjects, {})
   )
@@ -416,13 +415,8 @@ export const MascotPage: React.FC = () => {
 
   // Load subjects when tab switches to 'subject'
   useEffect(() => {
-    if (tab !== 'subject' || subjects.length > 0) return
-    setSubjectsLoading(true)
-    adminService.getSubjects()
-      .then(data => setSubjects(data))
-      .catch(() => toast.error('Не удалось загрузить предметы'))
-      .finally(() => setSubjectsLoading(false))
-  }, [tab, subjects.length])
+    if (tab === 'subject') fetchSubjects()
+  }, [tab, fetchSubjects])
 
   // ── Position handlers ──
   const handlePosFile = useCallback((key: PositionKey, file: File) => {
