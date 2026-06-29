@@ -588,15 +588,15 @@ export const UserList: React.FC = () => {
                                 onClick={() => handleSort('name')}
                             >
                                 Имя <SortIcon k="name" />
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('name', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('name', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.phone }}>
                                 Телефон
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('phone', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('phone', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.role }}>
                                 Роль
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('role', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('role', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
                                 className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
@@ -604,7 +604,7 @@ export const UserList: React.FC = () => {
                                 onClick={() => handleSort('plan')}
                             >
                                 Подписка <SortIcon k="plan" />
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('plan', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('plan', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
                                 className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
@@ -612,7 +612,7 @@ export const UserList: React.FC = () => {
                                 onClick={() => handleSort('attendance_streak_days')}
                             >
                                 Стрик <SortIcon k="attendance_streak_days" />
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('streak', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('streak', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
                                 className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
@@ -620,7 +620,7 @@ export const UserList: React.FC = () => {
                                 onClick={() => handleSort('points')}
                             >
                                 Очки <SortIcon k="points" />
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('points', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('points', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th
                                 className="px-4 py-3 text-left font-medium text-gray-500 cursor-pointer select-none hover:text-gray-800 relative"
@@ -628,15 +628,15 @@ export const UserList: React.FC = () => {
                                 onClick={() => handleSort('created_at')}
                             >
                                 Регистрация <SortIcon k="created_at" />
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('registered', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('registered', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.activity }}>
                                 Активность
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('activity', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('activity', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500 relative" style={{ width: colWidths.status }}>
                                 Статус
-                                <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-blue-300 opacity-0 hover:opacity-100" onMouseDown={e => startResize('status', e)} />
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('status', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
                             <th className="px-4 py-3 text-left font-medium text-gray-500" style={{ width: colWidths.actions }}>Действия</th>
                         </tr>
