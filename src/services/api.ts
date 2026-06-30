@@ -1140,6 +1140,17 @@ export const pushService = {
     api
       .post("/admin/notifications/send-test", { title, body })
       .then((res) => res.data),
+
+  sendToPhone: (phone: string, title: string, body: string): Promise<{
+    phone: string;
+    user_found: boolean;
+    tokens_found: number;
+    sent: number;
+    failed: number;
+  }> =>
+    api
+      .post("/admin/notifications/send-to-phone", { phone, title, body })
+      .then((res) => res.data),
 };
 
 export const securityService = {

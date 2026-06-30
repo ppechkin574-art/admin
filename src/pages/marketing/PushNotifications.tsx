@@ -473,6 +473,38 @@ export const PushNotifications: React.FC = () => {
     const [testSending, setTestSending] = useState(false)
     const [testResult, setTestResult] = useState<TestPushResult | null>(null)
 
+    // ── Personal push by phone ────────────────────────────────────────────────
+    const [personalPhone, setPersonalPhone] = useState('')
+    const [personalTitle, setPersonalTitle] = useState('')
+    const [personalBody, setPersonalBody] = useState('')
+    const [personalSending, setPersonalSending] = useState(false)
+    const [personalResult, setPersonalResult] = useState<{
+        phone: string; user_found: boolean; tokens_found: number; sent: number; failed: number
+    } | null>(null)
+
+    const handlePersonalSend = async () => {
+        const phone = personalPhone.trim()
+        const ptitle = personalTitle.trim()
+        const pbody = personalBody.trim()
+        if (!phone) { toast.error('Введите номер телефона'); return }
+        if (!ptitle) { toast.error('Введите заголовок'); return }
+        if (!pbody) { toast.error('Введите текст'); return }
+        setPersonalSending(true)
+        setPersonalResult(null)
+        try {
+            const res = await pushService.sendToPhone(phone, ptitle, pbody)
+            setPersonalResult(res)
+            if (!res.user_found) toast.error('Пользователь не найден')
+            else if (res.tokens_found === 0) toast.error('У пользователя нет устройств с push-токеном')
+            else if (res.sent > 0) toast.success(`Пуш отправлен на ${res.sent} устройств`)
+            else toast.error('Пуш не доставлен')
+        } catch {
+            toast.error('Ошибка при отправке')
+        } finally {
+            setPersonalSending(false)
+        }
+    }
+
     useEffect(() => {
         streakPushTemplateService.get()
             .then(t => { setStreakTemplate(t); setStreakError(false) })
@@ -812,6 +844,69 @@ export const PushNotifications: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* ── Personal push by phone ── */}
+            <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-0.5">
+                    Личная отправка по номеру
+                </h3>
+                <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Номер телефона</label>
+                        <input
+                            type="tel" value={personalPhone}
+                            onChange={e => setPersonalPhone(e.target.value)}
+                            placeholder="+77001234567"
+                            className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Заголовок</label>
+                            <input
+                                type="text" value={personalTitle}
+                                onChange={e => setPersonalTitle(e.target.value)} maxLength={100}
+                                placeholder="Заголовок уведомления"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Текст</label>
+                            <input
+                                type="text" value={personalBody}
+                                onChange={e => setPersonalBody(e.target.value)} maxLength={500}
+                                placeholder="Текст уведомления"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="primary"
+                            onClick={handlePersonalSend}
+                            disabled={personalSending}
+                            loading={personalSending}
+                            icon={<Send className="h-4 w-4" />}
+                        >
+                            Отправить
+                        </Button>
+                        {personalResult && (
+                            <div className={`text-sm rounded-lg px-3 py-2 border ${
+                                !personalResult.user_found ? 'bg-red-50 border-red-200 text-red-700'
+                                : personalResult.sent > 0 ? 'bg-green-50 border-green-200 text-green-700'
+                                : 'bg-amber-50 border-amber-200 text-amber-700'
+                            }`}>
+                                {!personalResult.user_found
+                                    ? `Пользователь ${personalResult.phone} не найден`
+                                    : personalResult.tokens_found === 0
+                                        ? 'Нет устройств с push-токеном'
+                                        : `Доставлено: ${personalResult.sent} / ${personalResult.tokens_found} устройств`
+                                }
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
 
             {/* ── History ── */}
             <div className="bg-white rounded-2xl shadow-sm p-6">

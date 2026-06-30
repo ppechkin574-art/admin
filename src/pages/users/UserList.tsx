@@ -5,12 +5,12 @@ import toast from 'react-hot-toast'
 import {
     ArrowUpDown, ChevronDown, ChevronUp, Crown,
     Eye, EyeOff, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon, X,
-    Smartphone, Apple,
+    Smartphone, Apple, Save, Settings,
 } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
-import { leaderboardHiddenService } from '@/services/api'
+import { leaderboardHiddenService, appSettingsService } from '@/services/api'
 
 interface User {
     id: string
@@ -157,6 +157,34 @@ export const UserList: React.FC = () => {
     const [bulkLoading, setBulkLoading] = useState(false)
     const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
     const subMenuRef = useRef<HTMLDivElement>(null)
+
+    // ── Auto-subscription settings ────────────────────────────────────────────
+    const [autoDays, setAutoDays] = useState<number>(0)
+    const [autoDaysInput, setAutoDaysInput] = useState<string>('0')
+    const [autoSettingLoading, setAutoSettingLoading] = useState(false)
+
+    useEffect(() => {
+        appSettingsService.getByKey('new_user_pro_days').then(s => {
+            const v = parseInt(s?.value ?? '0', 10)
+            setAutoDays(v)
+            setAutoDaysInput(String(v))
+        }).catch(() => {})
+    }, [])
+
+    const handleSaveAutoSetting = async () => {
+        const n = parseInt(autoDaysInput, 10)
+        if (isNaN(n) || n < 0 || n > 3650) { toast.error('Введите число от 0 до 3650'); return }
+        setAutoSettingLoading(true)
+        try {
+            await appSettingsService.updateValue('new_user_pro_days', String(n))
+            setAutoDays(n)
+            toast.success(n === 0 ? 'Авто-подписка отключена' : `Авто-подписка: ${n} дней PRO`)
+        } catch {
+            toast.error('Ошибка сохранения')
+        } finally {
+            setAutoSettingLoading(false)
+        }
+    }
 
     useEffect(() => { fetchUsers({}) }, [fetchUsers])
 
@@ -420,6 +448,48 @@ export const UserList: React.FC = () => {
                 >
                     {loading ? 'Загрузка...' : 'Обновить'}
                 </Button>
+            </div>
+
+            {/* ── Auto-subscription settings ──────────────────────────────── */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 shrink-0">
+                    <Settings className="h-4 w-4 text-gray-400" />
+                    Авто-подписка при регистрации
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => { const next = autoDays > 0 ? 0 : 7; setAutoDaysInput(String(next)); setAutoDays(next) }}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${autoDays > 0 ? 'bg-blue-500' : 'bg-gray-300'}`}
+                    >
+                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${autoDays > 0 ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <span className="text-sm text-gray-500">{autoDays > 0 ? 'Включено' : 'Выключено'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Дней PRO:</label>
+                    <input
+                        type="number" min={0} max={3650} step={1}
+                        value={autoDaysInput}
+                        onChange={e => { setAutoDaysInput(e.target.value); const n = parseInt(e.target.value, 10); if (!isNaN(n)) setAutoDays(n) }}
+                        className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <span className="text-xs text-gray-400">(0 = выключено)</span>
+                </div>
+                <Button
+                    variant="secondary" size="sm"
+                    icon={<Save className="h-3.5 w-3.5" />}
+                    onClick={handleSaveAutoSetting}
+                    disabled={autoSettingLoading}
+                    loading={autoSettingLoading}
+                >
+                    Сохранить
+                </Button>
+                {autoDays > 0 && (
+                    <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2.5 py-0.5">
+                        Новые пользователи получат {autoDays} дней PRO
+                    </span>
+                )}
             </div>
 
             {/* ── Stats bar ──────────────────────────────────────────────── */}
