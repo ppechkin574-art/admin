@@ -11,7 +11,6 @@ import {
   LinkIcon,
   Trophy,
   Puzzle,
-  Settings,
   Users,
   GraduationCap,
   Layers,
@@ -61,11 +60,6 @@ export const menuItemsGen2 = [
     label: "Push: напоминание о стрике",
     href: "/streak-push",
     icon: Bell,
-  },
-  {
-    label: "Настройки сервиса",
-    href: "/admin/app-settings",
-    icon: Settings,
   },
   {
     label: "Маскот",
