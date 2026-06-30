@@ -16,6 +16,11 @@ type AuthContextValue = {
      * These users are restricted to the marketing sections only.
      */
     isMarketingOnly: boolean
+    /**
+     * True when the user has the `manager` role but NOT `admin`.
+     * These users have access to all sections except /admin/app-settings.
+     */
+    isManagerOnly: boolean
     login: () => Promise<void>
     logout: () => void
 }
@@ -136,6 +141,7 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         []
     const isAdmin = roles.includes('admin')
     const isMarketingOnly = roles.includes('marketing') && !isAdmin
+    const isManagerOnly = roles.includes('manager') && !isAdmin
 
     const value: AuthContextValue = {
         isInitialized,
@@ -145,6 +151,7 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         roles,
         isAdmin,
         isMarketingOnly,
+        isManagerOnly,
         login,
         logout
     }

@@ -11,7 +11,7 @@ interface ProtectedRouteProps
 
 const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
 {
-    const { isInitialized, isAuthenticated, isMarketingOnly } = useKeycloakAuth()
+    const { isInitialized, isAuthenticated, isMarketingOnly, isManagerOnly } = useKeycloakAuth()
     const location = useLocation()
 
     if (!isInitialized)
@@ -29,6 +29,10 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
     // redirects them to /marketing. Admins are unrestricted.
     if (isMarketingOnly && !isMarketingPath(location.pathname))
         return <Navigate to="/marketing" replace />
+
+    // Manager users have full access except /admin/app-settings.
+    if (isManagerOnly && location.pathname.startsWith('/admin/app-settings'))
+        return <Navigate to="/modules" replace />
 
     return <>{children}</>
 }
