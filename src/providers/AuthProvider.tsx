@@ -71,24 +71,42 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         initializeAuth()
 
-        const onTokenExpiredHandler = async () =>
+        // Guard against concurrent refresh calls: Keycloak's refreshTokenMaxReuse=0
+        // means the same refresh token can't be used twice. If onTokenExpired and
+        // the interval fire at the same moment, the second call uses a revoked
+        // refresh token → 401 → logout. Single shared lock prevents this.
+        let refreshing = false
+        const refreshToken = async () =>
         {
+            if (!keycloak.authenticated || refreshing) return
+            refreshing = true
             try
             {
-                const refreshed = await keycloak.updateToken(30)
+                // minValidity=60: refresh if the access token expires within 60 s.
+                // The interval fires every 55 s so we always catch it before expiry.
+                const refreshed = await keycloak.updateToken(60)
                 if (refreshed && keycloak.token && keycloak.tokenParsed)
                     storeLogin(keycloak.tokenParsed, keycloak.token)
             } catch (error)
             {
                 storeLogout()
+            } finally
+            {
+                refreshing = false
             }
         }
 
-        keycloak.onTokenExpired = onTokenExpiredHandler
+        // onTokenExpired is a safety net only; the interval below fires first.
+        keycloak.onTokenExpired = refreshToken
+
+        // Proactively check every 55 s — for a 5-min access token this triggers
+        // a refresh at ~4 m 05 s (when < 60 s remain), long before expiry.
+        const refreshInterval = setInterval(refreshToken, 55_000)
 
         return () =>
         {
             mounted = false
+            clearInterval(refreshInterval)
             try { keycloak.onTokenExpired = undefined } catch (e) { }
         }
     }, [storeLogin, storeLogout])
