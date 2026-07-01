@@ -23,6 +23,7 @@ import {
   ArrowUpCircle,
   Shield,
   Languages,
+  CalendarDays,
 } from "lucide-react";
 
 export const menuItemsGen2 = [
@@ -45,6 +46,11 @@ export const menuItemsGen2 = [
     label: "Реферралы",
     href: "/referrals/policy",
     icon: Gift,
+  },
+  {
+    label: "События",
+    href: "/events",
+    icon: CalendarDays,
   },
   {
     label: "Призы топов",

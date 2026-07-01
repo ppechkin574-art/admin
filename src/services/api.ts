@@ -1209,4 +1209,39 @@ export const securityService = {
     api.post(`/admin/security/events/${eventId}/mark-false-positive`, { reviewed_by: reviewedBy }).then(r => r.data),
 }
 
+export interface EventItem {
+  id: number;
+  type: 'banner' | 'card';
+  badge_text: string;
+  title: string;
+  prize_text: string | null;
+  subtitle: string | null;
+  secondary_text: string | null;
+  deadline: string | null;
+  button_text: string | null;
+  bg_color: string | null;
+  progress_current: number | null;
+  progress_max: number | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EventCreatePayload = Omit<EventItem, 'id' | 'created_at' | 'updated_at'>;
+export type EventUpdatePayload = Partial<EventCreatePayload>;
+
+export const eventsService = {
+  list: (): Promise<EventItem[]> =>
+    api.get('/admin/events').then(r => r.data),
+  get: (id: number): Promise<EventItem> =>
+    api.get(`/admin/events/${id}`).then(r => r.data),
+  create: (payload: EventCreatePayload): Promise<EventItem> =>
+    api.post('/admin/events', payload).then(r => r.data),
+  update: (id: number, payload: EventUpdatePayload): Promise<EventItem> =>
+    api.patch(`/admin/events/${id}`, payload).then(r => r.data),
+  remove: (id: number): Promise<void> =>
+    api.delete(`/admin/events/${id}`).then(() => undefined),
+};
+
 export default api;
