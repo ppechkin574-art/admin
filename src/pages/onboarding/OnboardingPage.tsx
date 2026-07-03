@@ -4,14 +4,15 @@ import {
     BookOpen, ChevronDown, ChevronUp, Eye, EyeOff,
     GripVertical, ImagePlus, Languages, Layers, Plus,
     Save, Settings2, Trash2, Users, X, Zap, Clock,
-    ToggleLeft, ToggleRight, Star, MonitorSmartphone,
+    ToggleLeft, ToggleRight, Star, MonitorSmartphone, Key,
 } from 'lucide-react'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import {
-    OnboardingStory, OnboardingStep,
+    OnboardingStory, OnboardingStep, SpotlightKey,
     TargetAudience, TriggerType, MascotPosition, StartScreen,
-    MASCOT_POSITIONS, START_SCREENS, SPOTLIGHT_KEYS,
+    MASCOT_POSITIONS, START_SCREENS,
+    loadSpotlightKeys, saveSpotlightKeys,
     makeEmptyStep, makeEmptyStory, LS_KEY,
 } from './types'
 
@@ -42,13 +43,14 @@ interface StepEditorProps {
     step: OnboardingStep
     index: number
     total: number
+    spotlightKeys: SpotlightKey[]
     onChange: (updated: OnboardingStep) => void
     onMoveUp: () => void
     onMoveDown: () => void
     onDelete: () => void
 }
 
-const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, onChange, onMoveUp, onMoveDown, onDelete }) => {
+const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, onChange, onMoveUp, onMoveDown, onDelete }) => {
     const [open, setOpen] = useState(index === 0)
     const fileRef = useRef<HTMLInputElement>(null)
 
@@ -202,7 +204,8 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, onChange, o
                                 onChange={e => upd({ spotlight_element_key: e.target.value })}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             >
-                                {SPOTLIGHT_KEYS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                                <option value="">— нет подсветки —</option>
+                                {spotlightKeys.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
                             </select>
                             {step.spotlight_element_key && (
                                 <p className="text-xs text-indigo-600 mt-1">
@@ -248,11 +251,12 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, onChange, o
 
 interface StoryFormProps {
     initial: OnboardingStory
+    spotlightKeys: SpotlightKey[]
     onSave: (s: OnboardingStory) => void
     onCancel: () => void
 }
 
-const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel }) => {
+const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, onCancel }) => {
     const [story, setStory] = useState<OnboardingStory>(initial)
     const upd = (patch: Partial<OnboardingStory>) => setStory(s => ({ ...s, ...patch }))
 
@@ -480,6 +484,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, onSave, onCancel }) => {
                             step={step}
                             index={idx}
                             total={story.steps.length}
+                            spotlightKeys={spotlightKeys}
                             onChange={updated => updateStep(idx, updated)}
                             onMoveUp={() => moveStep(idx, -1)}
                             onMoveDown={() => moveStep(idx, 1)}
@@ -585,10 +590,117 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle
     </div>
 )
 
+// ─── SpotlightKeysManager ────────────────────────────────────────────────────
+
+interface SpotlightKeysManagerProps {
+    keys: SpotlightKey[]
+    onChange: (keys: SpotlightKey[]) => void
+}
+
+const SpotlightKeysManager: React.FC<SpotlightKeysManagerProps> = ({ keys, onChange }) => {
+    const [open, setOpen] = useState(false)
+    const [newValue, setNewValue] = useState('')
+    const [newLabel, setNewLabel] = useState('')
+
+    const add = () => {
+        const v = newValue.trim()
+        const l = newLabel.trim()
+        if (!v || !l) { toast.error('Заполните оба поля'); return }
+        if (keys.some(k => k.value === v)) { toast.error('Ключ уже существует'); return }
+        onChange([...keys, { value: v, label: l }])
+        setNewValue(''); setNewLabel('')
+        toast.success('Ключ добавлен')
+    }
+
+    const remove = (value: string) => {
+        onChange(keys.filter(k => k.value !== value))
+        toast.success('Ключ удалён')
+    }
+
+    const updateLabel = (value: string, label: string) => {
+        onChange(keys.map(k => k.value === value ? { ...k, label } : k))
+    }
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left"
+            >
+                <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                    <Key className="h-4 w-4" /> Spotlight-ключи ({keys.length})
+                </span>
+                {open ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+            </button>
+
+            {open && (
+                <div className="px-5 pb-5 space-y-3 border-t border-gray-100 pt-4">
+                    <p className="text-xs text-gray-400">
+                        Ключи соответствуют <code className="bg-gray-100 px-1 rounded">GlobalKey</code> в Flutter-коде.
+                        Добавляйте новые при регистрации нового UI-элемента в приложении.
+                    </p>
+
+                    {/* Existing keys */}
+                    <div className="space-y-2">
+                        {keys.map(k => (
+                            <div key={k.value} className="flex items-center gap-2">
+                                <code className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded flex-shrink-0 min-w-[160px]">
+                                    {k.value}
+                                </code>
+                                <input
+                                    type="text"
+                                    value={k.label}
+                                    onChange={e => updateLabel(k.value, e.target.value)}
+                                    onBlur={() => toast.success('Название обновлено')}
+                                    className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => remove(k.value)}
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 flex-shrink-0"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Add new */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <input
+                            type="text"
+                            value={newValue}
+                            onChange={e => setNewValue(e.target.value.replace(/\s/g, '_').toLowerCase())}
+                            placeholder="ключ_flutter (snake_case)"
+                            className="w-44 border border-gray-300 rounded-lg px-2 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        />
+                        <input
+                            type="text"
+                            value={newLabel}
+                            onChange={e => setNewLabel(e.target.value)}
+                            placeholder="Название для админки"
+                            className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        />
+                        <button
+                            type="button"
+                            onClick={add}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 flex-shrink-0"
+                        >
+                            <Plus className="h-3.5 w-3.5" /> Добавить
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export const OnboardingPage: React.FC = () => {
     const [stories, setStories] = useState<OnboardingStory[]>(load)
+    const [spotlightKeys, setSpotlightKeys] = useState<SpotlightKey[]>(loadSpotlightKeys)
     const [editing, setEditing] = useState<OnboardingStory | null>(null)
     const [creating, setCreating] = useState(false)
 
@@ -596,6 +708,11 @@ export const OnboardingPage: React.FC = () => {
         const sorted = [...updated].sort((a, b) => b.priority - a.priority)
         setStories(sorted)
         save(sorted)
+    }
+
+    const handleSpotlightChange = (keys: SpotlightKey[]) => {
+        setSpotlightKeys(keys)
+        saveSpotlightKeys(keys)
     }
 
     const handleSave = (story: OnboardingStory) => {
@@ -635,6 +752,7 @@ export const OnboardingPage: React.FC = () => {
                 </div>
                 <StoryForm
                     initial={editing ?? makeEmptyStory()}
+                    spotlightKeys={spotlightKeys}
                     onSave={handleSave}
                     onCancel={() => { setCreating(false); setEditing(null) }}
                 />
@@ -670,6 +788,11 @@ export const OnboardingPage: React.FC = () => {
                 подходящий пользователю. Обязательные рассказы блокируют UI — пользователь не может закрыть
                 пока не пройдёт или не пропустит (кнопка появляется через N секунд).{' '}
                 <span className="text-indigo-600 font-medium">Данные временно в браузере — после подключения API будут синхронизироваться с сервером.</span>
+            </div>
+
+            {/* Spotlight keys manager */}
+            <div className="mb-6">
+                <SpotlightKeysManager keys={spotlightKeys} onChange={handleSpotlightChange} />
             </div>
 
             {/* Empty state */}

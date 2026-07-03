@@ -51,8 +51,12 @@ export const START_SCREENS: { value: StartScreen; label: string }[] = [
     { value: 'SUBSCRIPTION', label: 'Подписка' },
 ]
 
-export const SPOTLIGHT_KEYS: { value: string; label: string }[] = [
-    { value: '', label: '— нет подсветки —' },
+export interface SpotlightKey {
+    value: string
+    label: string
+}
+
+export const DEFAULT_SPOTLIGHT_KEYS: SpotlightKey[] = [
     { value: 'home_tab', label: 'Вкладка «Главная»' },
     { value: 'trainer_tab', label: 'Вкладка «Тренажёр»' },
     { value: 'leaderboard_tab', label: 'Вкладка «Рейтинг»' },
@@ -61,6 +65,19 @@ export const SPOTLIGHT_KEYS: { value: string; label: string }[] = [
     { value: 'subscription_banner', label: 'Баннер подписки' },
     { value: 'streak_widget', label: 'Виджет серии дней' },
 ]
+
+export const SPOTLIGHT_LS_KEY = 'aima_spotlight_keys_v1'
+
+export const loadSpotlightKeys = (): SpotlightKey[] => {
+    try {
+        const raw = localStorage.getItem(SPOTLIGHT_LS_KEY)
+        return raw ? JSON.parse(raw) : DEFAULT_SPOTLIGHT_KEYS
+    } catch { return DEFAULT_SPOTLIGHT_KEYS }
+}
+
+export const saveSpotlightKeys = (keys: SpotlightKey[]) => {
+    localStorage.setItem(SPOTLIGHT_LS_KEY, JSON.stringify(keys))
+}
 
 export const makeEmptyStep = (order: number): OnboardingStep => ({
     id: `step_${Date.now()}_${order}`,
