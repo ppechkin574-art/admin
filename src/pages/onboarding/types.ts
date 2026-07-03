@@ -25,6 +25,7 @@ export interface OnboardingStory {
     priority: number
     is_active: boolean
     is_mandatory: boolean
+    is_test: boolean
     skip_delay_seconds: number
     target_audience: TargetAudience
     new_user_days: number
@@ -101,6 +102,7 @@ export const makeEmptyStory = (): OnboardingStory => ({
     priority: 0,
     is_active: false,
     is_mandatory: true,
+    is_test: false,
     skip_delay_seconds: 3,
     target_audience: 'ALL',
     new_user_days: 7,

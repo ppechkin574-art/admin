@@ -347,6 +347,15 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                             {story.is_mandatory ? 'Обязательный (блокирует UI)' : 'Необязательный'}
                         </span>
                     </button>
+                    <button type="button" onClick={() => upd({ is_test: !story.is_test })}
+                        className="flex items-center gap-2 text-sm">
+                        {story.is_test
+                            ? <ToggleRight className="h-6 w-6 text-purple-500" />
+                            : <ToggleLeft className="h-6 w-6 text-gray-400" />}
+                        <span className={story.is_test ? 'text-purple-700 font-medium' : 'text-gray-500'}>
+                            {story.is_test ? 'Тестовый (только вы)' : 'Продовый (все пользователи)'}
+                        </span>
+                    </button>
                 </div>
 
                 {story.is_mandatory && (
@@ -535,6 +544,7 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle
                         {story.is_mandatory
                             ? <Badge type="warning">Обязательный</Badge>
                             : <Badge type="info">Необязательный</Badge>}
+                        {story.is_test && <Badge type="hint">Тест</Badge>}
                     </div>
                     <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
@@ -737,6 +747,7 @@ export const OnboardingPage: React.FC = () => {
                 priority: story.priority,
                 is_active: story.is_active,
                 is_mandatory: story.is_mandatory,
+                is_test: story.is_test,
                 skip_delay_seconds: story.skip_delay_seconds,
                 target_audience: story.target_audience,
                 new_user_days: story.new_user_days,
