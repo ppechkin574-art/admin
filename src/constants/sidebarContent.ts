@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   Bot,
+  BookMarked,
   CreditCard,
   FileText,
   Flame,
@@ -71,6 +72,11 @@ export const menuItemsGen2 = [
     label: "Маскот",
     href: "/mascot",
     icon: Bot,
+  },
+  {
+    label: "Онбординг",
+    href: "/onboarding",
+    icon: BookMarked,
   },
   {
     label: "Страницы приложения",
