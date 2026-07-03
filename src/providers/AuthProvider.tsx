@@ -105,14 +105,22 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // onTokenExpired is a safety net only; the interval below fires first.
         keycloak.onTokenExpired = refreshToken
 
-        // Proactively check every 55 s — for a 5-min access token this triggers
-        // a refresh at ~4 m 05 s (when < 60 s remain), long before expiry.
-        const refreshInterval = setInterval(refreshToken, 55_000)
+        // Proactively check every 30 s — fires well before the 120-s expiry window.
+        const refreshInterval = setInterval(refreshToken, 30_000)
+
+        // Browsers freeze JS timers in background tabs (Chrome: ≥1 min throttle).
+        // When the user switches back to this tab, immediately check and refresh
+        // the token — prevents logout after the tab was in background for 5+ min.
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') refreshToken()
+        }
+        document.addEventListener('visibilitychange', onVisible)
 
         return () =>
         {
             mounted = false
             clearInterval(refreshInterval)
+            document.removeEventListener('visibilitychange', onVisible)
             try { keycloak.onTokenExpired = undefined } catch (e) { }
         }
     }, [storeLogin, storeLogout])
