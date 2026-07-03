@@ -87,9 +87,10 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             refreshing = true
             try
             {
-                // minValidity=60: refresh if the access token expires within 60 s.
-                // The interval fires every 55 s so we always catch it before expiry.
-                const refreshed = await keycloak.updateToken(60)
+                // minValidity=120: refresh if the access token expires within 120 s.
+                // Gives a 2-minute buffer to handle clock skew between client and
+                // Keycloak server, preventing "just missed" expiry → 401 → logout.
+                const refreshed = await keycloak.updateToken(120)
                 if (refreshed && keycloak.token && keycloak.tokenParsed)
                     storeLogin(keycloak.tokenParsed, keycloak.token)
             } catch (error)
