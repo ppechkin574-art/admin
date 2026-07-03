@@ -7,6 +7,7 @@ import {
   QuestionDraftListResult,
   QuestionDraftUpdate,
 } from "@/types/questionDrafts";
+import keycloak from "@/services/keycloak";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -18,51 +19,55 @@ const api = axios.create({
   withCredentials: false,
 });
 
-let alreadyRedirectedToLogin = false;
-
-api.interceptors.response.use(
-  (res) => res,
-  (error) => {
-    const status = error?.response?.status;
-
-    if (status === 401) {
-      console.warn("API 401 — not authenticated");
-
-      if (window.location.pathname === "/login") return Promise.reject(error);
-
-      if (!alreadyRedirectedToLogin) {
-        alreadyRedirectedToLogin = true;
-
-        try {
-          window.history.replaceState({}, "", "/login");
-          window.location.href = "/login";
-        } catch (e) {
-          window.location.href = "/login";
-        }
-      }
-
-      return Promise.reject(error);
-    }
-
-    return Promise.reject(error);
-  },
-);
-
+// Attach current token to every request.
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
+// Single 401 handler: try to refresh the Keycloak token first.
+// If refresh succeeds → retry the original request with the new token.
+// If refresh fails → clear local state and redirect to login.
+let redirectingToLogin = false;
+
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  (res) => res,
+  async (error) => {
+    const status = error?.response?.status;
+
+    if (status !== 401) return Promise.reject(error);
+    if (window.location.pathname === "/login") return Promise.reject(error);
+    if (error.config?._retried) {
+      // Already retried once — give up and logout.
+      if (!redirectingToLogin) {
+        redirectingToLogin = true;
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
+    }
+
+    // Attempt token refresh before giving up.
+    if (keycloak.authenticated) {
+      try {
+        const refreshed = await keycloak.updateToken(-1); // -1 = force refresh now
+        if (refreshed && keycloak.token) {
+          localStorage.setItem("token", keycloak.token);
+          error.config._retried = true;
+          error.config.headers.Authorization = `Bearer ${keycloak.token}`;
+          return api.request(error.config);
+        }
+      } catch {
+        // Refresh failed — fall through to logout below.
+      }
+    }
+
+    if (!redirectingToLogin) {
+      redirectingToLogin = true;
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
