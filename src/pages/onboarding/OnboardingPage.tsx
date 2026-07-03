@@ -1,33 +1,21 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
     BookOpen, ChevronDown, ChevronUp, Eye, EyeOff,
     GripVertical, ImagePlus, Languages, Layers, Plus,
     Save, Settings2, Trash2, Users, X, Zap, Clock,
-    ToggleLeft, ToggleRight, Star, MonitorSmartphone, Key,
+    ToggleLeft, ToggleRight, Star, MonitorSmartphone, Key, RefreshCw,
 } from 'lucide-react'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
+import { onboardingService } from '@/services/api'
 import {
     OnboardingStory, OnboardingStep, SpotlightKey,
     TargetAudience, TriggerType, MascotPosition, StartScreen,
     MASCOT_POSITIONS, START_SCREENS,
     loadSpotlightKeys, saveSpotlightKeys,
-    makeEmptyStep, makeEmptyStory, LS_KEY,
+    makeEmptyStep, makeEmptyStory,
 } from './types'
-
-// ─── persistence ────────────────────────────────────────────────────────────
-
-const load = (): OnboardingStory[] => {
-    try {
-        const raw = localStorage.getItem(LS_KEY)
-        return raw ? JSON.parse(raw) : []
-    } catch { return [] }
-}
-
-const save = (stories: OnboardingStory[]) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(stories))
-}
 
 // ─── small helpers ──────────────────────────────────────────────────────────
 
@@ -52,17 +40,30 @@ interface StepEditorProps {
 
 const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, onChange, onMoveUp, onMoveDown, onDelete }) => {
     const [open, setOpen] = useState(index === 0)
+    const [uploading, setUploading] = useState(false)
     const fileRef = useRef<HTMLInputElement>(null)
 
     const upd = (patch: Partial<OnboardingStep>) => onChange({ ...step, ...patch })
 
-    const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
+        e.target.value = ''
+        // Show local preview immediately
         const reader = new FileReader()
         reader.onload = ev => upd({ mascot_image_preview: ev.target?.result as string })
         reader.readAsDataURL(file)
-        e.target.value = ''
+        // Upload to server
+        setUploading(true)
+        try {
+            const { url } = await onboardingService.uploadImage(file)
+            upd({ mascot_image_url: url, mascot_image_preview: null })
+            toast.success('Изображение загружено')
+        } catch {
+            toast.error('Ошибка загрузки изображения')
+        } finally {
+            setUploading(false)
+        }
     }
 
     const preview = step.mascot_image_preview || step.mascot_image_url
@@ -111,10 +112,15 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                 Маскот (PNG)
                             </label>
                             <div
-                                onClick={() => fileRef.current?.click()}
-                                className="relative h-36 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 cursor-pointer flex items-center justify-center overflow-hidden bg-gray-50 transition-colors"
+                                onClick={() => !uploading && fileRef.current?.click()}
+                                className={`relative h-36 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 cursor-pointer flex items-center justify-center overflow-hidden bg-gray-50 transition-colors ${uploading ? 'opacity-60 cursor-wait' : ''}`}
                             >
-                                {preview
+                                {uploading
+                                    ? <div className="flex flex-col items-center gap-1 text-indigo-500">
+                                        <RefreshCw className="h-6 w-6 animate-spin" />
+                                        <span className="text-xs">Загрузка...</span>
+                                      </div>
+                                    : preview
                                     ? <img src={preview} alt="mascot" className="h-full w-full object-contain p-1" />
                                     : <div className="flex flex-col items-center gap-1 text-gray-400">
                                         <ImagePlus className="h-7 w-7" />
@@ -511,7 +517,7 @@ interface StoryCardProps {
     story: OnboardingStory
     onEdit: () => void
     onDelete: () => void
-    onToggle: () => void
+    onToggle: (story: OnboardingStory) => void
 }
 
 const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle }) => (
@@ -554,7 +560,7 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle
                     </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={onToggle}
+                    <button onClick={() => onToggle(story)}
                         title={story.is_active ? 'Деактивировать' : 'Активировать'}
                         className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                         {story.is_active
@@ -699,42 +705,92 @@ const SpotlightKeysManager: React.FC<SpotlightKeysManagerProps> = ({ keys, onCha
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export const OnboardingPage: React.FC = () => {
-    const [stories, setStories] = useState<OnboardingStory[]>(load)
+    const [stories, setStories] = useState<OnboardingStory[]>([])
+    const [loading, setLoading] = useState(true)
     const [spotlightKeys, setSpotlightKeys] = useState<SpotlightKey[]>(loadSpotlightKeys)
     const [editing, setEditing] = useState<OnboardingStory | null>(null)
     const [creating, setCreating] = useState(false)
 
-    const persist = (updated: OnboardingStory[]) => {
-        const sorted = [...updated].sort((a, b) => b.priority - a.priority)
-        setStories(sorted)
-        save(sorted)
+    const fetchStories = async () => {
+        setLoading(true)
+        try {
+            const data = await onboardingService.listStories()
+            setStories(data)
+        } catch {
+            toast.error('Не удалось загрузить рассказы')
+        } finally {
+            setLoading(false)
+        }
     }
+
+    useEffect(() => { fetchStories() }, [])
 
     const handleSpotlightChange = (keys: SpotlightKey[]) => {
         setSpotlightKeys(keys)
         saveSpotlightKeys(keys)
     }
 
-    const handleSave = (story: OnboardingStory) => {
-        if (editing) {
-            persist(stories.map(s => s.id === story.id ? story : s))
-            toast.success('Рассказ обновлён')
-        } else {
-            persist([...stories, story])
-            toast.success('Рассказ создан')
+    const handleSave = async (story: OnboardingStory) => {
+        try {
+            const payload = {
+                name: story.name,
+                priority: story.priority,
+                is_active: story.is_active,
+                is_mandatory: story.is_mandatory,
+                skip_delay_seconds: story.skip_delay_seconds,
+                target_audience: story.target_audience,
+                new_user_days: story.new_user_days,
+                trigger: story.trigger,
+                immediate_count: story.immediate_count,
+                max_shows_per_user: story.max_shows_per_user,
+                start_screen: story.start_screen,
+                steps: story.steps.map(s => ({
+                    step_order: s.step_order,
+                    mascot_image_url: s.mascot_image_url || null,
+                    title_ru: s.title_ru,
+                    title_kk: s.title_kk,
+                    body_ru: s.body_ru,
+                    body_kk: s.body_kk,
+                    mascot_position: s.mascot_position,
+                    spotlight_element_key: s.spotlight_element_key || null,
+                    action_label_ru: s.action_label_ru || null,
+                    action_label_kk: s.action_label_kk || null,
+                    action_route: s.action_route || null,
+                })),
+            }
+            if (editing && editing.id) {
+                await onboardingService.updateStory(Number(editing.id), payload)
+                toast.success('Рассказ обновлён')
+            } else {
+                await onboardingService.createStory(payload)
+                toast.success('Рассказ создан')
+            }
+            setEditing(null)
+            setCreating(false)
+            await fetchStories()
+        } catch {
+            toast.error('Ошибка сохранения')
         }
-        setEditing(null)
-        setCreating(false)
     }
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: number | string) => {
         if (!confirm('Удалить рассказ? Это действие нельзя отменить.')) return
-        persist(stories.filter(s => s.id !== id))
-        toast.success('Удалено')
+        try {
+            await onboardingService.deleteStory(id as number)
+            toast.success('Удалено')
+            setStories(prev => prev.filter(s => s.id !== id))
+        } catch {
+            toast.error('Ошибка удаления')
+        }
     }
 
-    const handleToggle = (id: string) => {
-        persist(stories.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s))
+    const handleToggle = async (story: OnboardingStory) => {
+        try {
+            await onboardingService.updateStory(Number(story.id), { is_active: !story.is_active })
+            setStories(prev => prev.map(s => s.id === story.id ? { ...s, is_active: !s.is_active } : s))
+        } catch {
+            toast.error('Ошибка обновления')
+        }
     }
 
     if (creating || editing) {
@@ -773,21 +829,21 @@ export const OnboardingPage: React.FC = () => {
                         Пошаговые обучающие сценарии с маскотом. Показываются поверх приложения.
                     </p>
                 </div>
-                <Button
-                    variant="primary"
-                    icon={<Plus className="h-4 w-4" />}
-                    onClick={() => setCreating(true)}
-                >
-                    Создать рассказ
-                </Button>
+                <div className="flex items-center gap-2">
+                    <button onClick={fetchStories} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>
+                        Создать рассказ
+                    </Button>
+                </div>
             </div>
 
             {/* Info banner */}
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-6 text-sm text-indigo-800">
                 <strong>Как работает:</strong> При входе в приложение показывается 1 рассказ с наивысшим приоритетом,
                 подходящий пользователю. Обязательные рассказы блокируют UI — пользователь не может закрыть
-                пока не пройдёт или не пропустит (кнопка появляется через N секунд).{' '}
-                <span className="text-indigo-600 font-medium">Данные временно в браузере — после подключения API будут синхронизироваться с сервером.</span>
+                пока не пройдёт или не пропустит (кнопка появляется через N секунд).
             </div>
 
             {/* Spotlight keys manager */}
@@ -795,8 +851,16 @@ export const OnboardingPage: React.FC = () => {
                 <SpotlightKeysManager keys={spotlightKeys} onChange={handleSpotlightChange} />
             </div>
 
+            {/* Loading */}
+            {loading && (
+                <div className="text-center py-16 text-gray-400">
+                    <RefreshCw className="h-8 w-8 mx-auto mb-2 animate-spin text-indigo-300" />
+                    <p className="text-sm">Загрузка...</p>
+                </div>
+            )}
+
             {/* Empty state */}
-            {stories.length === 0 && (
+            {!loading && stories.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
                     <BookOpen className="h-12 w-12 mx-auto mb-3 text-gray-200" />
                     <p className="font-medium text-gray-500 mb-1">Рассказов пока нет</p>
@@ -808,19 +872,21 @@ export const OnboardingPage: React.FC = () => {
             )}
 
             {/* Stories list */}
-            <div className="space-y-3">
-                {stories.map(story => (
-                    <StoryCard
-                        key={story.id}
-                        story={story}
-                        onEdit={() => setEditing(story)}
-                        onDelete={() => handleDelete(story.id)}
-                        onToggle={() => handleToggle(story.id)}
-                    />
-                ))}
-            </div>
+            {!loading && (
+                <div className="space-y-3">
+                    {stories.map(story => (
+                        <StoryCard
+                            key={story.id}
+                            story={story}
+                            onEdit={() => setEditing(story)}
+                            onDelete={() => handleDelete(story.id)}
+                            onToggle={() => handleToggle(story)}
+                        />
+                    ))}
+                </div>
+            )}
 
-            {stories.length > 0 && (
+            {!loading && stories.length > 0 && (
                 <p className="text-xs text-gray-400 text-center mt-6">
                     {stories.filter(s => s.is_active).length} активных из {stories.length} рассказов ·
                     Сортировка по приоритету (наивысший — первый)

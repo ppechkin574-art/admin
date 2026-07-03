@@ -20,7 +20,7 @@ export interface OnboardingStep {
 }
 
 export interface OnboardingStory {
-    id: string
+    id: string | number
     name: string
     priority: number
     is_active: boolean

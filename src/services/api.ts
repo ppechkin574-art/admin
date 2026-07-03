@@ -1244,4 +1244,24 @@ export const eventsService = {
     api.delete(`/admin/events/${id}`).then(() => undefined),
 };
 
+export const onboardingService = {
+  listStories: (): Promise<any[]> =>
+    api.get('/admin/onboarding/stories').then(r => r.data),
+  getStory: (id: number): Promise<any> =>
+    api.get(`/admin/onboarding/stories/${id}`).then(r => r.data),
+  createStory: (payload: any): Promise<any> =>
+    api.post('/admin/onboarding/stories', payload).then(r => r.data),
+  updateStory: (id: number, payload: any): Promise<any> =>
+    api.patch(`/admin/onboarding/stories/${id}`, payload).then(r => r.data),
+  deleteStory: (id: number): Promise<void> =>
+    api.delete(`/admin/onboarding/stories/${id}`).then(() => undefined),
+  uploadImage: (file: File): Promise<{ url: string; filename: string }> => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/admin/onboarding/upload-image', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+}
+
 export default api;
