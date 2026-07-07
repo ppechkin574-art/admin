@@ -42,16 +42,18 @@ const DEVICES: readonly DeviceSpec[] = [
 
 // Which spotlight keys are visible on each start screen
 const SCREEN_SPOT_KEYS: Record<string, Set<string>> = {
-    HOME:         new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','home_banner','home_events','home_rating_card','home_reward_card']),
-    TRAINER:      new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','start_trainer_button']),
-    LEADERBOARD:  new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
-    PROFILE:      new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
-    SUBSCRIPTION: new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','subscription_banner','streak_widget']),
+    HOME:         new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab','home_banner','home_events','home_rating_card','home_reward_card']),
+    TRAINER:      new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab','start_trainer_button']),
+    LEADERBOARD:  new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab']),
+    PROFILE:      new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab']),
+    SUBSCRIPTION: new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab','subscription_banner','streak_widget']),
 }
 
 // SPOT_MAP in iPhone 393×852 logical px
 type SpotRect = { x: number; y: number; w: number; h: number; r: number }
 const SPOT_MAP: Record<string, SpotRect> = {
+    screen_top_half:     { x: 0,   y: 0,                             w: IPHONE_W,      h: IPHONE_H / 2, r: 0  },
+    screen_bottom_half:  { x: 0,   y: IPHONE_H / 2,                  w: IPHONE_W,      h: IPHONE_H / 2, r: 0  },
     home_tab:            { x: 4,   y: IPHONE_H - IPHONE_NAV_H + 10, w: 90,            h: 70,  r: 20 },
     trainer_tab:         { x: 100, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
     leaderboard_tab:     { x: 198, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
@@ -64,6 +66,14 @@ const SPOT_MAP: Record<string, SpotRect> = {
     streak_widget:       { x: 267, y: IPHONE_SB_H + 12,             w: 110,           h: 63,  r: 20 },
     start_trainer_button:{ x: 16,  y: IPHONE_SB_H + 110,            w: IPHONE_W - 32, h: 70,  r: 20 },
 }
+
+const PREDEFINED_ROUTES = [
+    { value: 'HOME', label: 'Главная' },
+    { value: 'TRAINER', label: 'Тренажёр' },
+    { value: 'PROFILE', label: 'Профиль' },
+    { value: 'LEADERBOARD', label: 'Рейтинг' },
+    { value: 'SUBSCRIPTION', label: 'Подписка' },
+]
 const BUILTIN_SPOT_KEYS = new Set(Object.keys(SPOT_MAP))
 
 // Scale spot rect from iPhone coords to target device.
@@ -97,19 +107,22 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
     // At iPhone (w=393) f(n)=n; at iPad (w=820) f(n)≈2×n — same as what the app renders.
     const f = (n: number) => Math.round(n * w / IPHONE_W)
 
-    const spotKey = step.spotlight_element_key
-    const spotRect = spotKey ? getSpotRect(spotKey, device) : null
+    const spotKeys = step.spotlight_element_keys?.length
+        ? step.spotlight_element_keys
+        : step.spotlight_element_key ? [step.spotlight_element_key] : []
+    const spotRects = spotKeys.map(k => getSpotRect(k, device)).filter((r): r is SpotRect => r !== null)
+    const firstSpotKey = spotKeys[0]
     const mascotImg = step.mascot_image_preview || step.mascot_image_url
     const title = step.title_ru || 'Заголовок шага'
     const body = step.body_ru || 'Описание подсказки пользователю.'
     const btnLabel = step.action_label_ru || 'Далее →'
 
-    const isTrainer = startScreen === 'TRAINER' || spotKey === 'start_trainer_button'
+    const isTrainer = startScreen === 'TRAINER' || firstSpotKey === 'start_trainer_button'
     const isLeft = step.mascot_position.includes('left')
     const isBottom = step.mascot_position.includes('bottom')
 
-    const navActive = spotKey === 'home_tab' ? 0 : spotKey === 'trainer_tab' ? 1
-        : spotKey === 'leaderboard_tab' ? 2 : spotKey === 'profile_tab' ? 3
+    const navActive = firstSpotKey === 'home_tab' ? 0 : firstSpotKey === 'trainer_tab' ? 1
+        : firstSpotKey === 'leaderboard_tab' ? 2 : firstSpotKey === 'profile_tab' ? 3
         : isTrainer ? 1 : 0
 
     const NAV_ICONS  = ['🏠', '🎮', '🏆', '👤']
@@ -227,14 +240,14 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                 <div style={s({ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: br })}>
                 {/* Overlay */}
                 <div style={s({ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.76)', zIndex: 10 })} />
-                {spotRect && (
-                    <div style={s({
-                        position: 'absolute', left: spotRect.x, top: spotRect.y,
-                        width: spotRect.w, height: spotRect.h, borderRadius: spotRect.r,
+                {spotRects.map((r, i) => (
+                    <div key={i} style={s({
+                        position: 'absolute', left: r.x, top: r.y,
+                        width: r.w, height: r.h, borderRadius: r.r,
                         boxShadow: '0 0 0 9999px rgba(0,0,0,.76), 0 0 0 2px rgba(108,92,231,.9), 0 0 16px 6px rgba(108,92,231,.4)',
                         zIndex: 11,
                     })} />
-                )}
+                ))}
                 {/* Step counter — Flutter: top = padding.top + 16, fixed 16px font */}
                 <div style={s({ position: 'absolute', top: sbH + 16, left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 600, color: '#fff', zIndex: 14 })}>
                     {stepIndex + 1} / {totalSteps}
@@ -371,12 +384,17 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
 
     const preview = step.mascot_image_preview || step.mascot_image_url
 
-    // Filter: built-in keys shown only if available on the current start screen;
+    // Filter: built-in keys shown only if available on the effective screen for this step;
     // custom keys (not in SPOT_MAP) are always shown.
-    const screenKeys = SCREEN_SPOT_KEYS[startScreen.toUpperCase()]
+    const effectiveScreen = step.step_screen ?? startScreen
+    const screenKeys = SCREEN_SPOT_KEYS[effectiveScreen.toUpperCase()]
     const filteredSpotKeys = spotlightKeys.filter(k =>
         !BUILTIN_SPOT_KEYS.has(k.value) || !screenKeys || screenKeys.has(k.value)
     )
+    const selectedSpotKeys = step.spotlight_element_keys ?? []
+
+    const routeValue = step.action_route ?? ''
+    const isCustomRoute = routeValue !== '' && !PREDEFINED_ROUTES.some(r => r.value === routeValue)
 
     return (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -575,51 +593,108 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                         </div>
                     </div>
 
-                    {/* Spotlight + Action */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                    {/* Экран шага + Spotlight + Action */}
+                    <div className="pt-2 border-t border-gray-100 space-y-4">
+                        {/* Экран шага */}
                         <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
-                                Spotlight-подсветка
+                                Экран шага
                             </label>
                             <select
-                                value={step.spotlight_element_key ?? ''}
-                                onChange={e => upd({ spotlight_element_key: e.target.value || null })}
+                                value={step.step_screen ?? ''}
+                                onChange={e => upd({ step_screen: (e.target.value || null) as StartScreen | null })}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             >
-                                <option value="">— нет подсветки —</option>
-                                {filteredSpotKeys.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                                <option value="">— экран истории (по умолчанию) —</option>
+                                {START_SCREENS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select>
-                            {step.spotlight_element_key && (
-                                <p className="text-xs text-indigo-600 mt-1">
-                                    Ключ: <code className="bg-indigo-50 px-1 rounded">{step.spotlight_element_key}</code>
-                                </p>
-                            )}
+                            <p className="text-xs text-gray-400 mt-1">
+                                Если задан — приложение перейдёт на этот экран перед показом шага
+                            </p>
                         </div>
-                        <div>
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
-                                Кнопка действия (необязательно)
-                            </label>
-                            <div className="space-y-2">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input
-                                        type="text" value={step.action_label_ru ?? ''}
-                                        onChange={e => upd({ action_label_ru: e.target.value || null })}
-                                        placeholder="Перейти (RU)"
-                                        className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                    />
-                                    <input
-                                        type="text" value={step.action_label_kk ?? ''}
-                                        onChange={e => upd({ action_label_kk: e.target.value || null })}
-                                        placeholder="Өту (KK)"
-                                        className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                    />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Spotlight multi-select */}
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+                                    Spotlight-подсветка
+                                </label>
+                                <div className="border border-gray-200 rounded-lg overflow-hidden max-h-52 overflow-y-auto">
+                                    {filteredSpotKeys.length === 0
+                                        ? <p className="text-xs text-gray-400 px-3 py-2">Нет ключей для этого экрана</p>
+                                        : filteredSpotKeys.map(k => (
+                                            <label key={k.value} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer select-none border-b border-gray-100 last:border-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedSpotKeys.includes(k.value)}
+                                                    onChange={e => {
+                                                        const next = e.target.checked
+                                                            ? [...selectedSpotKeys, k.value]
+                                                            : selectedSpotKeys.filter(v => v !== k.value)
+                                                        upd({ spotlight_element_keys: next, spotlight_element_key: next[0] ?? null })
+                                                    }}
+                                                    className="accent-indigo-500 w-3.5 h-3.5 flex-shrink-0"
+                                                />
+                                                <span className="text-sm text-gray-700">{k.label}</span>
+                                            </label>
+                                        ))
+                                    }
                                 </div>
-                                <input
-                                    type="text" value={step.action_route ?? ''}
-                                    onChange={e => upd({ action_route: e.target.value || null })}
-                                    placeholder="Маршрут: trainer, profile, subscription..."
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                />
+                                {selectedSpotKeys.length > 0 && (
+                                    <p className="text-xs text-indigo-600 mt-1">
+                                        Выбрано: {selectedSpotKeys.length} &nbsp;·&nbsp; {selectedSpotKeys.map(k => (
+                                            <code key={k} className="bg-indigo-50 px-1 rounded mr-1">{k}</code>
+                                        ))}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Кнопка действия */}
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+                                    Кнопка действия (необязательно)
+                                </label>
+                                <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            type="text" value={step.action_label_ru ?? ''}
+                                            onChange={e => upd({ action_label_ru: e.target.value || null })}
+                                            placeholder="Перейти (RU)"
+                                            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        />
+                                        <input
+                                            type="text" value={step.action_label_kk ?? ''}
+                                            onChange={e => upd({ action_label_kk: e.target.value || null })}
+                                            placeholder="Өту (KK)"
+                                            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        />
+                                    </div>
+                                    <select
+                                        value={isCustomRoute ? '__custom__' : routeValue}
+                                        onChange={e => {
+                                            if (e.target.value === '__custom__') {
+                                                upd({ action_route: '' })
+                                            } else {
+                                                upd({ action_route: e.target.value || null })
+                                            }
+                                        }}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                    >
+                                        <option value="">— нет маршрута —</option>
+                                        {PREDEFINED_ROUTES.map(r => (
+                                            <option key={r.value} value={r.value}>{r.label}</option>
+                                        ))}
+                                        <option value="__custom__">Другой...</option>
+                                    </select>
+                                    {isCustomRoute && (
+                                        <input
+                                            type="text" value={routeValue}
+                                            onChange={e => upd({ action_route: e.target.value || null })}
+                                            placeholder="custom_route"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -853,13 +928,15 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                         <button key={s.value} type="button"
                             onClick={() => {
                                 const newScreen = s.value as StartScreen
-                                const allowed = SCREEN_SPOT_KEYS[newScreen.toUpperCase()]
                                 const steps = story.steps.map(st => {
+                                    const effectiveScreen = st.step_screen ?? newScreen
+                                    const allowed = SCREEN_SPOT_KEYS[effectiveScreen.toUpperCase()]
                                     const key = st.spotlight_element_key
-                                    if (key && BUILTIN_SPOT_KEYS.has(key) && allowed && !allowed.has(key)) {
-                                        return { ...st, spotlight_element_key: null }
-                                    }
-                                    return st
+                                    const newSingle = key && BUILTIN_SPOT_KEYS.has(key) && allowed && !allowed.has(key) ? null : key
+                                    const newKeys = (st.spotlight_element_keys ?? []).filter(k =>
+                                        !BUILTIN_SPOT_KEYS.has(k) || !allowed || allowed.has(k)
+                                    )
+                                    return { ...st, spotlight_element_key: newSingle, spotlight_element_keys: newKeys }
                                 })
                                 upd({ start_screen: newScreen, steps })
                             }}
@@ -992,8 +1069,13 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle
                         <span className="text-xs text-gray-600 max-w-[120px] truncate">
                             {step.title_ru || '—'}
                         </span>
-                        {step.spotlight_element_key && (
-                            <span className="text-xs bg-purple-100 text-purple-700 px-1 rounded">spotlight</span>
+                        {(step.spotlight_element_keys?.length || step.spotlight_element_key) && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-1 rounded">
+                                spotlight{step.spotlight_element_keys?.length > 1 ? ` ×${step.spotlight_element_keys.length}` : ''}
+                            </span>
+                        )}
+                        {step.step_screen && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">→{step.step_screen}</span>
                         )}
                     </div>
                 ))}
@@ -1159,7 +1241,9 @@ export const OnboardingPage: React.FC = () => {
                     body_ru: s.body_ru,
                     body_kk: s.body_kk,
                     mascot_position: s.mascot_position,
-                    spotlight_element_key: s.spotlight_element_key || null,
+                    spotlight_element_keys: s.spotlight_element_keys ?? [],
+                    spotlight_element_key: (s.spotlight_element_keys ?? [])[0] ?? s.spotlight_element_key ?? null,
+                    step_screen: s.step_screen || null,
                     action_label_ru: s.action_label_ru || null,
                     action_label_kk: s.action_label_kk || null,
                     action_route: s.action_route || null,

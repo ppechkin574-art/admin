@@ -14,6 +14,8 @@ export interface OnboardingStep {
     body_kk: string
     mascot_position: MascotPosition
     spotlight_element_key: string | null
+    spotlight_element_keys: string[]
+    step_screen: StartScreen | null
     action_label_ru: string | null
     action_label_kk: string | null
     action_route: string | null
@@ -66,6 +68,8 @@ export interface SpotlightKey {
 }
 
 export const DEFAULT_SPOTLIGHT_KEYS: SpotlightKey[] = [
+    { value: 'screen_top_half', label: 'Верхняя половина экрана' },
+    { value: 'screen_bottom_half', label: 'Нижняя половина экрана' },
     { value: 'home_tab', label: 'Вкладка «Главная»' },
     { value: 'trainer_tab', label: 'Вкладка «Тренажёр»' },
     { value: 'leaderboard_tab', label: 'Вкладка «Рейтинг»' },
@@ -102,7 +106,9 @@ export const makeEmptyStep = (order: number): OnboardingStep => ({
     body_ru: '',
     body_kk: '',
     mascot_position: 'bottom_left',
-    spotlight_element_key: '',
+    spotlight_element_key: null,
+    spotlight_element_keys: [],
+    step_screen: null,
     action_label_ru: '',
     action_label_kk: '',
     action_route: '',
