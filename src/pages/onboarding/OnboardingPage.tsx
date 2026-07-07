@@ -31,6 +31,16 @@ const PH_W = 200
 const PH_H = 388
 const NAV_H = 48
 const SB_H = 20
+// Real device logical width (iPhone ~393px). Used to scale x/y px values so
+// the preview matches real-device proportions.
+const DEVICE_W = 393
+const PH_RATIO = PH_W / DEVICE_W   // ≈ 0.51
+// Mascot base width in preview = Flutter's 220px × scale ratio ≈ 112px
+const MASCOT_W = Math.round(220 * PH_RATIO)
+
+const PREVIEW_ZOOM_KEY = 'aima_preview_zoom_v1'
+const ZOOM_STEPS = [1, 1.5, 2] as const
+type Zoom = typeof ZOOM_STEPS[number]
 
 type SpotRect = { x: number; y: number; w: number; h: number; r: number }
 const SPOT_MAP: Record<string, SpotRect> = {
@@ -52,6 +62,16 @@ interface PhonePreviewProps {
 }
 
 const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, stepIndex, totalSteps }) => {
+    const [zoom, setZoom] = useState<Zoom>(() => {
+        const saved = localStorage.getItem(PREVIEW_ZOOM_KEY)
+        const n = Number(saved)
+        return (ZOOM_STEPS as readonly number[]).includes(n) ? n as Zoom : 1
+    })
+    const handleZoom = (z: Zoom) => {
+        setZoom(z)
+        localStorage.setItem(PREVIEW_ZOOM_KEY, String(z))
+    }
+
     const spotRect: SpotRect | null = step.spotlight_element_key ? (SPOT_MAP[step.spotlight_element_key] ?? null) : null
     const mascotImg = step.mascot_image_preview || step.mascot_image_url
     const title = step.title_ru || 'Заголовок шага'
@@ -73,17 +93,36 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
 
     const s = (x: React.CSSProperties): React.CSSProperties => x
 
+    const phoneW = PH_W + 16
+    const phoneH = PH_H + 16
+
     return (
         <div style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
             <span style={s({ fontSize: 11, fontWeight: 700, color: '#8888bb', textTransform: 'uppercase', letterSpacing: '0.8px' })}>
                 Предпросмотр
             </span>
+            {/* Zoom controls */}
+            <div style={s({ display: 'flex', gap: 4 })}>
+                {ZOOM_STEPS.map(z => (
+                    <button key={z} onClick={() => handleZoom(z)} style={s({
+                        padding: '2px 8px', fontSize: 10, fontWeight: 700, borderRadius: 6, cursor: 'pointer',
+                        border: `1px solid ${zoom === z ? '#6c5ce7' : '#2a2a4a'}`,
+                        background: zoom === z ? '#6c5ce7' : '#14143a',
+                        color: zoom === z ? '#fff' : '#8888bb',
+                    })}>
+                        {z === 1 ? '1×' : z === 1.5 ? '1.5×' : '2×'}
+                    </button>
+                ))}
+            </div>
+            {/* Outer box reserves zoomed space; inner div applies CSS scale */}
+            <div style={s({ position: 'relative', width: phoneW, height: phoneH * zoom, flexShrink: 0 })}>
+            <div style={s({ position: 'absolute', top: 0, left: 0, transformOrigin: 'top left', transform: `scale(${zoom})` })}>
             {/* Phone frame */}
             <div style={s({
-                width: PH_W + 16, height: PH_H + 16,
+                width: phoneW, height: phoneH,
                 borderRadius: 34, background: '#0a0a1a',
                 border: '8px solid #2a2a4a', position: 'relative',
-                overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,.35)', flexShrink: 0,
+                overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,.35)',
             })}>
                 {/* Status bar */}
                 <div style={s({
@@ -184,10 +223,10 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                     ...(isLeft ? { left: -4 } : { right: -4 }),
                     zIndex: 12,
                     transformOrigin: isLeft ? 'bottom left' : 'bottom right',
-                    transform: `translateX(${step.mascot_x ?? 0}px) translateY(${step.mascot_y ?? 0}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
+                    transform: `translateX(${(step.mascot_x ?? 0) * PH_RATIO}px) translateY(${(step.mascot_y ?? 0) * PH_RATIO}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
                 })}>
                     {mascotImg
-                        ? <img src={mascotImg} alt="" style={s({ height: 82, width: 'auto', display: 'block', objectFit: 'contain' })} />
+                        ? <img src={mascotImg} alt="" style={s({ width: MASCOT_W, height: 'auto', display: 'block', objectFit: 'contain' })} />
                         : <div style={s({ width: 54, height: 68, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 14px 0 0' : '14px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 })}>🧑‍💻</div>
                     }
                 </div>
@@ -221,6 +260,8 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                 </div>
                 </div>{/* /inner clip */}
             </div>
+            </div>{/* /zoom scale */}
+            </div>{/* /zoom wrapper */}
         </div>
     )
 }
