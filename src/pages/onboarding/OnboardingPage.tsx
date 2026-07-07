@@ -42,11 +42,11 @@ const DEVICES: readonly DeviceSpec[] = [
 
 // Which spotlight keys are visible on each start screen
 const SCREEN_SPOT_KEYS: Record<string, Set<string>> = {
-    HOME:         new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','subscription_banner','streak_widget']),
+    HOME:         new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','home_banner','home_events','home_rating_card','home_reward_card']),
     TRAINER:      new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','start_trainer_button']),
     LEADERBOARD:  new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
     PROFILE:      new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
-    SUBSCRIPTION: new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
+    SUBSCRIPTION: new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','subscription_banner','streak_widget']),
 }
 
 // SPOT_MAP in iPhone 393×852 logical px
@@ -56,6 +56,10 @@ const SPOT_MAP: Record<string, SpotRect> = {
     trainer_tab:         { x: 100, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
     leaderboard_tab:     { x: 198, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
     profile_tab:         { x: 297, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
+    home_banner:         { x: 0,   y: IPHONE_SB_H + 12,             w: IPHONE_W,      h: 232, r: 0  },
+    home_events:         { x: 16,  y: IPHONE_SB_H + 288,            w: IPHONE_W - 32, h: 160, r: 16 },
+    home_rating_card:    { x: 16,  y: IPHONE_SB_H + 468,            w: 174,           h: 140, r: 16 },
+    home_reward_card:    { x: 202, y: IPHONE_SB_H + 468,            w: 175,           h: 140, r: 16 },
     subscription_banner: { x: 16,  y: IPHONE_SB_H + 90,             w: IPHONE_W - 32, h: 153, r: 28 },
     streak_widget:       { x: 267, y: IPHONE_SB_H + 12,             w: 110,           h: 63,  r: 20 },
     start_trainer_button:{ x: 16,  y: IPHONE_SB_H + 110,            w: IPHONE_W - 32, h: 70,  r: 20 },
@@ -160,37 +164,43 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                             </div>
                         </div>
                     ) : (
-                        <div style={s({ padding: `${f(10)}px ${f(12)}px` })}>
-                            <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: f(10) })}>
-                                <div>
-                                    <div style={s({ fontSize: f(9), fontWeight: 700, color: '#fff' })}>Привет, Айым! 👋</div>
-                                    <div style={s({ fontSize: f(6), color: '#5050a0', marginTop: f(2) })}>Готовься к ЕНТ</div>
-                                </div>
-                                <div style={s({ background: '#16163a', border: '1px solid #6c5ce7', borderRadius: f(10), padding: `${f(6)}px ${f(8)}px`, display: 'flex', alignItems: 'center', gap: f(4) })}>
-                                    <span style={s({ fontSize: f(12) })}>🔥</span>
-                                    <div>
-                                        <div style={s({ fontSize: f(8), fontWeight: 700, color: '#fff' })}>7</div>
-                                        <div style={s({ fontSize: f(5), color: '#5050a0' })}>серия</div>
-                                    </div>
+                        /* Real HomeMainScreen: banner → events → mini cards */
+                        <div>
+                            {/* Banner carousel */}
+                            <div style={s({ margin: `${f(12)}px ${f(16)}px 0`, borderRadius: f(20), height: f(232), background: 'linear-gradient(135deg,#1B0E3B 0%,#100823 50%,#070410 100%)', position: 'relative', overflow: 'hidden' })}>
+                                <div style={{ position: 'absolute', right: -8, top: f(45), fontSize: f(40), opacity: 0.75, transform: 'rotate(17deg)' }}>🏆</div>
+                                <div style={{ position: 'absolute', padding: f(18) }}>
+                                    <div style={s({ display: 'inline-block', background: 'rgba(255,255,255,.2)', borderRadius: f(6), padding: `${f(3)}px ${f(8)}px`, fontSize: f(5.5), fontWeight: 700, color: '#fff', letterSpacing: 0.5, marginBottom: f(6) })}>ТУРНИР</div>
+                                    <div style={s({ fontSize: f(8), fontWeight: 700, color: '#fff', marginBottom: f(2) })}>Большой турнир AIMA</div>
+                                    <div style={s({ fontSize: f(10), fontWeight: 800, color: '#FFD84D', marginBottom: f(4) })}>5 000 000 ₸</div>
+                                    <div style={s({ fontSize: f(5.5), color: 'rgba(255,255,255,.7)' })}>Реши 200 вопросов и выиграй</div>
                                 </div>
                             </div>
-                            <div style={s({ background: 'linear-gradient(135deg,#1e0f55,#3a1d8a,#5a30bb)', borderRadius: f(12), padding: `${f(12)}px ${f(14)}px`, marginBottom: f(10), display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(108,92,231,.3)' })}>
-                                <div>
-                                    <div style={s({ fontSize: f(6), color: '#c0a0ff', fontWeight: 700, marginBottom: f(3) })}>ТУРНИР</div>
-                                    <div style={s({ fontSize: f(9), fontWeight: 700, color: '#fff', marginBottom: f(2) })}>Большой турнир</div>
-                                    <div style={s({ fontSize: f(11), fontWeight: 800, color: '#ffd700' })}>5 000 000 ₸</div>
-                                    <div style={s({ fontSize: f(6), color: 'rgba(255,255,255,.6)', marginTop: f(2) })}>Реши 200 вопросов</div>
+                            {/* Events section */}
+                            <div style={s({ padding: `${f(20)}px ${f(16)}px 0` })}>
+                                <div style={s({ fontSize: f(9), fontWeight: 700, color: '#fff', marginBottom: f(12) })}>События</div>
+                                <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(12) })}>
+                                    {[['ЧЕМПИОНАТ','Весенний чемпионат'],['КУБОК','Кубок AIMA']].map(([tag, nm], i) => (
+                                        <div key={i} style={s({ borderRadius: f(16), background: 'linear-gradient(135deg,#1B0E3B,#070410)', padding: f(14), height: f(160), position: 'relative', overflow: 'hidden', boxSizing: 'border-box' })}>
+                                            <div style={s({ display: 'inline-block', background: 'rgba(255,255,255,.18)', borderRadius: f(6), padding: `${f(2)}px ${f(6)}px`, fontSize: f(5), fontWeight: 700, color: '#fff', marginBottom: f(8) })}>{tag}</div>
+                                            <div style={s({ fontSize: f(6.5), fontWeight: 700, color: '#fff', lineHeight: 1.3 })}>{nm}</div>
+                                            <div style={{ position: 'absolute', right: -10, top: f(30), fontSize: f(30), opacity: 0.45, transform: 'rotate(17deg)' }}>🏆</div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <span style={s({ fontSize: f(28) })}>🏆</span>
                             </div>
-                            <div style={s({ fontSize: f(7), fontWeight: 700, color: '#fff', marginBottom: f(6) })}>События</div>
-                            <div style={s({ display: 'flex', gap: f(8) })}>
-                                {[['Чемпионат','Весенний чемп…'],['Кубок','Кубок AIMA']].map(([tag, nm], i) => (
-                                    <div key={i} style={s({ flex: 1, background: '#14143a', borderRadius: f(10), padding: f(10), border: '1px solid #1e1e50' })}>
-                                        <div style={s({ fontSize: f(5.5), color: '#8b7cf6', fontWeight: 700, marginBottom: f(4) })}>{tag}</div>
-                                        <div style={s({ fontSize: f(7), color: '#fff', fontWeight: 600 })}>{nm}</div>
-                                    </div>
-                                ))}
+                            {/* Mini cards row */}
+                            <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(12), padding: `${f(20)}px ${f(16)}px 0` })}>
+                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(14) })}>
+                                    <div style={s({ fontSize: f(16), marginBottom: f(6) })}>🏆</div>
+                                    <div style={s({ fontSize: f(5.5), color: '#888', lineHeight: 1.35 })}>Мое место<br />в рейтинге</div>
+                                    <div style={s({ fontSize: f(7.5), fontWeight: 700, color: '#6c5ce7', marginTop: f(4) })}>12 место</div>
+                                </div>
+                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(14) })}>
+                                    <div style={s({ background: '#6c5ce7', width: f(24), height: f(24), borderRadius: f(8), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: f(13), marginBottom: f(6) })}>🎁</div>
+                                    <div style={s({ fontSize: f(5.5), color: '#888', lineHeight: 1.35 })}>До следующей<br />награды</div>
+                                    <div style={s({ fontSize: f(7.5), fontWeight: 700, color: '#FF8800', marginTop: f(4) })}>Ещё 340 ⭐</div>
+                                </div>
                             </div>
                         </div>
                     )}
