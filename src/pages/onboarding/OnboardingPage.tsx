@@ -27,73 +27,85 @@ const triggerLabel = (s: OnboardingStory) =>
 
 // ─── StepPhonePreview ────────────────────────────────────────────────────────
 
-const PH_W = 200
-// PH_H = PH_W × (852/393) so the frame has the same aspect ratio as iPhone (393×852).
-// This makes PH_RATIO_X == PH_RATIO_Y == PH_RATIO, so one scale factor works for x and y.
-const PH_H = Math.round(PH_W * 852 / 393)   // 434
-const NAV_H = 48
-const SB_H = 20
-// Real device logical size (iPhone 14/15/17 Pro).
-const DEVICE_W = 393
-// PH_RATIO ≈ 0.509 — same for both axes now that PH_H/DEVICE_H = PH_W/DEVICE_W.
-const PH_RATIO = PH_W / DEVICE_W
-// Mascot base width in preview = Flutter's 220px × scale ratio ≈ 112px
-const MASCOT_W = Math.round(220 * PH_RATIO)
+// iPhone 17 Pro logical dimensions — reference coordinate system for SPOT_MAP
+const IPHONE_W = 393
+const IPHONE_H = 852
+const IPHONE_NAV_H = 94  // nav bar height (incl. bottom safe area) in logical px
+const IPHONE_SB_H  = 54  // status bar height (incl. dynamic island) in logical px
 
-// Flutter SpeechBubbleWidget positions bubble at bottom: 240 (logical px from screen bottom)
-// 240 × PH_RATIO ≈ 122px
-const BUBBLE_BOTTOM = Math.round(240 * PH_RATIO)
-// Flutter MascotWidget uses left/right: -12 → -12 × PH_RATIO ≈ -6px
-const MASCOT_EDGE = Math.round(-12 * PH_RATIO)
+type DeviceSpec = { id: string; name: string; w: number; h: number; navH: number; sbH: number; br: number }
+const DEVICES: readonly DeviceSpec[] = [
+    { id: 'iphone', name: 'iPhone 17 Pro', w: 393, h: 852,  navH: 94, sbH: 54, br: 48 },
+    { id: 'pixel',  name: 'Pixel 9',       w: 411, h: 915,  navH: 90, sbH: 36, br: 38 },
+    { id: 'ipad',   name: 'iPad Air 11"',  w: 820, h: 1180, navH: 90, sbH: 30, br: 20 },
+]
 
-const PREVIEW_ZOOM_KEY = 'aima_preview_zoom_v1'
-const ZOOM_STEPS = [1, 1.5, 2] as const
-type Zoom = typeof ZOOM_STEPS[number]
+// Which spotlight keys are visible on each start screen
+const SCREEN_SPOT_KEYS: Record<string, Set<string>> = {
+    HOME:         new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','subscription_banner','streak_widget']),
+    TRAINER:      new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab','start_trainer_button']),
+    LEADERBOARD:  new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
+    PROFILE:      new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
+    SUBSCRIPTION: new Set(['home_tab','trainer_tab','leaderboard_tab','profile_tab']),
+}
 
+// SPOT_MAP in iPhone 393×852 logical px
 type SpotRect = { x: number; y: number; w: number; h: number; r: number }
 const SPOT_MAP: Record<string, SpotRect> = {
-    home_tab:            { x: 2,   y: PH_H - NAV_H + 5, w: 46, h: 36, r: 10 },
-    trainer_tab:         { x: 51,  y: PH_H - NAV_H + 5, w: 47, h: 36, r: 10 },
-    leaderboard_tab:     { x: 101, y: PH_H - NAV_H + 5, w: 47, h: 36, r: 10 },
-    profile_tab:         { x: 151, y: PH_H - NAV_H + 5, w: 47, h: 36, r: 10 },
-    subscription_banner: { x: 8,   y: SB_H + 46,         w: PH_W - 16, h: 78, r: 14 },
-    streak_widget:       { x: 136, y: SB_H + 6,           w: 56,        h: 32, r: 10 },
-    start_trainer_button:{ x: 8,   y: SB_H + 56,          w: PH_W - 16, h: 36, r: 10 },
+    home_tab:            { x: 4,   y: IPHONE_H - IPHONE_NAV_H + 10, w: 90,            h: 70,  r: 20 },
+    trainer_tab:         { x: 100, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
+    leaderboard_tab:     { x: 198, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
+    profile_tab:         { x: 297, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
+    subscription_banner: { x: 16,  y: IPHONE_SB_H + 90,             w: IPHONE_W - 32, h: 153, r: 28 },
+    streak_widget:       { x: 267, y: IPHONE_SB_H + 12,             w: 110,           h: 63,  r: 20 },
+    start_trainer_button:{ x: 16,  y: IPHONE_SB_H + 110,            w: IPHONE_W - 32, h: 70,  r: 20 },
 }
-const TRAINER_KEYS = new Set(['start_trainer_button'])
+const BUILTIN_SPOT_KEYS = new Set(Object.keys(SPOT_MAP))
 
-interface PhonePreviewProps {
+// Scale spot rect from iPhone coords to target device.
+// Nav tabs use bottom-anchored Y; content spots use proportional Y.
+function getSpotRect(key: string, device: DeviceSpec): SpotRect | null {
+    const raw = SPOT_MAP[key]
+    if (!raw) return null
+    const sx = device.w / IPHONE_W
+    const sy = device.h / IPHONE_H
+    const isNavTab = key.endsWith('_tab')
+    return {
+        x: raw.x * sx,
+        y: isNavTab ? device.h - device.navH + 10 : raw.y * sy,
+        w: raw.w * sx,
+        h: raw.h * sy,
+        r: raw.r * sx,
+    }
+}
+
+interface DevicePreviewProps {
+    device: DeviceSpec
     step: OnboardingStep
     startScreen: string
     stepIndex: number
     totalSteps: number
 }
 
-const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, stepIndex, totalSteps }) => {
-    const [zoom, setZoom] = useState<Zoom>(() => {
-        const saved = localStorage.getItem(PREVIEW_ZOOM_KEY)
-        const n = Number(saved)
-        return (ZOOM_STEPS as readonly number[]).includes(n) ? n as Zoom : 1
-    })
-    const handleZoom = (z: Zoom) => {
-        setZoom(z)
-        localStorage.setItem(PREVIEW_ZOOM_KEY, String(z))
-    }
+const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, startScreen, stepIndex, totalSteps }) => {
+    const { w, h, navH, sbH, br } = device
+    // f() scales a value that was designed at iPhone logical px to this device's CSS px.
+    // At iPhone (w=393) f(n)=n; at iPad (w=820) f(n)≈2×n — same as what the app renders.
+    const f = (n: number) => Math.round(n * w / IPHONE_W)
 
-    const spotRect: SpotRect | null = step.spotlight_element_key ? (SPOT_MAP[step.spotlight_element_key] ?? null) : null
+    const spotKey = step.spotlight_element_key
+    const spotRect = spotKey ? getSpotRect(spotKey, device) : null
     const mascotImg = step.mascot_image_preview || step.mascot_image_url
     const title = step.title_ru || 'Заголовок шага'
     const body = step.body_ru || 'Описание подсказки пользователю.'
     const btnLabel = step.action_label_ru || 'Далее →'
 
-    const isTrainer = startScreen === 'TRAINER' || (!!step.spotlight_element_key && TRAINER_KEYS.has(step.spotlight_element_key))
+    const isTrainer = startScreen === 'TRAINER' || spotKey === 'start_trainer_button'
     const isLeft = step.mascot_position.includes('left')
     const isBottom = step.mascot_position.includes('bottom')
 
-    const navActive = step.spotlight_element_key === 'home_tab' ? 0
-        : step.spotlight_element_key === 'trainer_tab' ? 1
-        : step.spotlight_element_key === 'leaderboard_tab' ? 2
-        : step.spotlight_element_key === 'profile_tab' ? 3
+    const navActive = spotKey === 'home_tab' ? 0 : spotKey === 'trainer_tab' ? 1
+        : spotKey === 'leaderboard_tab' ? 2 : spotKey === 'profile_tab' ? 3
         : isTrainer ? 1 : 0
 
     const NAV_ICONS  = ['🏠', '🎮', '🏆', '👤']
@@ -101,95 +113,82 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
 
     const s = (x: React.CSSProperties): React.CSSProperties => x
 
-    const phoneW = PH_W + 16
-    const phoneH = PH_H + 16
-
     return (
-        <div style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
-            <span style={s({ fontSize: 11, fontWeight: 700, color: '#8888bb', textTransform: 'uppercase', letterSpacing: '0.8px' })}>
-                Предпросмотр
-            </span>
-            {/* Zoom controls */}
-            <div style={s({ display: 'flex', gap: 4 })}>
-                {ZOOM_STEPS.map(z => (
-                    <button key={z} onClick={() => handleZoom(z)} style={s({
-                        padding: '2px 8px', fontSize: 10, fontWeight: 700, borderRadius: 6, cursor: 'pointer',
-                        border: `1px solid ${zoom === z ? '#6c5ce7' : '#2a2a4a'}`,
-                        background: zoom === z ? '#6c5ce7' : '#14143a',
-                        color: zoom === z ? '#fff' : '#8888bb',
-                    })}>
-                        {z === 1 ? '1×' : z === 1.5 ? '1.5×' : '2×'}
-                    </button>
-                ))}
-            </div>
-            {/* Outer box reserves zoomed space; inner div applies CSS scale */}
-            <div style={s({ position: 'relative', width: phoneW, height: phoneH * zoom, flexShrink: 0 })}>
-            <div style={s({ position: 'absolute', top: 0, left: 0, transformOrigin: 'top left', transform: `scale(${zoom})` })}>
-            {/* Phone frame */}
+        <div style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 })}>
+            <span style={s({ fontSize: 13, fontWeight: 700, color: '#6c5ce7' })}>{device.name}</span>
+            <span style={s({ fontSize: 11, color: '#8888bb', marginTop: -4 })}>{w}×{h}</span>
+            {/* Phone/tablet frame */}
             <div style={s({
-                width: phoneW, height: phoneH,
-                borderRadius: 34, background: '#0a0a1a',
-                border: '8px solid #2a2a4a', position: 'relative',
-                overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,.35)',
+                width: w + 8, height: h + 8,
+                borderRadius: br + 4, background: '#0a0a1a',
+                border: '4px solid #2a2a4a', position: 'relative',
+                overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,.4)',
+                flexShrink: 0,
             })}>
                 {/* Status bar */}
                 <div style={s({
-                    height: SB_H, background: '#0a0a1a',
-                    display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-                    padding: '0 10px 2px', fontSize: 7, fontWeight: 700, color: '#fff',
-                    position: 'relative', zIndex: 1,
+                    height: sbH, background: '#0a0a1a', position: 'relative', zIndex: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: `0 ${f(16)}px`, fontSize: f(7), fontWeight: 700, color: '#fff',
                 })}>
-                    <span>16:01</span><span>▲ WiFi 43%</span>
+                    <span>16:01</span>
+                    {device.id === 'iphone' && (
+                        <div style={s({ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', width: 126, height: 37, background: '#000', borderRadius: 20 })} />
+                    )}
+                    {device.id === 'pixel' && (
+                        <div style={s({ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, background: '#111', borderRadius: '50%' })} />
+                    )}
+                    <span>WiFi 43%</span>
                 </div>
                 {/* App content */}
-                <div style={s({ position: 'absolute', top: SB_H, left: 0, right: 0, bottom: NAV_H, background: '#0e0e22', overflow: 'hidden' })}>
+                <div style={s({ position: 'absolute', top: sbH, left: 0, right: 0, bottom: navH, background: '#0e0e22', overflow: 'hidden' })}>
                     {isTrainer ? (
-                        <div style={s({ padding: '6px 8px' })}>
-                            <div style={s({ background: '#14143a', borderRadius: 10, padding: 3, display: 'flex', gap: 2, marginBottom: 6 })}>
+                        <div style={s({ padding: `${f(10)}px ${f(12)}px` })}>
+                            <div style={s({ background: '#14143a', borderRadius: f(10), padding: f(4), display: 'flex', gap: f(3), marginBottom: f(10) })}>
                                 {['Полное ЕНТ', 'По предмету', 'Баттл'].map((t, i) => (
-                                    <div key={i} style={s({ flex: 1, textAlign: 'center', padding: '4px 2px', borderRadius: 8, background: i === 0 ? '#3d2d8a' : 'transparent', fontSize: 6, fontWeight: 700, color: i === 0 ? '#fff' : '#5050a0' })}>{t}</div>
+                                    <div key={i} style={s({ flex: 1, textAlign: 'center', padding: `${f(5)}px ${f(2)}px`, borderRadius: f(8), background: i === 0 ? '#3d2d8a' : 'transparent', fontSize: f(6), fontWeight: 700, color: i === 0 ? '#fff' : '#5050a0' })}>{t}</div>
                                 ))}
                             </div>
-                            <div style={s({ fontSize: 7, color: '#fff', fontWeight: 700, marginBottom: 4 })}>Основные предметы:</div>
-                            <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 })}>
+                            <div style={s({ fontSize: f(7), color: '#fff', fontWeight: 700, marginBottom: f(8) })}>Основные предметы:</div>
+                            <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: f(8) })}>
                                 {[['🔢','Мат. грамотность'],['📖','Чтение'],['🏛️','История']].map(([ic, nm], i) => (
-                                    <div key={i} style={s({ background: '#14143a', borderRadius: 8, padding: '6px 4px', textAlign: 'center', border: '1px solid #1e1e50' })}>
-                                        <div style={s({ fontSize: 14 })}>{ic}</div>
-                                        <div style={s({ fontSize: 5.5, color: '#d0d0ff', marginTop: 2, lineHeight: 1.3 })}>{nm}</div>
+                                    <div key={i} style={s({ background: '#14143a', borderRadius: f(10), padding: `${f(10)}px ${f(6)}px`, textAlign: 'center', border: '1px solid #1e1e50' })}>
+                                        <div style={s({ fontSize: f(18) })}>{ic}</div>
+                                        <div style={s({ fontSize: f(6), color: '#d0d0ff', marginTop: f(4), lineHeight: 1.3 })}>{nm}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        <div style={s({ padding: '6px 8px' })}>
-                            <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 })}>
+                        <div style={s({ padding: `${f(10)}px ${f(12)}px` })}>
+                            <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: f(10) })}>
                                 <div>
-                                    <div style={s({ fontSize: 8, fontWeight: 700, color: '#fff' })}>Привет, Айым! 👋</div>
-                                    <div style={s({ fontSize: 6, color: '#5050a0', marginTop: 1 })}>Готовься к ЕНТ</div>
+                                    <div style={s({ fontSize: f(9), fontWeight: 700, color: '#fff' })}>Привет, Айым! 👋</div>
+                                    <div style={s({ fontSize: f(6), color: '#5050a0', marginTop: f(2) })}>Готовься к ЕНТ</div>
                                 </div>
-                                <div style={s({ background: '#16163a', border: '1px solid #6c5ce7', borderRadius: 8, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3 })}>
-                                    <span style={s({ fontSize: 9 })}>🔥</span>
+                                <div style={s({ background: '#16163a', border: '1px solid #6c5ce7', borderRadius: f(10), padding: `${f(6)}px ${f(8)}px`, display: 'flex', alignItems: 'center', gap: f(4) })}>
+                                    <span style={s({ fontSize: f(12) })}>🔥</span>
                                     <div>
-                                        <div style={s({ fontSize: 7, fontWeight: 700, color: '#fff' })}>7</div>
-                                        <div style={s({ fontSize: 5, color: '#5050a0' })}>серия</div>
+                                        <div style={s({ fontSize: f(8), fontWeight: 700, color: '#fff' })}>7</div>
+                                        <div style={s({ fontSize: f(5), color: '#5050a0' })}>серия</div>
                                     </div>
                                 </div>
                             </div>
-                            <div style={s({ background: 'linear-gradient(135deg,#1e0f55,#3a1d8a,#5a30bb)', borderRadius: 10, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(108,92,231,.3)' })}>
+                            <div style={s({ background: 'linear-gradient(135deg,#1e0f55,#3a1d8a,#5a30bb)', borderRadius: f(12), padding: `${f(12)}px ${f(14)}px`, marginBottom: f(10), display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(108,92,231,.3)' })}>
                                 <div>
-                                    <div style={s({ fontSize: 6, color: '#c0a0ff', fontWeight: 700, marginBottom: 2 })}>ТУРНИР</div>
-                                    <div style={s({ fontSize: 8, fontWeight: 700, color: '#fff', marginBottom: 1 })}>Большой турнир</div>
-                                    <div style={s({ fontSize: 9, fontWeight: 800, color: '#ffd700' })}>5 000 000 ₸</div>
-                                    <div style={s({ fontSize: 6, color: 'rgba(255,255,255,.6)', marginTop: 1 })}>Реши 200 вопросов</div>
+                                    <div style={s({ fontSize: f(6), color: '#c0a0ff', fontWeight: 700, marginBottom: f(3) })}>ТУРНИР</div>
+                                    <div style={s({ fontSize: f(9), fontWeight: 700, color: '#fff', marginBottom: f(2) })}>Большой турнир</div>
+                                    <div style={s({ fontSize: f(11), fontWeight: 800, color: '#ffd700' })}>5 000 000 ₸</div>
+                                    <div style={s({ fontSize: f(6), color: 'rgba(255,255,255,.6)', marginTop: f(2) })}>Реши 200 вопросов</div>
                                 </div>
-                                <span style={s({ fontSize: 24 })}>🏆</span>
+                                <span style={s({ fontSize: f(28) })}>🏆</span>
                             </div>
-                            <div style={s({ fontSize: 7, fontWeight: 700, color: '#fff', marginBottom: 4 })}>События</div>
-                            <div style={s({ display: 'flex', gap: 5 })}>
+                            <div style={s({ fontSize: f(7), fontWeight: 700, color: '#fff', marginBottom: f(6) })}>События</div>
+                            <div style={s({ display: 'flex', gap: f(8) })}>
                                 {[['Чемпионат','Весенний чемп…'],['Кубок','Кубок AIMA']].map(([tag, nm], i) => (
-                                    <div key={i} style={s({ flex: 1, background: '#14143a', borderRadius: 8, padding: 6, border: '1px solid #1e1e50' })}>
-                                        <div style={s({ fontSize: 5.5, color: '#8b7cf6', fontWeight: 700, marginBottom: 3 })}>{tag}</div>
-                                        <div style={s({ fontSize: 6.5, color: '#fff', fontWeight: 600 })}>{nm}</div>
+                                    <div key={i} style={s({ flex: 1, background: '#14143a', borderRadius: f(10), padding: f(10), border: '1px solid #1e1e50' })}>
+                                        <div style={s({ fontSize: f(5.5), color: '#8b7cf6', fontWeight: 700, marginBottom: f(4) })}>{tag}</div>
+                                        <div style={s({ fontSize: f(7), color: '#fff', fontWeight: 600 })}>{nm}</div>
                                     </div>
                                 ))}
                             </div>
@@ -197,83 +196,95 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                     )}
                 </div>
                 {/* Nav bar */}
-                <div style={s({ position: 'absolute', bottom: 0, left: 0, right: 0, height: NAV_H, background: '#0a0a1a', borderTop: '1px solid #151530', display: 'flex', alignItems: 'center', justifyContent: 'space-around', paddingBottom: 6, zIndex: 1 })}>
+                <div style={s({ position: 'absolute', bottom: 0, left: 0, right: 0, height: navH, background: '#0a0a1a', borderTop: '1px solid #151530', display: 'flex', alignItems: 'center', justifyContent: 'space-around', paddingBottom: Math.round(navH * 0.2), zIndex: 1 })}>
                     {NAV_ICONS.map((icon, i) => (
-                        <div key={i} style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 40 })}>
-                            <div style={s({ padding: '2px 8px', borderRadius: 8, background: navActive === i ? 'rgba(108,92,231,.25)' : 'transparent' })}>
-                                <span style={s({ fontSize: 12, opacity: navActive === i ? 1 : 0.35 })}>{icon}</span>
+                        <div key={i} style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: f(2) })}>
+                            <div style={s({ padding: `${f(3)}px ${f(12)}px`, borderRadius: f(10), background: navActive === i ? 'rgba(108,92,231,.25)' : 'transparent' })}>
+                                <span style={s({ fontSize: f(14), opacity: navActive === i ? 1 : 0.35 })}>{icon}</span>
                             </div>
-                            <span style={s({ fontSize: 5.5, color: navActive === i ? '#8b7cf6' : '#5050a0' })}>{NAV_LABELS[i]}</span>
+                            <span style={s({ fontSize: f(5.5), color: navActive === i ? '#8b7cf6' : '#5050a0' })}>{NAV_LABELS[i]}</span>
                         </div>
                     ))}
                 </div>
 
-                {/* Inner clip — prevents mascot from overflowing phone frame (Safari overflow+border-radius bug) */}
-                <div style={s({ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 26 })}>
-                {/* ── OVERLAY ── */}
+                {/* Inner clip */}
+                <div style={s({ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: br })}>
+                {/* Overlay */}
                 <div style={s({ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.76)', zIndex: 10 })} />
                 {spotRect && (
                     <div style={s({
                         position: 'absolute', left: spotRect.x, top: spotRect.y,
                         width: spotRect.w, height: spotRect.h, borderRadius: spotRect.r,
-                        boxShadow: '0 0 0 9999px rgba(0,0,0,.76), 0 0 0 2px rgba(108,92,231,.9), 0 0 12px 4px rgba(108,92,231,.4)',
+                        boxShadow: '0 0 0 9999px rgba(0,0,0,.76), 0 0 0 2px rgba(108,92,231,.9), 0 0 16px 6px rgba(108,92,231,.4)',
                         zIndex: 11,
                     })} />
                 )}
                 {/* Step counter */}
-                <div style={s({ position: 'absolute', top: SB_H + 6, left: 0, right: 0, textAlign: 'center', fontSize: 8, fontWeight: 600, color: '#fff', zIndex: 14 })}>
+                <div style={s({ position: 'absolute', top: sbH + f(8), left: 0, right: 0, textAlign: 'center', fontSize: f(8), fontWeight: 600, color: '#fff', zIndex: 14 })}>
                     {stepIndex + 1} / {totalSteps}
                 </div>
-                {/* Mascot — bottom:0/top:0 matches Flutter MascotWidget (bottom:0/top:0 in Positioned).
-                    X scaled by PH_RATIO (width-based), Y scaled by PH_RATIO_Y (height-based). */}
+                {/* Mascot — fixed 220px logical width matches Flutter MascotWidget */}
                 <div style={s({
                     position: 'absolute',
                     ...(isBottom ? { bottom: 0 } : { top: 0 }),
-                    ...(isLeft ? { left: MASCOT_EDGE } : { right: MASCOT_EDGE }),
+                    ...(isLeft ? { left: -12 } : { right: -12 }),
                     zIndex: 12,
                     transformOrigin: isLeft ? 'bottom left' : 'bottom right',
-                    transform: `translateX(${(step.mascot_x ?? 0) * PH_RATIO}px) translateY(${(step.mascot_y ?? 0) * PH_RATIO}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
+                    transform: `translateX(${step.mascot_x ?? 0}px) translateY(${step.mascot_y ?? 0}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
                 })}>
                     {mascotImg
-                        ? <img src={mascotImg} alt="" style={s({ width: MASCOT_W, height: 'auto', display: 'block', objectFit: 'contain' })} />
-                        : <div style={s({ width: 54, height: 68, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 14px 0 0' : '14px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 })}>🧑‍💻</div>
+                        ? <img src={mascotImg} alt="" style={s({ width: 220, height: 'auto', display: 'block', objectFit: 'contain' })} />
+                        : <div style={s({ width: 220, height: 276, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 28px 0 0' : '28px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 })}>🧑‍💻</div>
                     }
                 </div>
-                {/* Speech bubble */}
+                {/* Speech bubble — 240px from bottom matches Flutter SpeechBubbleWidget */}
                 <div style={s({
                     position: 'absolute',
-                    ...(isBottom ? { bottom: BUBBLE_BOTTOM } : { top: BUBBLE_BOTTOM }),
-                    ...(isLeft ? { right: 8 } : { left: 8 }),
-                    width: 118, background: '#fff', borderRadius: 10,
-                    padding: '7px 8px', boxShadow: '0 4px 16px rgba(0,0,0,.25)', zIndex: 13,
+                    ...(isBottom ? { bottom: 240 } : { top: 240 }),
+                    ...(isLeft ? { right: f(12) } : { left: f(12) }),
+                    width: f(160), background: '#fff', borderRadius: f(14),
+                    padding: `${f(10)}px ${f(12)}px`, boxShadow: '0 6px 20px rgba(0,0,0,.28)', zIndex: 13,
                 })}>
-                    <div style={s({ fontSize: 8, fontWeight: 800, color: '#12122e', marginBottom: 3, lineHeight: 1.3 })}>
+                    <div style={s({ fontSize: f(9), fontWeight: 800, color: '#12122e', marginBottom: f(4), lineHeight: 1.3 })}>
                         {title.length > 32 ? title.slice(0, 32) + '…' : title}
                     </div>
-                    <div style={s({ fontSize: 7, color: '#3a3a5a', lineHeight: 1.45 })}>
+                    <div style={s({ fontSize: f(7.5), color: '#3a3a5a', lineHeight: 1.5 })}>
                         {body.length > 80 ? body.slice(0, 80) + '…' : body}
                     </div>
                 </div>
                 {/* Dots */}
-                <div style={s({ position: 'absolute', bottom: NAV_H + 36, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 4, zIndex: 13 })}>
+                <div style={s({ position: 'absolute', bottom: navH + f(48), left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: f(5), zIndex: 13 })}>
                     {Array.from({ length: totalSteps }, (_, i) => (
-                        <div key={i} style={s({ height: 5, width: i === stepIndex ? 16 : 5, borderRadius: 3, background: i === stepIndex ? '#8b7cf6' : 'rgba(255,255,255,.25)', transition: 'all .3s' })} />
+                        <div key={i} style={s({ height: f(6), width: i === stepIndex ? f(20) : f(6), borderRadius: f(4), background: i === stepIndex ? '#8b7cf6' : 'rgba(255,255,255,.25)', transition: 'all .3s' })} />
                     ))}
                 </div>
                 {/* Button */}
-                <div style={s({ position: 'absolute', bottom: NAV_H + 8, left: 8, right: 8, zIndex: 13 })}>
-                    <div style={s({ background: 'linear-gradient(135deg,#6c5ce7,#8b7cf6)', color: '#fff', fontSize: 8, fontWeight: 700, padding: '6px 4px', borderRadius: 8, textAlign: 'center', marginBottom: 3 })}>
+                <div style={s({ position: 'absolute', bottom: navH + f(10), left: f(12), right: f(12), zIndex: 13 })}>
+                    <div style={s({ background: 'linear-gradient(135deg,#6c5ce7,#8b7cf6)', color: '#fff', fontSize: f(9), fontWeight: 700, padding: `${f(9)}px ${f(6)}px`, borderRadius: f(10), textAlign: 'center', marginBottom: f(4) })}>
                         {btnLabel.length > 24 ? btnLabel.slice(0, 24) + '…' : btnLabel}
                     </div>
-                    <div style={s({ textAlign: 'center', fontSize: 7, color: 'rgba(255,255,255,.4)' })}>Пропустить</div>
+                    <div style={s({ textAlign: 'center', fontSize: f(7), color: 'rgba(255,255,255,.4)' })}>Пропустить</div>
                 </div>
                 </div>{/* /inner clip */}
             </div>
-            </div>{/* /zoom scale */}
-            </div>{/* /zoom wrapper */}
         </div>
     )
 }
+
+interface MultiDevicePreviewProps {
+    step: OnboardingStep
+    startScreen: string
+    stepIndex: number
+    totalSteps: number
+}
+
+const MultiDevicePreview: React.FC<MultiDevicePreviewProps> = (props) => (
+    <div style={{ display: 'flex', gap: 40, overflowX: 'auto', padding: '8px 4px 16px', alignItems: 'flex-start' }}>
+        {DEVICES.map(device => (
+            <SingleDevicePreview key={device.id} device={device} {...props} />
+        ))}
+    </div>
+)
 
 // ─── StepEditor ─────────────────────────────────────────────────────────────
 
@@ -320,6 +331,13 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
 
     const preview = step.mascot_image_preview || step.mascot_image_url
 
+    // Filter: built-in keys shown only if available on the current start screen;
+    // custom keys (not in SPOT_MAP) are always shown.
+    const screenKeys = SCREEN_SPOT_KEYS[startScreen.toUpperCase()]
+    const filteredSpotKeys = spotlightKeys.filter(k =>
+        !BUILTIN_SPOT_KEYS.has(k.value) || !screenKeys || screenKeys.has(k.value)
+    )
+
     return (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
             {/* Header */}
@@ -356,8 +374,8 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
             </div>
 
             {open && (
-                <div className="p-4 flex gap-6 items-start">
-                    <div className="flex-1 space-y-4 min-w-0">
+                <div className="p-4 space-y-4">
+                    <div className="space-y-4 min-w-0">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Mascot image */}
                         <div className="flex flex-col gap-2">
@@ -489,7 +507,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             >
                                 <option value="">— нет подсветки —</option>
-                                {spotlightKeys.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                                {filteredSpotKeys.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
                             </select>
                             {step.spotlight_element_key && (
                                 <p className="text-xs text-indigo-600 mt-1">
@@ -526,14 +544,13 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                         </div>
                     </div>
                 </div>
-                    <StepPhonePreview
-                        step={step}
-                        startScreen={startScreen}
-                        stepIndex={index}
-                        totalSteps={total}
-                    />
+                {/* Multi-device preview */}
+                <div className="border-t border-gray-100 pt-4">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Предпросмотр на устройствах</p>
+                    <MultiDevicePreview step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
                 </div>
-            )}
+            </div>
+        )}
         </div>
     )
 }
@@ -752,7 +769,18 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                     {START_SCREENS.map(s => (
                         <button key={s.value} type="button"
-                            onClick={() => upd({ start_screen: s.value as StartScreen })}
+                            onClick={() => {
+                                const newScreen = s.value as StartScreen
+                                const allowed = SCREEN_SPOT_KEYS[newScreen.toUpperCase()]
+                                const steps = story.steps.map(st => {
+                                    const key = st.spotlight_element_key
+                                    if (key && BUILTIN_SPOT_KEYS.has(key) && allowed && !allowed.has(key)) {
+                                        return { ...st, spotlight_element_key: null }
+                                    }
+                                    return st
+                                })
+                                upd({ start_screen: newScreen, steps })
+                            }}
                             className={`py-2 px-3 rounded-xl border-2 text-sm font-medium transition-colors ${
                                 story.start_screen === s.value
                                     ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
