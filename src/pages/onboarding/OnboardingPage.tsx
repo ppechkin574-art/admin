@@ -28,24 +28,23 @@ const triggerLabel = (s: OnboardingStory) =>
 // ─── StepPhonePreview ────────────────────────────────────────────────────────
 
 const PH_W = 200
-const PH_H = 388
+// PH_H = PH_W × (852/393) so the frame has the same aspect ratio as iPhone (393×852).
+// This makes PH_RATIO_X == PH_RATIO_Y == PH_RATIO, so one scale factor works for x and y.
+const PH_H = Math.round(PH_W * 852 / 393)   // 434
 const NAV_H = 48
 const SB_H = 20
-// Real device logical width (iPhone ~393px). Used to scale x/y px values so
-// the preview matches real-device proportions.
+// Real device logical size (iPhone 14/15/17 Pro).
 const DEVICE_W = 393
-const PH_RATIO = PH_W / DEVICE_W   // ≈ 0.51
+// PH_RATIO ≈ 0.509 — same for both axes now that PH_H/DEVICE_H = PH_W/DEVICE_W.
+const PH_RATIO = PH_W / DEVICE_W
 // Mascot base width in preview = Flutter's 220px × scale ratio ≈ 112px
 const MASCOT_W = Math.round(220 * PH_RATIO)
 
-// Real device logical height (iPhone ~852px). Used to scale y/bottom values.
-const DEVICE_H = 852
-const PH_RATIO_Y = PH_H / DEVICE_H  // ≈ 0.455 — separate from width ratio to avoid distortion
-
 // Flutter SpeechBubbleWidget positions bubble at bottom: 240 (logical px from screen bottom)
-const BUBBLE_BOTTOM = Math.round(240 * PH_RATIO_Y)  // ≈ 109px in preview
-// Flutter MascotWidget uses left/right: -12
-const MASCOT_EDGE = Math.round(-12 * PH_RATIO)  // ≈ -6px in preview
+// 240 × PH_RATIO ≈ 122px
+const BUBBLE_BOTTOM = Math.round(240 * PH_RATIO)
+// Flutter MascotWidget uses left/right: -12 → -12 × PH_RATIO ≈ -6px
+const MASCOT_EDGE = Math.round(-12 * PH_RATIO)
 
 const PREVIEW_ZOOM_KEY = 'aima_preview_zoom_v1'
 const ZOOM_STEPS = [1, 1.5, 2] as const
@@ -233,7 +232,7 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                     ...(isLeft ? { left: MASCOT_EDGE } : { right: MASCOT_EDGE }),
                     zIndex: 12,
                     transformOrigin: isLeft ? 'bottom left' : 'bottom right',
-                    transform: `translateX(${(step.mascot_x ?? 0) * PH_RATIO}px) translateY(${(step.mascot_y ?? 0) * PH_RATIO_Y}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
+                    transform: `translateX(${(step.mascot_x ?? 0) * PH_RATIO}px) translateY(${(step.mascot_y ?? 0) * PH_RATIO}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
                 })}>
                     {mascotImg
                         ? <img src={mascotImg} alt="" style={s({ width: MASCOT_W, height: 'auto', display: 'block', objectFit: 'contain' })} />
