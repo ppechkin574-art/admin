@@ -56,10 +56,10 @@ const SPOT_MAP: Record<string, SpotRect> = {
     trainer_tab:         { x: 100, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
     leaderboard_tab:     { x: 198, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
     profile_tab:         { x: 297, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 70,  r: 20 },
-    home_banner:         { x: 0,   y: IPHONE_SB_H + 12,             w: IPHONE_W,      h: 232, r: 0  },
-    home_events:         { x: 16,  y: IPHONE_SB_H + 288,            w: IPHONE_W - 32, h: 160, r: 16 },
-    home_rating_card:    { x: 16,  y: IPHONE_SB_H + 468,            w: 174,           h: 140, r: 16 },
-    home_reward_card:    { x: 202, y: IPHONE_SB_H + 468,            w: 175,           h: 140, r: 16 },
+    home_banner:         { x: 0,   y: IPHONE_SB_H + 17,             w: IPHONE_W,      h: 236, r: 0  },
+    home_events:         { x: 16,  y: 363,                           w: IPHONE_W - 32, h: 200, r: 16 },
+    home_rating_card:    { x: 16,  y: 583,                           w: 174,           h: 155, r: 16 },
+    home_reward_card:    { x: 202, y: 583,                           w: 175,           h: 155, r: 16 },
     subscription_banner: { x: 16,  y: IPHONE_SB_H + 90,             w: IPHONE_W - 32, h: 153, r: 28 },
     streak_widget:       { x: 267, y: IPHONE_SB_H + 12,             w: 110,           h: 63,  r: 20 },
     start_trainer_button:{ x: 16,  y: IPHONE_SB_H + 110,            w: IPHONE_W - 32, h: 70,  r: 20 },
@@ -165,41 +165,47 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                         </div>
                     ) : (
                         /* Real HomeMainScreen: banner → events → mini cards */
-                        <div>
-                            {/* Banner carousel */}
-                            <div style={s({ margin: `${f(12)}px ${f(16)}px 0`, borderRadius: f(20), height: f(232), background: 'linear-gradient(135deg,#1B0E3B 0%,#100823 50%,#070410 100%)', position: 'relative', overflow: 'hidden' })}>
-                                <div style={{ position: 'absolute', right: -8, top: f(45), fontSize: f(40), opacity: 0.75, transform: 'rotate(17deg)' }}>🏆</div>
-                                <div style={{ position: 'absolute', padding: f(18) }}>
-                                    <div style={s({ display: 'inline-block', background: 'rgba(255,255,255,.2)', borderRadius: f(6), padding: `${f(3)}px ${f(8)}px`, fontSize: f(5.5), fontWeight: 700, color: '#fff', letterSpacing: 0.5, marginBottom: f(6) })}>ТУРНИР</div>
-                                    <div style={s({ fontSize: f(8), fontWeight: 700, color: '#fff', marginBottom: f(2) })}>Большой турнир AIMA</div>
-                                    <div style={s({ fontSize: f(10), fontWeight: 800, color: '#FFD84D', marginBottom: f(4) })}>5 000 000 ₸</div>
-                                    <div style={s({ fontSize: f(5.5), color: 'rgba(255,255,255,.7)' })}>Реши 200 вопросов и выиграй</div>
+                        <div style={s({ paddingTop: f(17) })}>
+                            {/* Banner: h=220 card + h=16 dots = 236 total, full-width */}
+                            <div style={s({ height: f(236), position: 'relative' })}>
+                                <div style={s({ height: f(220), background: 'linear-gradient(135deg,#1B0E3B 0%,#100823 50%,#070410 100%)', position: 'relative', overflow: 'hidden' })}>
+                                    <div style={{ position: 'absolute', right: -8, top: f(45), fontSize: f(40), opacity: 0.75, transform: 'rotate(17deg)' }}>🏆</div>
+                                    <div style={{ position: 'absolute', padding: f(18) }}>
+                                        <div style={s({ display: 'inline-block', background: 'rgba(255,255,255,.2)', borderRadius: f(6), padding: `${f(3)}px ${f(8)}px`, fontSize: f(12), fontWeight: 700, color: '#fff', letterSpacing: 0.5, marginBottom: f(6) })}>ТУРНИР</div>
+                                        <div style={s({ fontSize: f(14), fontWeight: 700, color: '#fff', marginBottom: f(2) })}>Большой турнир AIMA</div>
+                                        <div style={s({ fontSize: f(16), fontWeight: 800, color: '#FFD84D', marginBottom: f(4) })}>5 000 000 ₸</div>
+                                        <div style={s({ fontSize: f(12), color: 'rgba(255,255,255,.7)' })}>Реши 200 вопросов и выиграй</div>
+                                    </div>
+                                </div>
+                                <div style={s({ height: f(16), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: f(4) })}>
+                                    {[0,1,2].map(i => <div key={i} style={s({ height: f(6), width: i === 0 ? f(18) : f(6), borderRadius: f(4), background: i === 0 ? '#8b7cf6' : 'rgba(255,255,255,.25)' })} />)}
                                 </div>
                             </div>
-                            {/* Events section */}
-                            <div style={s({ padding: `${f(20)}px ${f(16)}px 0` })}>
-                                <div style={s({ fontSize: f(9), fontWeight: 700, color: '#fff', marginBottom: f(12) })}>События</div>
-                                <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(12) })}>
-                                    {[['ЧЕМПИОНАТ','Весенний чемпионат'],['КУБОК','Кубок AIMA']].map(([tag, nm], i) => (
-                                        <div key={i} style={s({ borderRadius: f(16), background: 'linear-gradient(135deg,#1B0E3B,#070410)', padding: f(14), height: f(160), position: 'relative', overflow: 'hidden', boxSizing: 'border-box' })}>
-                                            <div style={s({ display: 'inline-block', background: 'rgba(255,255,255,.18)', borderRadius: f(6), padding: `${f(2)}px ${f(6)}px`, fontSize: f(5), fontWeight: 700, color: '#fff', marginBottom: f(8) })}>{tag}</div>
-                                            <div style={s({ fontSize: f(6.5), fontWeight: 700, color: '#fff', lineHeight: 1.3 })}>{nm}</div>
-                                            <div style={{ position: 'absolute', right: -10, top: f(30), fontSize: f(30), opacity: 0.45, transform: 'rotate(17deg)' }}>🏆</div>
-                                        </div>
-                                    ))}
-                                </div>
+                            {/* Gap20 + "События" S20 */}
+                            <div style={s({ marginTop: f(20), paddingLeft: f(16), paddingRight: f(16), marginBottom: f(12) })}>
+                                <div style={s({ fontSize: f(20), fontWeight: 700, color: '#fff' })}>События</div>
                             </div>
-                            {/* Mini cards row */}
-                            <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(12), padding: `${f(20)}px ${f(16)}px 0` })}>
-                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(14) })}>
-                                    <div style={s({ fontSize: f(16), marginBottom: f(6) })}>🏆</div>
-                                    <div style={s({ fontSize: f(5.5), color: '#888', lineHeight: 1.35 })}>Мое место<br />в рейтинге</div>
-                                    <div style={s({ fontSize: f(7.5), fontWeight: 700, color: '#6c5ce7', marginTop: f(4) })}>12 место</div>
+                            {/* Events grid: h=200, x=16..377 */}
+                            <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(16), paddingLeft: f(16), paddingRight: f(16), height: f(200) })}>
+                                {[['ЧЕМПИОНАТ','Весенний чемпионат'],['КУБОК','Кубок AIMA']].map(([tag, nm], i) => (
+                                    <div key={i} style={s({ borderRadius: f(16), background: 'linear-gradient(135deg,#1B0E3B,#070410)', padding: f(16), position: 'relative', overflow: 'hidden', boxSizing: 'border-box' })}>
+                                        <div style={s({ display: 'inline-block', background: 'rgba(255,255,255,.18)', borderRadius: f(6), padding: `${f(2)}px ${f(6)}px`, fontSize: f(12), fontWeight: 700, color: '#fff', marginBottom: f(8) })}>{tag}</div>
+                                        <div style={s({ fontSize: f(14), fontWeight: 700, color: '#fff', lineHeight: 1.3 })}>{nm}</div>
+                                        <div style={{ position: 'absolute', right: -10, top: f(30), fontSize: f(30), opacity: 0.45, transform: 'rotate(17deg)' }}>🏆</div>
+                                    </div>
+                                ))}
+                            </div>
+                            {/* Gap20 + Mini cards: h=155 */}
+                            <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(16), paddingLeft: f(16), paddingRight: f(16), marginTop: f(20), height: f(155) })}>
+                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(16) })}>
+                                    <div style={s({ fontSize: f(24), marginBottom: f(8) })}>🏆</div>
+                                    <div style={s({ fontSize: f(12), color: '#888', lineHeight: 1.35 })}>Мое место<br />в рейтинге</div>
+                                    <div style={s({ fontSize: f(14), fontWeight: 700, color: '#6c5ce7', marginTop: f(6) })}>12 место</div>
                                 </div>
-                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(14) })}>
-                                    <div style={s({ background: '#6c5ce7', width: f(24), height: f(24), borderRadius: f(8), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: f(13), marginBottom: f(6) })}>🎁</div>
-                                    <div style={s({ fontSize: f(5.5), color: '#888', lineHeight: 1.35 })}>До следующей<br />награды</div>
-                                    <div style={s({ fontSize: f(7.5), fontWeight: 700, color: '#FF8800', marginTop: f(4) })}>Ещё 340 ⭐</div>
+                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(16) })}>
+                                    <div style={s({ background: '#6c5ce7', width: f(32), height: f(32), borderRadius: f(10), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: f(18), marginBottom: f(8) })}>🎁</div>
+                                    <div style={s({ fontSize: f(12), color: '#888', lineHeight: 1.35 })}>До следующей<br />награды</div>
+                                    <div style={s({ fontSize: f(14), fontWeight: 700, color: '#FF8800', marginTop: f(6) })}>Ещё 340 ⭐</div>
                                 </div>
                             </div>
                         </div>
@@ -242,24 +248,28 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                     transformOrigin: isLeft ? 'bottom left' : 'bottom right',
                     transform: `translateX(${step.mascot_x ?? 0}px) translateY(${step.mascot_y ?? 0}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
                 })}>
-                    {mascotImg
-                        ? <img src={mascotImg} alt="" style={s({ width: 220, height: 'auto', display: 'block', objectFit: 'contain' })} />
-                        : <div style={s({ width: 220, height: 276, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 28px 0 0' : '28px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 })}>🧑‍💻</div>
-                    }
+                    <div style={{ transform: `scale(${(step.mascot_flip_h ?? false) ? -1 : 1}, ${(step.mascot_flip_v ?? false) ? -1 : 1})` }}>
+                        {mascotImg
+                            ? <img src={mascotImg} alt="" style={s({ width: 220, height: 'auto', display: 'block', objectFit: 'contain' })} />
+                            : <div style={s({ width: 220, height: 276, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 28px 0 0' : '28px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 })}>🧑‍💻</div>
+                        }
+                    </div>
                 </div>
-                {/* Speech bubble — 240px from bottom matches Flutter SpeechBubbleWidget */}
-                <div style={s({
+                {/* Speech bubble — width/font match Flutter SpeechBubbleWidget, draggable via bubble_x/y */}
+                <div style={{
                     position: 'absolute',
                     ...(isBottom ? { bottom: 240 } : { top: 240 }),
-                    ...(isLeft ? { right: f(12) } : { left: f(12) }),
-                    width: f(160), background: '#fff', borderRadius: f(14),
-                    padding: `${f(10)}px ${f(12)}px`, boxShadow: '0 6px 20px rgba(0,0,0,.28)', zIndex: 13,
-                })}>
-                    <div style={s({ fontSize: f(9), fontWeight: 800, color: '#12122e', marginBottom: f(4), lineHeight: 1.3 })}>
-                        {title.length > 32 ? title.slice(0, 32) + '…' : title}
+                    ...(isLeft ? { right: 16 } : { left: 16 }),
+                    width: 260,
+                    transform: `translateX(${step.bubble_x ?? 0}px) translateY(${step.bubble_y ?? 0}px)`,
+                    background: '#fff', borderRadius: 16,
+                    padding: '20px', boxShadow: '0 6px 24px rgba(0,0,0,.18)', zIndex: 13,
+                }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1A2E', marginBottom: 8, lineHeight: 1.3 }}>
+                        {title}
                     </div>
-                    <div style={s({ fontSize: f(7.5), color: '#3a3a5a', lineHeight: 1.5 })}>
-                        {body.length > 80 ? body.slice(0, 80) + '…' : body}
+                    <div style={{ fontSize: 14, color: '#3D3D5C', lineHeight: 1.5 }}>
+                        {body}
                     </div>
                 </div>
                 {/* Dots */}
@@ -451,6 +461,46 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                         )}
                                     </div>
                                 ))}
+                                <div className="flex items-center gap-4 pt-1">
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="checkbox"
+                                            checked={step.mascot_flip_h ?? false}
+                                            onChange={e => upd({ mascot_flip_h: e.target.checked })}
+                                            className="w-3.5 h-3.5 accent-indigo-500"
+                                        />
+                                        <span className="text-xs text-gray-500">Зеркало X</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="checkbox"
+                                            checked={step.mascot_flip_v ?? false}
+                                            onChange={e => upd({ mascot_flip_v: e.target.checked })}
+                                            className="w-3.5 h-3.5 accent-indigo-500"
+                                        />
+                                        <span className="text-xs text-gray-500">Зеркало Y</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">Позиция пузыря</label>
+                                {(['bubble_x', 'bubble_y'] as const).map(key => {
+                                    const val = step[key] ?? 0
+                                    return (
+                                        <div key={key} className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500 w-16 flex-shrink-0">{key === 'bubble_x' ? 'X' : 'Y'}</span>
+                                            <input
+                                                type="range" min={-200} max={200} step={1} value={val}
+                                                onChange={e => upd({ [key]: Number(e.target.value) } as Partial<OnboardingStep>)}
+                                                className="flex-1 accent-indigo-500"
+                                            />
+                                            <span className="text-xs text-indigo-700 font-mono w-12 text-right flex-shrink-0">{val}px</span>
+                                            {val !== 0 && (
+                                                <button type="button"
+                                                    onClick={() => upd({ [key]: 0 } as Partial<OnboardingStep>)}
+                                                    className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0">↺</button>
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
 

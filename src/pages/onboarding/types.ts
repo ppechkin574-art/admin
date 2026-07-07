@@ -21,6 +21,10 @@ export interface OnboardingStep {
     mascot_x: number
     mascot_y: number
     mascot_rotation: number
+    bubble_x: number
+    bubble_y: number
+    mascot_flip_h: boolean
+    mascot_flip_v: boolean
 }
 
 export interface OnboardingStory {
@@ -106,6 +110,10 @@ export const makeEmptyStep = (order: number): OnboardingStep => ({
     mascot_x: 0,
     mascot_y: 0,
     mascot_rotation: 0,
+    bubble_x: 0,
+    bubble_y: 0,
+    mascot_flip_h: false,
+    mascot_flip_v: false,
 })
 
 export const makeEmptyStory = (): OnboardingStory => ({
