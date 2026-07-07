@@ -13,10 +13,10 @@ export interface OnboardingStep {
     body_ru: string
     body_kk: string
     mascot_position: MascotPosition
-    spotlight_element_key: string
-    action_label_ru: string
-    action_label_kk: string
-    action_route: string
+    spotlight_element_key: string | null
+    action_label_ru: string | null
+    action_label_kk: string | null
+    action_route: string | null
     mascot_scale: number
     mascot_x: number
     mascot_y: number

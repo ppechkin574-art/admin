@@ -434,8 +434,8 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                 Spotlight-подсветка
                             </label>
                             <select
-                                value={step.spotlight_element_key}
-                                onChange={e => upd({ spotlight_element_key: e.target.value })}
+                                value={step.spotlight_element_key ?? ''}
+                                onChange={e => upd({ spotlight_element_key: e.target.value || null })}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             >
                                 <option value="">— нет подсветки —</option>
@@ -454,21 +454,21 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                             <div className="space-y-2">
                                 <div className="grid grid-cols-2 gap-2">
                                     <input
-                                        type="text" value={step.action_label_ru}
-                                        onChange={e => upd({ action_label_ru: e.target.value })}
+                                        type="text" value={step.action_label_ru ?? ''}
+                                        onChange={e => upd({ action_label_ru: e.target.value || null })}
                                         placeholder="Перейти (RU)"
                                         className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                     />
                                     <input
-                                        type="text" value={step.action_label_kk}
-                                        onChange={e => upd({ action_label_kk: e.target.value })}
+                                        type="text" value={step.action_label_kk ?? ''}
+                                        onChange={e => upd({ action_label_kk: e.target.value || null })}
                                         placeholder="Өту (KK)"
                                         className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                     />
                                 </div>
                                 <input
-                                    type="text" value={step.action_route}
-                                    onChange={e => upd({ action_route: e.target.value })}
+                                    type="text" value={step.action_route ?? ''}
+                                    onChange={e => upd({ action_route: e.target.value || null })}
                                     placeholder="Маршрут: trainer, profile, subscription..."
                                     className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                 />
