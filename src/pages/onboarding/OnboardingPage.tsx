@@ -235,8 +235,8 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                         zIndex: 11,
                     })} />
                 )}
-                {/* Step counter */}
-                <div style={s({ position: 'absolute', top: sbH + f(8), left: 0, right: 0, textAlign: 'center', fontSize: f(8), fontWeight: 600, color: '#fff', zIndex: 14 })}>
+                {/* Step counter — Flutter: top = padding.top + 16, fixed 16px font */}
+                <div style={s({ position: 'absolute', top: sbH + 16, left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 600, color: '#fff', zIndex: 14 })}>
                     {stepIndex + 1} / {totalSteps}
                 </div>
                 {/* Mascot — fixed 220px logical width matches Flutter MascotWidget */}
@@ -255,36 +255,56 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                         }
                     </div>
                 </div>
-                {/* Speech bubble — width/font match Flutter SpeechBubbleWidget, draggable via bubble_x/y */}
+                {/* Speech bubble — matches Flutter SpeechBubbleWidget exactly */}
                 <div style={{
                     position: 'absolute',
                     ...(isBottom ? { bottom: 240 } : { top: 240 }),
                     ...(isLeft ? { right: 16 } : { left: 16 }),
-                    width: 260,
+                    zIndex: 13,
                     transform: `translateX(${step.bubble_x ?? 0}px) translateY(${step.bubble_y ?? 0}px)`,
-                    background: '#fff', borderRadius: 16,
-                    padding: '20px', boxShadow: '0 6px 24px rgba(0,0,0,.18)', zIndex: 13,
                 }}>
-                    <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1A2E', marginBottom: 8, lineHeight: 1.3 }}>
-                        {title}
-                    </div>
-                    <div style={{ fontSize: 14, color: '#3D3D5C', lineHeight: 1.5 }}>
-                        {body}
+                    <div style={{ position: 'relative', width: 260 }}>
+                        <div style={{
+                            background: '#fff', borderRadius: 16,
+                            padding: `${isBottom ? 20 : 28}px ${isLeft ? 20 : 24}px ${isBottom ? 28 : 20}px ${isLeft ? 24 : 20}px`,
+                            boxShadow: '0 4px 16px rgba(0,0,0,.12)',
+                        }}>
+                            <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1A2E', marginBottom: 8, lineHeight: 1.3 }}>{title}</div>
+                            <div style={{ fontSize: 14, color: '#3D3D5C', lineHeight: 1.5 }}>{body}</div>
+                        </div>
+                        {/* Tail triangle — matches Flutter _BubblePainter */}
+                        <div style={{
+                            position: 'absolute',
+                            ...(isBottom
+                                ? { bottom: -13, borderTop: '14px solid #fff', borderBottom: 'none' }
+                                : { top: -13, borderBottom: '14px solid #fff', borderTop: 'none' }),
+                            ...(isLeft ? { left: 12 } : { right: 12 }),
+                            width: 0, height: 0,
+                            borderLeft: '8.5px solid transparent',
+                            borderRight: '8.5px solid transparent',
+                        }} />
                     </div>
                 </div>
-                {/* Dots */}
-                <div style={s({ position: 'absolute', bottom: navH + f(48), left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: f(5), zIndex: 13 })}>
-                    {Array.from({ length: totalSteps }, (_, i) => (
-                        <div key={i} style={s({ height: f(6), width: i === stepIndex ? f(20) : f(6), borderRadius: f(4), background: i === stepIndex ? '#8b7cf6' : 'rgba(255,255,255,.25)', transition: 'all .3s' })} />
-                    ))}
-                </div>
-                {/* Button */}
-                <div style={s({ position: 'absolute', bottom: navH + f(10), left: f(12), right: f(12), zIndex: 13 })}>
-                    <div style={s({ background: 'linear-gradient(135deg,#6c5ce7,#8b7cf6)', color: '#fff', fontSize: f(9), fontWeight: 700, padding: `${f(9)}px ${f(6)}px`, borderRadius: f(10), textAlign: 'center', marginBottom: f(4) })}>
-                        {btnLabel.length > 24 ? btnLabel.slice(0, 24) + '…' : btnLabel}
-                    </div>
-                    <div style={s({ textAlign: 'center', fontSize: f(7), color: 'rgba(255,255,255,.4)' })}>Пропустить</div>
-                </div>
+                {/* Bottom bar — Flutter-accurate: column bottom = safeAreaBottom + 24 */}
+                {(() => {
+                    const safeBot = device.id === 'ipad' ? 20 : device.id === 'pixel' ? 0 : 34
+                    const skipBot = safeBot + 24
+                    const btnBot = skipBot + 34
+                    const dotsBot = btnBot + 60
+                    return (<>
+                        <div style={{ position: 'absolute', bottom: dotsBot, left: 0, right: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 13 }}>
+                            {Array.from({ length: totalSteps }, (_, i) => (
+                                <div key={i} style={{ height: 8, width: i === stepIndex ? 20 : 8, borderRadius: 4, background: i === stepIndex ? '#6C5CE7' : '#DDD8F5', margin: '0 4px' }} />
+                            ))}
+                        </div>
+                        <div style={{ position: 'absolute', bottom: btnBot, left: 20, right: 20, zIndex: 13, background: '#6C5CE7', color: '#fff', fontSize: 16, fontWeight: 700, padding: '15px 0', borderRadius: 16, textAlign: 'center', boxShadow: '0 5px 14px rgba(108,92,231,.4)' }}>
+                            {btnLabel}
+                        </div>
+                        <div style={{ position: 'absolute', bottom: skipBot, left: 0, right: 0, textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,.5)', padding: '8px 0', zIndex: 13 }}>
+                            Пропустить
+                        </div>
+                    </>)
+                })()}
                 </div>{/* /inner clip */}
             </div>
         </div>
@@ -1145,6 +1165,10 @@ export const OnboardingPage: React.FC = () => {
                     mascot_x: s.mascot_x ?? 0,
                     mascot_y: s.mascot_y ?? 0,
                     mascot_rotation: s.mascot_rotation ?? 0,
+                    bubble_x: s.bubble_x ?? 0,
+                    bubble_y: s.bubble_y ?? 0,
+                    mascot_flip_h: s.mascot_flip_h ?? false,
+                    mascot_flip_v: s.mascot_flip_v ?? false,
                 })),
             }
             if (editing && editing.id) {
