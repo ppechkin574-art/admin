@@ -17,6 +17,10 @@ export interface OnboardingStep {
     action_label_ru: string
     action_label_kk: string
     action_route: string
+    mascot_scale: number
+    mascot_x: number
+    mascot_y: number
+    mascot_rotation: number
 }
 
 export interface OnboardingStory {
@@ -94,6 +98,10 @@ export const makeEmptyStep = (order: number): OnboardingStep => ({
     action_label_ru: '',
     action_label_kk: '',
     action_route: '',
+    mascot_scale: 1.0,
+    mascot_x: 0,
+    mascot_y: 0,
+    mascot_rotation: 0,
 })
 
 export const makeEmptyStory = (): OnboardingStory => ({

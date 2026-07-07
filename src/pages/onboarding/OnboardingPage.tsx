@@ -176,7 +176,14 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                     {stepIndex + 1} / {totalSteps}
                 </div>
                 {/* Mascot */}
-                <div style={s({ position: 'absolute', ...(isBottom ? { bottom: NAV_H } : { top: SB_H }), ...(isLeft ? { left: -4 } : { right: -4 }), zIndex: 12 })}>
+                <div style={s({
+                    position: 'absolute',
+                    ...(isBottom ? { bottom: NAV_H } : { top: SB_H }),
+                    ...(isLeft ? { left: -4 } : { right: -4 }),
+                    zIndex: 12,
+                    transformOrigin: isLeft ? 'bottom left' : 'bottom right',
+                    transform: `translateX(${step.mascot_x ?? 0}px) translateY(${step.mascot_y ?? 0}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
+                })}>
                     {mascotImg
                         ? <img src={mascotImg} alt="" style={s({ height: 82, width: 'auto', display: 'block', objectFit: 'contain' })} />
                         : <div style={s({ width: 54, height: 68, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 14px 0 0' : '14px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 })}>🧑‍💻</div>
@@ -337,6 +344,31 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                 >
                                     {MASCOT_POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                                 </select>
+                            </div>
+                            {/* Transform controls */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">Трансформация</label>
+                                {([
+                                    { key: 'mascot_scale', label: 'Размер', min: 0.3, max: 3, step: 0.05, val: step.mascot_scale ?? 1, fmt: (v: number) => v.toFixed(2) },
+                                    { key: 'mascot_x', label: 'Смещ. X', min: -100, max: 100, step: 1, val: step.mascot_x ?? 0, fmt: (v: number) => `${v}px` },
+                                    { key: 'mascot_y', label: 'Смещ. Y', min: -100, max: 100, step: 1, val: step.mascot_y ?? 0, fmt: (v: number) => `${v}px` },
+                                    { key: 'mascot_rotation', label: 'Наклон', min: -180, max: 180, step: 1, val: step.mascot_rotation ?? 0, fmt: (v: number) => `${v}°` },
+                                ] as const).map(({ key, label, min, max, step: st, val, fmt }) => (
+                                    <div key={key} className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 w-16 flex-shrink-0">{label}</span>
+                                        <input
+                                            type="range" min={min} max={max} step={st} value={val}
+                                            onChange={e => upd({ [key]: Number(e.target.value) } as Partial<OnboardingStep>)}
+                                            className="flex-1 accent-indigo-500"
+                                        />
+                                        <span className="text-xs text-indigo-700 font-mono w-12 text-right flex-shrink-0">{fmt(val)}</span>
+                                        {val !== (key === 'mascot_scale' ? 1 : 0) && (
+                                            <button type="button"
+                                                onClick={() => upd({ [key]: key === 'mascot_scale' ? 1 : 0 } as Partial<OnboardingStep>)}
+                                                className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0">↺</button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -967,6 +999,10 @@ export const OnboardingPage: React.FC = () => {
                     action_label_ru: s.action_label_ru || null,
                     action_label_kk: s.action_label_kk || null,
                     action_route: s.action_route || null,
+                    mascot_scale: s.mascot_scale ?? 1.0,
+                    mascot_x: s.mascot_x ?? 0,
+                    mascot_y: s.mascot_y ?? 0,
+                    mascot_rotation: s.mascot_rotation ?? 0,
                 })),
             }
             if (editing && editing.id) {
