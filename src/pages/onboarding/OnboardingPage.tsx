@@ -161,6 +161,8 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                     ))}
                 </div>
 
+                {/* Inner clip — prevents mascot from overflowing phone frame (Safari overflow+border-radius bug) */}
+                <div style={s({ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 26 })}>
                 {/* ── OVERLAY ── */}
                 <div style={s({ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.76)', zIndex: 10 })} />
                 {spotRect && (
@@ -217,6 +219,7 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                     </div>
                     <div style={s({ textAlign: 'center', fontSize: 7, color: 'rgba(255,255,255,.4)' })}>Пропустить</div>
                 </div>
+                </div>{/* /inner clip */}
             </div>
         </div>
     )
@@ -254,8 +257,9 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
         // Upload to server
         setUploading(true)
         try {
-            const { url } = await onboardingService.uploadImage(file)
-            upd({ mascot_image_url: url, mascot_image_preview: null })
+            const { url, filename } = await onboardingService.uploadImage(file)
+            // Store filename in DB (never expires); keep presigned url as local preview
+            upd({ mascot_image_url: filename, mascot_image_preview: url })
             toast.success('Изображение загружено')
         } catch {
             toast.error('Ошибка загрузки изображения')
