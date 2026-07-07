@@ -334,18 +334,18 @@ interface StepEditorProps {
     total: number
     spotlightKeys: SpotlightKey[]
     startScreen: string
-    onChange: (updated: OnboardingStep) => void
+    onPatch: (patch: Partial<OnboardingStep>) => void
     onMoveUp: () => void
     onMoveDown: () => void
     onDelete: () => void
 }
 
-const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, startScreen, onChange, onMoveUp, onMoveDown, onDelete }) => {
+const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, startScreen, onPatch, onMoveUp, onMoveDown, onDelete }) => {
     const [open, setOpen] = useState(index === 0)
     const [uploading, setUploading] = useState(false)
     const fileRef = useRef<HTMLInputElement>(null)
 
-    const upd = (patch: Partial<OnboardingStep>) => onChange({ ...step, ...patch })
+    const upd = onPatch
 
     const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -648,10 +648,12 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
     const [story, setStory] = useState<OnboardingStory>(initial)
     const upd = (patch: Partial<OnboardingStory>) => setStory(s => ({ ...s, ...patch }))
 
-    const updateStep = (idx: number, updated: OnboardingStep) => {
-        const steps = [...story.steps]
-        steps[idx] = updated
-        upd({ steps })
+    const patchStep = (idx: number, patch: Partial<OnboardingStep>) => {
+        setStory(s => {
+            const steps = [...s.steps]
+            steps[idx] = { ...steps[idx], ...patch }
+            return { ...s, steps }
+        })
     }
 
     const addStep = () => {
@@ -894,7 +896,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                             total={story.steps.length}
                             spotlightKeys={spotlightKeys}
                             startScreen={story.start_screen}
-                            onChange={updated => updateStep(idx, updated)}
+                            onPatch={patch => patchStep(idx, patch)}
                             onMoveUp={() => moveStep(idx, -1)}
                             onMoveDown={() => moveStep(idx, 1)}
                             onDelete={() => deleteStep(idx)}
