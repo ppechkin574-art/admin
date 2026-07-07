@@ -38,6 +38,15 @@ const PH_RATIO = PH_W / DEVICE_W   // ≈ 0.51
 // Mascot base width in preview = Flutter's 220px × scale ratio ≈ 112px
 const MASCOT_W = Math.round(220 * PH_RATIO)
 
+// Real device logical height (iPhone ~852px). Used to scale y/bottom values.
+const DEVICE_H = 852
+const PH_RATIO_Y = PH_H / DEVICE_H  // ≈ 0.455 — separate from width ratio to avoid distortion
+
+// Flutter SpeechBubbleWidget positions bubble at bottom: 240 (logical px from screen bottom)
+const BUBBLE_BOTTOM = Math.round(240 * PH_RATIO_Y)  // ≈ 109px in preview
+// Flutter MascotWidget uses left/right: -12
+const MASCOT_EDGE = Math.round(-12 * PH_RATIO)  // ≈ -6px in preview
+
 const PREVIEW_ZOOM_KEY = 'aima_preview_zoom_v1'
 const ZOOM_STEPS = [1, 1.5, 2] as const
 type Zoom = typeof ZOOM_STEPS[number]
@@ -216,14 +225,15 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                 <div style={s({ position: 'absolute', top: SB_H + 6, left: 0, right: 0, textAlign: 'center', fontSize: 8, fontWeight: 600, color: '#fff', zIndex: 14 })}>
                     {stepIndex + 1} / {totalSteps}
                 </div>
-                {/* Mascot */}
+                {/* Mascot — bottom:0/top:0 matches Flutter MascotWidget (bottom:0/top:0 in Positioned).
+                    X scaled by PH_RATIO (width-based), Y scaled by PH_RATIO_Y (height-based). */}
                 <div style={s({
                     position: 'absolute',
-                    ...(isBottom ? { bottom: NAV_H } : { top: SB_H }),
-                    ...(isLeft ? { left: -4 } : { right: -4 }),
+                    ...(isBottom ? { bottom: 0 } : { top: 0 }),
+                    ...(isLeft ? { left: MASCOT_EDGE } : { right: MASCOT_EDGE }),
                     zIndex: 12,
                     transformOrigin: isLeft ? 'bottom left' : 'bottom right',
-                    transform: `translateX(${(step.mascot_x ?? 0) * PH_RATIO}px) translateY(${(step.mascot_y ?? 0) * PH_RATIO}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
+                    transform: `translateX(${(step.mascot_x ?? 0) * PH_RATIO}px) translateY(${(step.mascot_y ?? 0) * PH_RATIO_Y}px) scale(${step.mascot_scale ?? 1}) rotate(${step.mascot_rotation ?? 0}deg)`,
                 })}>
                     {mascotImg
                         ? <img src={mascotImg} alt="" style={s({ width: MASCOT_W, height: 'auto', display: 'block', objectFit: 'contain' })} />
@@ -233,7 +243,7 @@ const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, step
                 {/* Speech bubble */}
                 <div style={s({
                     position: 'absolute',
-                    ...(isBottom ? { bottom: NAV_H + (mascotImg ? 90 : 76) } : { top: SB_H + (mascotImg ? 90 : 76) }),
+                    ...(isBottom ? { bottom: BUBBLE_BOTTOM } : { top: BUBBLE_BOTTOM }),
                     ...(isLeft ? { right: 8 } : { left: 8 }),
                     width: 118, background: '#fff', borderRadius: 10,
                     padding: '7px 8px', boxShadow: '0 4px 16px rgba(0,0,0,.25)', zIndex: 13,
