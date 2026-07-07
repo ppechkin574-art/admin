@@ -25,6 +25,196 @@ const audienceLabel = (s: OnboardingStory) =>
 const triggerLabel = (s: OnboardingStory) =>
     s.trigger === 'FIRST_OPEN' ? 'Первый запуск' : `Сразу ×${s.immediate_count}`
 
+// ─── StepPhonePreview ────────────────────────────────────────────────────────
+
+const PH_W = 200
+const PH_H = 388
+const NAV_H = 48
+const SB_H = 20
+
+type SpotRect = { x: number; y: number; w: number; h: number; r: number }
+const SPOT_MAP: Record<string, SpotRect> = {
+    home_tab:            { x: 2,   y: PH_H - NAV_H + 5, w: 46, h: 36, r: 10 },
+    trainer_tab:         { x: 51,  y: PH_H - NAV_H + 5, w: 47, h: 36, r: 10 },
+    leaderboard_tab:     { x: 101, y: PH_H - NAV_H + 5, w: 47, h: 36, r: 10 },
+    profile_tab:         { x: 151, y: PH_H - NAV_H + 5, w: 47, h: 36, r: 10 },
+    subscription_banner: { x: 8,   y: SB_H + 46,         w: PH_W - 16, h: 78, r: 14 },
+    streak_widget:       { x: 136, y: SB_H + 6,           w: 56,        h: 32, r: 10 },
+    start_trainer_button:{ x: 8,   y: SB_H + 56,          w: PH_W - 16, h: 36, r: 10 },
+}
+const TRAINER_KEYS = new Set(['start_trainer_button'])
+
+interface PhonePreviewProps {
+    step: OnboardingStep
+    startScreen: string
+    stepIndex: number
+    totalSteps: number
+}
+
+const StepPhonePreview: React.FC<PhonePreviewProps> = ({ step, startScreen, stepIndex, totalSteps }) => {
+    const spotRect: SpotRect | null = step.spotlight_element_key ? (SPOT_MAP[step.spotlight_element_key] ?? null) : null
+    const mascotImg = step.mascot_image_preview || step.mascot_image_url
+    const title = step.title_ru || 'Заголовок шага'
+    const body = step.body_ru || 'Описание подсказки пользователю.'
+    const btnLabel = step.action_label_ru || 'Далее →'
+
+    const isTrainer = startScreen === 'TRAINER' || (!!step.spotlight_element_key && TRAINER_KEYS.has(step.spotlight_element_key))
+    const isLeft = step.mascot_position.includes('left')
+    const isBottom = step.mascot_position.includes('bottom')
+
+    const navActive = step.spotlight_element_key === 'home_tab' ? 0
+        : step.spotlight_element_key === 'trainer_tab' ? 1
+        : step.spotlight_element_key === 'leaderboard_tab' ? 2
+        : step.spotlight_element_key === 'profile_tab' ? 3
+        : isTrainer ? 1 : 0
+
+    const NAV_ICONS  = ['🏠', '🎮', '🏆', '👤']
+    const NAV_LABELS = ['Главная', 'Тренажёр', 'Рейтинг', 'Профиль']
+
+    const s = (x: React.CSSProperties): React.CSSProperties => x
+
+    return (
+        <div style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
+            <span style={s({ fontSize: 11, fontWeight: 700, color: '#8888bb', textTransform: 'uppercase', letterSpacing: '0.8px' })}>
+                Предпросмотр
+            </span>
+            {/* Phone frame */}
+            <div style={s({
+                width: PH_W + 16, height: PH_H + 16,
+                borderRadius: 34, background: '#0a0a1a',
+                border: '8px solid #2a2a4a', position: 'relative',
+                overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,.35)', flexShrink: 0,
+            })}>
+                {/* Status bar */}
+                <div style={s({
+                    height: SB_H, background: '#0a0a1a',
+                    display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+                    padding: '0 10px 2px', fontSize: 7, fontWeight: 700, color: '#fff',
+                    position: 'relative', zIndex: 1,
+                })}>
+                    <span>16:01</span><span>▲ WiFi 43%</span>
+                </div>
+                {/* App content */}
+                <div style={s({ position: 'absolute', top: SB_H, left: 0, right: 0, bottom: NAV_H, background: '#0e0e22', overflow: 'hidden' })}>
+                    {isTrainer ? (
+                        <div style={s({ padding: '6px 8px' })}>
+                            <div style={s({ background: '#14143a', borderRadius: 10, padding: 3, display: 'flex', gap: 2, marginBottom: 6 })}>
+                                {['Полное ЕНТ', 'По предмету', 'Баттл'].map((t, i) => (
+                                    <div key={i} style={s({ flex: 1, textAlign: 'center', padding: '4px 2px', borderRadius: 8, background: i === 0 ? '#3d2d8a' : 'transparent', fontSize: 6, fontWeight: 700, color: i === 0 ? '#fff' : '#5050a0' })}>{t}</div>
+                                ))}
+                            </div>
+                            <div style={s({ fontSize: 7, color: '#fff', fontWeight: 700, marginBottom: 4 })}>Основные предметы:</div>
+                            <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 })}>
+                                {[['🔢','Мат. грамотность'],['📖','Чтение'],['🏛️','История']].map(([ic, nm], i) => (
+                                    <div key={i} style={s({ background: '#14143a', borderRadius: 8, padding: '6px 4px', textAlign: 'center', border: '1px solid #1e1e50' })}>
+                                        <div style={s({ fontSize: 14 })}>{ic}</div>
+                                        <div style={s({ fontSize: 5.5, color: '#d0d0ff', marginTop: 2, lineHeight: 1.3 })}>{nm}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={s({ padding: '6px 8px' })}>
+                            <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 })}>
+                                <div>
+                                    <div style={s({ fontSize: 8, fontWeight: 700, color: '#fff' })}>Привет, Айым! 👋</div>
+                                    <div style={s({ fontSize: 6, color: '#5050a0', marginTop: 1 })}>Готовься к ЕНТ</div>
+                                </div>
+                                <div style={s({ background: '#16163a', border: '1px solid #6c5ce7', borderRadius: 8, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 3 })}>
+                                    <span style={s({ fontSize: 9 })}>🔥</span>
+                                    <div>
+                                        <div style={s({ fontSize: 7, fontWeight: 700, color: '#fff' })}>7</div>
+                                        <div style={s({ fontSize: 5, color: '#5050a0' })}>серия</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={s({ background: 'linear-gradient(135deg,#1e0f55,#3a1d8a,#5a30bb)', borderRadius: 10, padding: '8px 10px', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(108,92,231,.3)' })}>
+                                <div>
+                                    <div style={s({ fontSize: 6, color: '#c0a0ff', fontWeight: 700, marginBottom: 2 })}>ТУРНИР</div>
+                                    <div style={s({ fontSize: 8, fontWeight: 700, color: '#fff', marginBottom: 1 })}>Большой турнир</div>
+                                    <div style={s({ fontSize: 9, fontWeight: 800, color: '#ffd700' })}>5 000 000 ₸</div>
+                                    <div style={s({ fontSize: 6, color: 'rgba(255,255,255,.6)', marginTop: 1 })}>Реши 200 вопросов</div>
+                                </div>
+                                <span style={s({ fontSize: 24 })}>🏆</span>
+                            </div>
+                            <div style={s({ fontSize: 7, fontWeight: 700, color: '#fff', marginBottom: 4 })}>События</div>
+                            <div style={s({ display: 'flex', gap: 5 })}>
+                                {[['Чемпионат','Весенний чемп…'],['Кубок','Кубок AIMA']].map(([tag, nm], i) => (
+                                    <div key={i} style={s({ flex: 1, background: '#14143a', borderRadius: 8, padding: 6, border: '1px solid #1e1e50' })}>
+                                        <div style={s({ fontSize: 5.5, color: '#8b7cf6', fontWeight: 700, marginBottom: 3 })}>{tag}</div>
+                                        <div style={s({ fontSize: 6.5, color: '#fff', fontWeight: 600 })}>{nm}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                {/* Nav bar */}
+                <div style={s({ position: 'absolute', bottom: 0, left: 0, right: 0, height: NAV_H, background: '#0a0a1a', borderTop: '1px solid #151530', display: 'flex', alignItems: 'center', justifyContent: 'space-around', paddingBottom: 6, zIndex: 1 })}>
+                    {NAV_ICONS.map((icon, i) => (
+                        <div key={i} style={s({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 40 })}>
+                            <div style={s({ padding: '2px 8px', borderRadius: 8, background: navActive === i ? 'rgba(108,92,231,.25)' : 'transparent' })}>
+                                <span style={s({ fontSize: 12, opacity: navActive === i ? 1 : 0.35 })}>{icon}</span>
+                            </div>
+                            <span style={s({ fontSize: 5.5, color: navActive === i ? '#8b7cf6' : '#5050a0' })}>{NAV_LABELS[i]}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ── OVERLAY ── */}
+                <div style={s({ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.76)', zIndex: 10 })} />
+                {spotRect && (
+                    <div style={s({
+                        position: 'absolute', left: spotRect.x, top: spotRect.y,
+                        width: spotRect.w, height: spotRect.h, borderRadius: spotRect.r,
+                        boxShadow: '0 0 0 9999px rgba(0,0,0,.76), 0 0 0 2px rgba(108,92,231,.9), 0 0 12px 4px rgba(108,92,231,.4)',
+                        zIndex: 11,
+                    })} />
+                )}
+                {/* Step counter */}
+                <div style={s({ position: 'absolute', top: SB_H + 6, left: 0, right: 0, textAlign: 'center', fontSize: 8, fontWeight: 600, color: '#fff', zIndex: 14 })}>
+                    {stepIndex + 1} / {totalSteps}
+                </div>
+                {/* Mascot */}
+                <div style={s({ position: 'absolute', ...(isBottom ? { bottom: NAV_H } : { top: SB_H }), ...(isLeft ? { left: -4 } : { right: -4 }), zIndex: 12 })}>
+                    {mascotImg
+                        ? <img src={mascotImg} alt="" style={s({ height: 82, width: 'auto', display: 'block', objectFit: 'contain' })} />
+                        : <div style={s({ width: 54, height: 68, background: 'linear-gradient(160deg,#1e1050,#4a28a0)', borderRadius: isLeft ? '0 14px 0 0' : '14px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 })}>🧑‍💻</div>
+                    }
+                </div>
+                {/* Speech bubble */}
+                <div style={s({
+                    position: 'absolute',
+                    ...(isBottom ? { bottom: NAV_H + (mascotImg ? 90 : 76) } : { top: SB_H + (mascotImg ? 90 : 76) }),
+                    ...(isLeft ? { right: 8 } : { left: 8 }),
+                    width: 118, background: '#fff', borderRadius: 10,
+                    padding: '7px 8px', boxShadow: '0 4px 16px rgba(0,0,0,.25)', zIndex: 13,
+                })}>
+                    <div style={s({ fontSize: 8, fontWeight: 800, color: '#12122e', marginBottom: 3, lineHeight: 1.3 })}>
+                        {title.length > 32 ? title.slice(0, 32) + '…' : title}
+                    </div>
+                    <div style={s({ fontSize: 7, color: '#3a3a5a', lineHeight: 1.45 })}>
+                        {body.length > 80 ? body.slice(0, 80) + '…' : body}
+                    </div>
+                </div>
+                {/* Dots */}
+                <div style={s({ position: 'absolute', bottom: NAV_H + 36, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 4, zIndex: 13 })}>
+                    {Array.from({ length: totalSteps }, (_, i) => (
+                        <div key={i} style={s({ height: 5, width: i === stepIndex ? 16 : 5, borderRadius: 3, background: i === stepIndex ? '#8b7cf6' : 'rgba(255,255,255,.25)', transition: 'all .3s' })} />
+                    ))}
+                </div>
+                {/* Button */}
+                <div style={s({ position: 'absolute', bottom: NAV_H + 8, left: 8, right: 8, zIndex: 13 })}>
+                    <div style={s({ background: 'linear-gradient(135deg,#6c5ce7,#8b7cf6)', color: '#fff', fontSize: 8, fontWeight: 700, padding: '6px 4px', borderRadius: 8, textAlign: 'center', marginBottom: 3 })}>
+                        {btnLabel.length > 24 ? btnLabel.slice(0, 24) + '…' : btnLabel}
+                    </div>
+                    <div style={s({ textAlign: 'center', fontSize: 7, color: 'rgba(255,255,255,.4)' })}>Пропустить</div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ─── StepEditor ─────────────────────────────────────────────────────────────
 
 interface StepEditorProps {
@@ -32,13 +222,14 @@ interface StepEditorProps {
     index: number
     total: number
     spotlightKeys: SpotlightKey[]
+    startScreen: string
     onChange: (updated: OnboardingStep) => void
     onMoveUp: () => void
     onMoveDown: () => void
     onDelete: () => void
 }
 
-const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, onChange, onMoveUp, onMoveDown, onDelete }) => {
+const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, startScreen, onChange, onMoveUp, onMoveDown, onDelete }) => {
     const [open, setOpen] = useState(index === 0)
     const [uploading, setUploading] = useState(false)
     const fileRef = useRef<HTMLInputElement>(null)
@@ -104,7 +295,8 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
             </div>
 
             {open && (
-                <div className="p-4 space-y-4">
+                <div className="p-4 flex gap-6 items-start">
+                    <div className="flex-1 space-y-4 min-w-0">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Mascot image */}
                         <div className="flex flex-col gap-2">
@@ -247,6 +439,13 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                             </div>
                         </div>
                     </div>
+                </div>
+                    <StepPhonePreview
+                        step={step}
+                        startScreen={startScreen}
+                        stepIndex={index}
+                        totalSteps={total}
+                    />
                 </div>
             )}
         </div>
@@ -500,6 +699,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                             index={idx}
                             total={story.steps.length}
                             spotlightKeys={spotlightKeys}
+                            startScreen={story.start_screen}
                             onChange={updated => updateStep(idx, updated)}
                             onMoveUp={() => moveStep(idx, -1)}
                             onMoveDown={() => moveStep(idx, 1)}
