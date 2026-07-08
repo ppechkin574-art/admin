@@ -1218,13 +1218,20 @@ export interface EventItem {
   id: number;
   type: 'banner' | 'card';
   badge_text: string;
+  badge_text_kk: string | null;
   title: string;
+  title_kk: string | null;
   prize_text: string | null;
+  prize_text_kk: string | null;
   subtitle: string | null;
+  subtitle_kk: string | null;
   secondary_text: string | null;
+  secondary_text_kk: string | null;
   deadline: string | null;
   button_text: string | null;
+  button_text_kk: string | null;
   bg_color: string | null;
+  icon_url: string | null;
   progress_current: number | null;
   progress_max: number | null;
   sort_order: number;
@@ -1247,6 +1254,13 @@ export const eventsService = {
     api.patch(`/admin/events/${id}`, payload).then(r => r.data),
   remove: (id: number): Promise<void> =>
     api.delete(`/admin/events/${id}`).then(() => undefined),
+  uploadIcon: (id: number, file: File): Promise<EventItem> => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/admin/events/${id}/upload-icon`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
 };
 
 export const onboardingService = {
