@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>AIMA — Варианты анимаций онбординга</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#080812;color:#fff;font-family:-apple-system,'SF Pro Display','Segoe UI',sans-serif;padding:32px 20px;min-height:100vh;}
+h1{text-align:center;font-size:22px;font-weight:800;margin-bottom:6px;background:linear-gradient(135deg,#c0b0ff,#6c5ce7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.subtitle{text-align:center;font-size:13px;color:#5050a0;margin-bottom:40px;}
+
+.sec{margin-bottom:52px;}
+.sec-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #1a1a35;}
+.sec-emoji{font-size:18px;-webkit-text-fill-color:initial;}
+.sec-title{font-size:16px;font-weight:700;color:#c0b0ff;}
+.sec-sub{font-size:12px;color:#5050a0;margin-left:2px;}
+
+.vars{display:flex;gap:20px;overflow-x:auto;padding-bottom:10px;}
+
+.vcard{flex-shrink:0;width:190px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.vlabel{font-size:12px;font-weight:700;color:#c0b0ff;text-align:center;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;}
+.ctag{background:rgba(0,200,136,.12);border:1px solid rgba(0,200,136,.3);color:#00cc88;font-size:8px;font-weight:700;padding:2px 5px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;}
+.vdesc{font-size:10px;color:#5050a0;text-align:center;line-height:1.5;}
+
+/* ── mini phone ── */
+.mini-phone{width:190px;height:412px;border-radius:30px;background:#0a0a1a;border:5px solid #1e1e3a;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.7),inset 0 0 0 1px #2a2a4a;}
+.mini-phone::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:68px;height:18px;background:#0a0a1a;border-radius:0 0 10px 10px;z-index:200;}
+
+/* ── fake app bg ── */
+.fapp{position:absolute;inset:0;background:#0e0e22;}
+.fbar{padding:26px 12px 8px;}
+.ft1{width:88px;height:10px;background:#fff;border-radius:3px;margin-bottom:5px;}
+.ft2{width:58px;height:7px;background:#3a3a6a;border-radius:2px;}
+.fbanner{margin:8px;height:70px;background:linear-gradient(135deg,#1e0f55,#3a1d8a);border-radius:10px;border:1px solid rgba(108,92,231,.3);}
+.fcrow{display:flex;gap:6px;padding:6px 8px 0;}
+.fc{flex:1;height:48px;background:#14143a;border-radius:8px;border:1px solid #1e1e50;}
+.frow2{display:flex;gap:6px;padding:6px 8px 0;}
+.fc2{flex:1;height:36px;background:#14143a;border-radius:8px;border:1px solid #1e1e50;}
+.fnav{position:absolute;bottom:0;left:0;right:0;height:44px;background:#0a0a1a;border-top:1px solid #151530;display:flex;align-items:center;justify-content:space-around;padding-bottom:6px;font-size:15px;}
+.fni{opacity:.28;}
+.fni.act{opacity:1;}
+
+/* ── overlay ── */
+.ob{position:absolute;inset:0;z-index:10;}
+.ob-d{position:absolute;inset:0;background:rgba(0,0,0,.78);}
+.ob-spot{position:absolute;border-radius:9px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.78),0 0 0 2px rgba(108,92,231,.85),0 0 16px 5px rgba(108,92,231,.3);}
+.sp-banner{top:82px;left:8px;right:8px;height:70px;}
+.sp-nav{bottom:0;left:0;right:0;height:44px;border-radius:0;}
+.sp-card{top:170px;left:8px;width:90px;height:50px;}
+
+.ob-cnt{position:absolute;top:22px;left:0;right:0;text-align:center;color:#fff;font-size:10px;font-weight:600;z-index:30;}
+.ob-mascot{position:absolute;bottom:46px;left:-5px;font-size:44px;line-height:1;z-index:20;}
+.ob-bubble{position:absolute;right:8px;top:100px;width:128px;background:#fff;border-radius:12px;padding:9px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:20;}
+.ob-btitle{color:#12122e;font-size:10px;font-weight:800;margin-bottom:3px;}
+.ob-bbody{color:#3a3a5a;font-size:8px;line-height:1.4;}
+.ob-bar{position:absolute;left:8px;right:8px;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:20;}
+.ob-dots{display:flex;gap:4px;}
+.ob-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.2);}
+.ob-dot.a{width:12px;border-radius:2px;background:#8b7cf6;}
+.ob-pbtn{width:100%;padding:8px;background:linear-gradient(135deg,#6c5ce7,#8b7cf6);border:none;border-radius:8px;color:#fff;font-size:9px;font-weight:700;text-align:center;}
+.ob-skip{color:rgba(255,255,255,.3);font-size:8px;text-align:center;}
+
+/* ── play button ── */
+.play-btn{width:100%;padding:7px;background:#111128;border:1.5px solid #3d2d8a;border-radius:8px;color:#8b7cf6;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;}
+.play-btn:hover{background:#3d2d8a;color:#fff;border-color:#6c5ce7;}
+
+/* ══════════════════════════════
+   DEFAULT STATES (before playing)
+══════════════════════════════ */
+/* INTRO: entire overlay invisible */
+.intro-phone .ob{opacity:0;}
+/* TRANSITION: mascot + bubble invisible (rest of overlay stays) */
+.trans-phone .ob-mascot,.trans-phone .ob-bubble{opacity:0;}
+/* OUTRO: overlay fully visible (natural default) */
+
+/* ══════════════════════════════
+   KEYFRAMES
+══════════════════════════════ */
+@keyframes kDimIn{from{opacity:0}to{opacity:1}}
+@keyframes kFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes kFadeOut{from{opacity:1}to{opacity:0}}
+
+/* intro variants */
+@keyframes kSlideLeft{from{opacity:0;transform:translateX(-52px)}to{opacity:1;transform:none}}
+@keyframes kBubblePop{from{opacity:0;transform:scale(.82) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes kDropTop{from{opacity:0;transform:translateY(-72px)}to{opacity:1;transform:none}}
+@keyframes kSpringScale{0%{opacity:0;transform:scale(0)}60%{transform:scale(1.14)}100%{opacity:1;transform:scale(1)}}
+@keyframes kRiseUp{from{opacity:0;transform:translateY(52px)}to{opacity:1;transform:none}}
+@keyframes kZoomBloom{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+
+/* transition variants */
+@keyframes kSlideFromRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes kScalePop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@keyframes kBlurIn{from{opacity:0;filter:blur(7px)}to{opacity:1;filter:blur(0)}}
+@keyframes kFlipY{from{opacity:0;transform:perspective(500px) rotateY(-85deg)}to{opacity:1;transform:perspective(500px) rotateY(0)}}
+
+/* outro variants */
+@keyframes kScaleOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.88)}}
+@keyframes kSlideDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(38px)}}
+@keyframes kMascotWave{
+  0%{transform:none}
+  15%{transform:rotate(-18deg)}
+  30%{transform:rotate(14deg)}
+  50%{transform:rotate(-10deg)}
+  65%{transform:rotate(6deg)}
+  80%{transform:none}
+  100%{transform:translateX(-160px);opacity:0}
+}
+@keyframes kShrink{from{opacity:1;transform:none}to{opacity:0;transform:scale(.6) translateX(16px)}}
+
+/* ══════════════════════════════
+   PLAYING — INTRO
+══════════════════════════════ */
+/* Slide-in (current) */
+#is.playing .ob{animation:kDimIn .05s ease both;}
+#is.playing .ob-d{animation:kDimIn .32s ease both;}
+#is.playing .ob-spot{animation:kFadeIn .38s ease .05s both;}
+#is.playing .ob-cnt{animation:kFadeIn .3s ease .32s both;}
+#is.playing .ob-mascot{animation:kSlideLeft .46s cubic-bezier(.34,1.4,.64,1) .1s both;}
+#is.playing .ob-bubble{animation:kBubblePop .32s cubic-bezier(.34,1.2,.64,1) .22s both;}
+#is.playing .ob-bar{animation:kRiseUp .34s cubic-bezier(.34,1.1,.64,1) .28s both;}
+
+/* Drop */
+#id.playing .ob{animation:kDimIn .05s ease both;}
+#id.playing .ob-d{animation:kDimIn .22s ease both;}
+#id.playing .ob-spot{animation:kZoomBloom .4s cubic-bezier(.34,1.2,.64,1) .06s both;}
+#id.playing .ob-cnt{animation:kFadeIn .3s ease .36s both;}
+#id.playing .ob-mascot{animation:kDropTop .5s cubic-bezier(.34,1.5,.64,1) .1s both;}
+#id.playing .ob-bubble{animation:kSpringScale .42s cubic-bezier(.34,1.3,.64,1) .28s both;}
+#id.playing .ob-bar{animation:kFadeIn .3s ease .38s both;}
+
+/* Rise */
+#ir.playing .ob{animation:kDimIn .05s ease both;}
+#ir.playing .ob-d{animation:kDimIn .36s ease both;}
+#ir.playing .ob-spot{animation:kRiseUp .4s cubic-bezier(.34,1.2,.64,1) .06s both;}
+#ir.playing .ob-mascot{animation:kRiseUp .44s cubic-bezier(.34,1.4,.64,1) .14s both;}
+#ir.playing .ob-bubble{animation:kRiseUp .4s cubic-bezier(.34,1.2,.64,1) .22s both;}
+#ir.playing .ob-bar{animation:kRiseUp .38s cubic-bezier(.34,1.1,.64,1) .28s both;}
+#ir.playing .ob-cnt{animation:kFadeIn .3s ease .32s both;}
+
+/* Zoom-Bloom */
+#iz.playing .ob{animation:kDimIn .05s ease both;}
+#iz.playing .ob-d{animation:kDimIn .2s ease both;}
+#iz.playing .ob-spot{animation:kSpringScale .52s cubic-bezier(.34,1.4,.64,1) .04s both;}
+#iz.playing .ob-mascot{animation:kZoomBloom .44s cubic-bezier(.34,1.4,.64,1) .22s both;}
+#iz.playing .ob-bubble{animation:kZoomBloom .38s cubic-bezier(.34,1.3,.64,1) .32s both;}
+#iz.playing .ob-cnt{animation:kFadeIn .28s ease .38s both;}
+#iz.playing .ob-bar{animation:kZoomBloom .34s ease .35s both;}
+
+/* ══════════════════════════════
+   PLAYING — TRANSITION
+══════════════════════════════ */
+/* Fade (current) */
+#tf.playing .ob-mascot{animation:kFadeIn .26s ease both;}
+#tf.playing .ob-bubble{animation:kFadeIn .28s ease .06s both;}
+
+/* Slide Left */
+#tsl.playing .ob-mascot{animation:kSlideLeft .3s cubic-bezier(.4,0,.2,1) both;}
+#tsl.playing .ob-bubble{animation:kSlideFromRight .3s cubic-bezier(.4,0,.2,1) .04s both;}
+
+/* Scale Pop */
+#tsp.playing .ob-mascot{animation:kScalePop .3s cubic-bezier(.34,1.45,.64,1) both;}
+#tsp.playing .ob-bubble{animation:kScalePop .32s cubic-bezier(.34,1.45,.64,1) .06s both;}
+
+/* Blur Fade */
+#tb.playing .ob-mascot{animation:kBlurIn .36s ease both;}
+#tb.playing .ob-bubble{animation:kBlurIn .36s ease .06s both;}
+
+/* Flip Y */
+#tfl.playing .ob-mascot{animation:kFadeIn .22s ease both;}
+#tfl.playing .ob-bubble{animation:kFlipY .42s cubic-bezier(.4,0,.2,1) .04s both;}
+
+/* ══════════════════════════════
+   PLAYING — OUTRO
+══════════════════════════════ */
+/* Fade Out (current) */
+#of.playing .ob{animation:kFadeOut .44s ease .12s forwards;}
+
+/* Scale Dismiss */
+#osc.playing .ob{animation:kScaleOut .44s cubic-bezier(.4,0,.2,1) .08s forwards;}
+
+/* Slide Down */
+#osd.playing .ob{animation:kSlideDown .44s cubic-bezier(.4,0,.2,1) .08s forwards;}
+
+/* Mascot Wave */
+#omw.playing .ob-mascot{animation:kMascotWave 1s ease .08s forwards;}
+#omw.playing .ob-bubble{animation:kShrink .38s ease .48s forwards;}
+#omw.playing .ob-spot{animation:kFadeOut .32s ease .58s forwards;}
+#omw.playing .ob-bar{animation:kFadeOut .28s ease .52s forwards;}
+#omw.playing .ob-cnt{animation:kFadeOut .28s ease .42s forwards;}
+#omw.playing .ob-d{animation:kFadeOut .48s ease .78s forwards;}
+</style>
+</head>
+<body>
+
+<h1>Варианты анимаций онбординга</h1>
+<p class="subtitle">Нажми «▶ Повторить» для просмотра каждого варианта</p>
+
+<!-- ═══ НАЧАЛО ═══ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <span class="sec-emoji">🚀</span>
+    <div class="sec-title">Начало онбординга</div>
+    <span class="sec-sub">— как оверлей появляется поверх приложения</span>
+  </div>
+  <div class="vars" id="introRow"></div>
+</div>
+
+<!-- ═══ ПЕРЕХОД ═══ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <span class="sec-emoji">↔️</span>
+    <div class="sec-title">Переход между шагами</div>
+    <span class="sec-sub">— анимация при нажатии «Далее»</span>
+  </div>
+  <div class="vars" id="transRow"></div>
+</div>
+
+<!-- ═══ КОНЕЦ ═══ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <span class="sec-emoji">✅</span>
+    <div class="sec-title">Завершение онбординга</div>
+    <span class="sec-sub">— анимация при нажатии «Готово»</span>
+  </div>
+  <div class="vars" id="outroRow"></div>
+</div>
+
+<script>
+/* ── Content builders ── */
+const FAKE_APP = `
+<div class="fapp">
+  <div class="fbar"><div class="ft1"></div><div class="ft2"></div></div>
+  <div class="fbanner"></div>
+  <div class="fcrow"><div class="fc"></div><div class="fc"></div></div>
+  <div class="frow2"><div class="fc2"></div><div class="fc2"></div><div class="fc2"></div></div>
+  <div class="fnav">
+    <span class="fni act">🏠</span>
+    <span class="fni">🎮</span>
+    <span class="fni">🏆</span>
+    <span class="fni">👤</span>
+  </div>
+</div>`;
+
+function makeDots(n, activeIdx) {
+  return Array.from({length:n}, (_,i) =>
+    `<div class="ob-dot${i===activeIdx?' a':''}"></div>`).join('');
+}
+
+function makeOb({spot='sp-banner', step='1 / 3', dotCount=3, activeIdx=0,
+                  title='Сәлем! 👋', body='Добро пожаловать в Aima! Давай покажу всё самое важное.', btn='Далее →'} = {}) {
+  const spotEl = spot ? `<div class="ob-spot ${spot}"></div>` : '';
+  return `<div class="ob">
+    <div class="ob-d"></div>
+    ${spotEl}
+    <div class="ob-cnt">${step}</div>
+    <div class="ob-mascot">🧙</div>
+    <div class="ob-bubble">
+      <div class="ob-btitle">${title}</div>
+      <div class="ob-bbody">${body}</div>
+    </div>
+    <div class="ob-bar">
+      <div class="ob-dots">${makeDots(dotCount, activeIdx)}</div>
+      <div class="ob-pbtn">${btn}</div>
+      <div class="ob-skip">Пропустить</div>
+    </div>
+  </div>`;
+}
+
+function makeCard(id, cls, label, isCurrentTag, desc, obOpts) {
+  const tag = isCurrentTag ? '<span class="ctag">Текущая</span>' : '';
+  return `
+  <div class="vcard">
+    <div class="vlabel">${label} ${tag}</div>
+    <div class="mini-phone ${cls}" id="${id}">
+      ${FAKE_APP}
+      ${makeOb(obOpts)}
+    </div>
+    <button class="play-btn" onclick="replay('${id}')">▶ Повторить</button>
+    <div class="vdesc">${desc}</div>
+  </div>`;
+}
+
+/* ── Section 1: INTRO ── */
+const introOpts = {spot:'sp-banner', step:'1 / 3', dotCount:3, activeIdx:0,
+  title:'Сәлем! 👋', body:'Добро пожаловать в Aima! Давай покажу всё.', btn:'Далее →'};
+
+document.getElementById('introRow').innerHTML = [
+  makeCard('is', 'intro-phone', 'Slide-in', true,
+    'Маскот выезжает слева, пузырь всплывает с пружиной', introOpts),
+  makeCard('id', 'intro-phone', 'Drop',    false,
+    'Маскот падает сверху с отскоком, пузырь «выстреливает» из точки', introOpts),
+  makeCard('ir', 'intro-phone', 'Rise',    false,
+    'Все элементы поднимаются снизу с последовательным stagger', introOpts),
+  makeCard('iz', 'intro-phone', 'Zoom-Bloom', false,
+    'Подсветка расцветает из точки, маскот и пузырь масштабируются', introOpts),
+].join('');
+
+/* ── Section 2: TRANSITION ── */
+const transOpts = {spot:'sp-card', step:'2 / 3', dotCount:3, activeIdx:1,
+  title:'Событие месяца 🏆', body:'Здесь проходят главные турниры Aima — борись за приз!', btn:'Далее →'};
+
+document.getElementById('transRow').innerHTML = [
+  makeCard('tf',  'trans-phone', 'Fade',       true,
+    'Новый шаг плавно проявляется (opacity)', transOpts),
+  makeCard('tsl', 'trans-phone', 'Slide Left', false,
+    'Маскот въезжает слева, пузырь — справа (встречное движение)', transOpts),
+  makeCard('tsp', 'trans-phone', 'Scale Pop',  false,
+    'Элементы «выпрыгивают» из меньшего размера с пружиной', transOpts),
+  makeCard('tb',  'trans-phone', 'Blur Fade',  false,
+    'Новый контент появляется из размытия', transOpts),
+  makeCard('tfl', 'trans-phone', 'Flip Y',     false,
+    'Пузырь переворачивается по оси Y как карточка', transOpts),
+].join('');
+
+/* ── Section 3: OUTRO ── */
+const outroOpts = {spot:null, step:'3 / 3', dotCount:3, activeIdx:2,
+  title:'Всё готово! ✅', body:'Отлично! Начинай тренироваться и поднимайся в топ!', btn:'Готово ✓'};
+
+document.getElementById('outroRow').innerHTML = [
+  makeCard('of',  'outro-phone', 'Fade Out',       true,
+    'Весь оверлей плавно исчезает (opacity)', outroOpts),
+  makeCard('osc', 'outro-phone', 'Scale Dismiss', false,
+    'Оверлей уменьшается и растворяется к центру', outroOpts),
+  makeCard('osd', 'outro-phone', 'Slide Down',    false,
+    'Оверлей уходит вниз и исчезает', outroOpts),
+  makeCard('omw', 'outro-phone', 'Mascot Wave',   false,
+    'Маскот машет рукой и уезжает, потом гаснет оверлей', outroOpts),
+].join('');
+
+/* ── Replay ── */
+function replay(id) {
+  const phone = document.getElementById(id);
+  phone.classList.remove('playing');
+  void phone.offsetWidth;
+  phone.classList.add('playing');
+}
+
+/* ── Auto-play on load ── */
+document.addEventListener('DOMContentLoaded', () => {
+  const phones = document.querySelectorAll('.mini-phone');
+  phones.forEach((p, i) => {
+    setTimeout(() => p.classList.add('playing'), i * 260 + 300);
+  });
+});
+</script>
+</body>
+</html>

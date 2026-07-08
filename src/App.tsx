@@ -37,6 +37,7 @@ import { AppScreensPage } from './pages/appScreens/AppScreensPage'
 import { AppUpdateConfigPage } from './pages/appUpdate'
 import { MascotPage } from './pages/mascot/MascotPage'
 import { OnboardingPage } from './pages/onboarding/OnboardingPage'
+import { OnboardingAnimationsPage } from './pages/onboarding/OnboardingAnimationsPage'
 import Layout from './components/layout/Layout'
 import { ModuleList } from './pages/modules/ModuleList'
 import ModuleDetail from './pages/modules/ModuleDetail'
@@ -225,6 +226,7 @@ function App()
           <Route path="/app-update" element={<AppUpdateConfigPage />} />
           <Route path="/mascot" element={<MascotPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/onboarding/animations" element={<OnboardingAnimationsPage />} />
 
           <Route path="*" element={<NotFoundPage />} />
         </Route>

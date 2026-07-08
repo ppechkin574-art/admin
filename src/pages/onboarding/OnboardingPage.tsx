@@ -4,8 +4,9 @@ import {
     BookOpen, ChevronDown, ChevronUp, Eye, EyeOff,
     GripVertical, ImagePlus, Languages, Layers, Plus,
     Save, Settings2, Trash2, Users, X, Zap, Clock,
-    ToggleLeft, ToggleRight, Star, MonitorSmartphone, Key, RefreshCw,
+    ToggleLeft, ToggleRight, Star, MonitorSmartphone, Key, RefreshCw, Clapperboard,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import { onboardingService } from '@/services/api'
@@ -1266,6 +1267,7 @@ const SpotlightKeysManager: React.FC<SpotlightKeysManagerProps> = ({ keys, onCha
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export const OnboardingPage: React.FC = () => {
+    const navigate = useNavigate()
     const [stories, setStories] = useState<OnboardingStory[]>([])
     const [loading, setLoading] = useState(true)
     const [spotlightKeys, setSpotlightKeys] = useState<SpotlightKey[]>(loadSpotlightKeys)
@@ -1405,6 +1407,13 @@ export const OnboardingPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <button onClick={fetchStories} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                        onClick={() => navigate('/onboarding/animations')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                    >
+                        <Clapperboard className="h-4 w-4" />
+                        Анимации
                     </button>
                     <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => setCreating(true)}>
                         Создать рассказ
