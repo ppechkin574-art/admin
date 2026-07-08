@@ -110,7 +110,21 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
     const spotKeys = step.spotlight_element_keys?.length
         ? step.spotlight_element_keys
         : step.spotlight_element_key ? [step.spotlight_element_key] : []
-    const spotRects = spotKeys.map(k => getSpotRect(k, device)).filter((r): r is SpotRect => r !== null)
+    const adjs = step.spotlight_adjustments ?? {}
+    const spotRects = spotKeys.map(k => {
+        const raw = getSpotRect(k, device)
+        if (!raw) return null
+        const sx = device.w / IPHONE_W
+        const adj = adjs[k]
+        if (!adj) return raw
+        return {
+            x: raw.x + (adj.dx ?? 0) * sx,
+            y: raw.y + (adj.dy ?? 0) * sx,
+            w: raw.w + (adj.dw ?? 0) * sx,
+            h: raw.h + (adj.dh ?? 0) * sx,
+            r: raw.r,
+        }
+    }).filter((r): r is SpotRect => r !== null)
     const firstSpotKey = spotKeys[0]
     const mascotImg = step.mascot_image_preview || step.mascot_image_url
     const title = step.title_ru || 'Заголовок шага'
@@ -392,6 +406,12 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
         !BUILTIN_SPOT_KEYS.has(k.value) || !screenKeys || screenKeys.has(k.value)
     )
     const selectedSpotKeys = step.spotlight_element_keys ?? []
+    const spotAdj = step.spotlight_adjustments ?? {}
+
+    const patchAdj = (key: string, field: 'dx' | 'dy' | 'dw' | 'dh', val: number) => {
+        const current = spotAdj[key] ?? { dx: 0, dy: 0, dw: 0, dh: 0 }
+        upd({ spotlight_adjustments: { ...spotAdj, [key]: { ...current, [field]: val } } })
+    }
 
     const routeValue = step.action_route ?? ''
     const isCustomRoute = routeValue !== '' && !PREDEFINED_ROUTES.some(r => r.value === routeValue)
@@ -602,7 +622,19 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                             </label>
                             <select
                                 value={step.step_screen ?? ''}
-                                onChange={e => upd({ step_screen: (e.target.value || null) as StartScreen | null })}
+                                onChange={e => {
+                                    const newScreen = (e.target.value || null) as StartScreen | null
+                                    const effectiveScr = newScreen ?? startScreen
+                                    const allowed = SCREEN_SPOT_KEYS[effectiveScr.toUpperCase()]
+                                    const newKeys = (step.spotlight_element_keys ?? []).filter(k =>
+                                        !BUILTIN_SPOT_KEYS.has(k) || !allowed || allowed.has(k)
+                                    )
+                                    upd({
+                                        step_screen: newScreen,
+                                        spotlight_element_keys: newKeys,
+                                        spotlight_element_key: newKeys[0] ?? null,
+                                    })
+                                }}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                             >
                                 <option value="">— экран истории (по умолчанию) —</option>
@@ -646,6 +678,47 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                             <code key={k} className="bg-indigo-50 px-1 rounded mr-1">{k}</code>
                                         ))}
                                     </p>
+                                )}
+                                {/* Per-key adjustment controls */}
+                                {selectedSpotKeys.length > 0 && (
+                                    <div className="mt-2 space-y-3">
+                                        {selectedSpotKeys.map(k => {
+                                            const adj = spotAdj[k] ?? { dx: 0, dy: 0, dw: 0, dh: 0 }
+                                            const hasAdj = adj.dx !== 0 || adj.dy !== 0 || adj.dw !== 0 || adj.dh !== 0
+                                            const keyLabel = filteredSpotKeys.find(s => s.value === k)?.label ?? k
+                                            return (
+                                                <div key={k} className="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="text-xs font-semibold text-gray-600">{keyLabel}</span>
+                                                        {hasAdj && (
+                                                            <button type="button"
+                                                                onClick={() => upd({ spotlight_adjustments: { ...spotAdj, [k]: { dx: 0, dy: 0, dw: 0, dh: 0 } } })}
+                                                                className="text-xs text-gray-400 hover:text-red-500">↺ сброс</button>
+                                                        )}
+                                                    </div>
+                                                    {([
+                                                        { f: 'dx' as const, label: 'Смещ. X', min: -100, max: 100 },
+                                                        { f: 'dy' as const, label: 'Смещ. Y', min: -100, max: 100 },
+                                                        { f: 'dw' as const, label: 'Ширина +', min: -100, max: 100 },
+                                                        { f: 'dh' as const, label: 'Высота +', min: -100, max: 100 },
+                                                    ]).map(({ f, label, min, max }) => (
+                                                        <div key={f} className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs text-gray-500 w-16 flex-shrink-0">{label}</span>
+                                                            <input
+                                                                type="range" min={min} max={max} step={1}
+                                                                value={adj[f] ?? 0}
+                                                                onChange={e => patchAdj(k, f, Number(e.target.value))}
+                                                                className="flex-1 accent-indigo-500"
+                                                            />
+                                                            <span className="text-xs text-indigo-700 font-mono w-10 text-right flex-shrink-0">
+                                                                {adj[f] > 0 ? '+' : ''}{adj[f] ?? 0}px
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
                                 )}
                             </div>
 
@@ -1243,6 +1316,7 @@ export const OnboardingPage: React.FC = () => {
                     mascot_position: s.mascot_position,
                     spotlight_element_keys: s.spotlight_element_keys ?? [],
                     spotlight_element_key: (s.spotlight_element_keys ?? [])[0] ?? s.spotlight_element_key ?? null,
+                    spotlight_adjustments: s.spotlight_adjustments ?? {},
                     step_screen: s.step_screen || null,
                     action_label_ru: s.action_label_ru || null,
                     action_label_kk: s.action_label_kk || null,

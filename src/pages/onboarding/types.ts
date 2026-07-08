@@ -15,6 +15,7 @@ export interface OnboardingStep {
     mascot_position: MascotPosition
     spotlight_element_key: string | null
     spotlight_element_keys: string[]
+    spotlight_adjustments: Record<string, { dx: number; dy: number; dw: number; dh: number }>
     step_screen: StartScreen | null
     action_label_ru: string | null
     action_label_kk: string | null
@@ -108,6 +109,7 @@ export const makeEmptyStep = (order: number): OnboardingStep => ({
     mascot_position: 'bottom_left',
     spotlight_element_key: null,
     spotlight_element_keys: [],
+    spotlight_adjustments: {},
     step_screen: null,
     action_label_ru: '',
     action_label_kk: '',
