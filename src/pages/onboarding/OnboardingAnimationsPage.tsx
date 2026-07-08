@@ -1,5 +1,7 @@
 import { ArrowLeft, Clapperboard } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+// @ts-ignore
+import animationsHtml from './onboarding_animations_preview.html?raw'
 
 export const OnboardingAnimationsPage = () => {
     const navigate = useNavigate()
@@ -25,9 +27,9 @@ export const OnboardingAnimationsPage = () => {
                 </span>
             </div>
 
-            {/* Preview iframe */}
+            {/* Preview iframe — rendered inline via srcDoc to avoid static-file routing issues */}
             <iframe
-                src="/onboarding_animations_preview.html"
+                srcDoc={animationsHtml}
                 className="flex-1 w-full border-0"
                 title="Варианты анимаций онбординга"
             />
