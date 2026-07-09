@@ -456,8 +456,8 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                 <div className="flex gap-0">
                     {/* Left: sticky phone preview */}
                     <div className="sticky top-0 self-start border-r border-gray-100 p-4 shrink-0">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Предпросмотр на устройствах</p>
-                        <MultiDevicePreview step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Предпросмотр</p>
+                        <SingleDevicePreview device={DEVICES[0]} step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
                     </div>
                     {/* Right: all settings (unchanged) */}
                     <div className="flex-1 min-w-0 p-4 space-y-4">
