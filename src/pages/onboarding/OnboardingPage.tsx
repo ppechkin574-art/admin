@@ -563,54 +563,92 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                             </div>
                         </div>
 
-                        {/* Texts RU */}
+                        {/* Texts — variant A: side-by-side RU | KK */}
                         <div className="space-y-3">
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                                <Languages className="h-3.5 w-3.5" /> Русский
+                                <Languages className="h-3.5 w-3.5" /> Текст пузыря
                             </label>
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Заголовок</label>
-                                <input
-                                    type="text" value={step.title_ru} maxLength={80}
-                                    onChange={e => upd({ title_ru: e.target.value })}
-                                    placeholder="Сәлем! 👋"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                />
+                            {/* Title row */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 flex items-center gap-1 block">
+                                        <span className="bg-blue-100 text-blue-700 text-[9px] font-bold px-1 rounded">RU</span> Заголовок
+                                    </label>
+                                    <input
+                                        type="text" value={step.title_ru} maxLength={80}
+                                        onChange={e => upd({ title_ru: e.target.value })}
+                                        placeholder="Привет! 👋"
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 flex items-center gap-1 block">
+                                        <span className="bg-yellow-100 text-yellow-700 text-[9px] font-bold px-1 rounded">KK</span> Тақырып
+                                    </label>
+                                    <input
+                                        type="text" value={step.title_kk} maxLength={80}
+                                        onChange={e => upd({ title_kk: e.target.value })}
+                                        placeholder="Сәлем! 👋"
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Текст</label>
-                                <textarea
-                                    value={step.body_ru} maxLength={300} rows={4}
-                                    onChange={e => upd({ body_ru: e.target.value })}
-                                    placeholder="Я — Айбек, твой проводник..."
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                                />
+                            {/* Body row */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 flex items-center gap-1 block">
+                                        <span className="bg-blue-100 text-blue-700 text-[9px] font-bold px-1 rounded">RU</span> Текст
+                                        <span className="ml-auto text-gray-400">{step.body_ru.length}/300</span>
+                                    </label>
+                                    <textarea
+                                        value={step.body_ru} maxLength={300} rows={4}
+                                        onChange={e => upd({ body_ru: e.target.value })}
+                                        placeholder="Я — Айбек, твой проводник..."
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 flex items-center gap-1 block">
+                                        <span className="bg-yellow-100 text-yellow-700 text-[9px] font-bold px-1 rounded">KK</span> Мәтін
+                                        <span className="ml-auto text-gray-400">{step.body_kk.length}/300</span>
+                                    </label>
+                                    <textarea
+                                        value={step.body_kk} maxLength={300} rows={4}
+                                        onChange={e => upd({ body_kk: e.target.value })}
+                                        placeholder="Мен — Айбек, сенің бағыттаушың..."
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Texts KK */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                                <Languages className="h-3.5 w-3.5" /> Қазақша
-                            </label>
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Тақырып</label>
-                                <input
-                                    type="text" value={step.title_kk} maxLength={80}
-                                    onChange={e => upd({ title_kk: e.target.value })}
-                                    placeholder="Сәлем! 👋"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500 mb-1 block">Мәтін</label>
-                                <textarea
-                                    value={step.body_kk} maxLength={300} rows={4}
-                                    onChange={e => upd({ body_kk: e.target.value })}
-                                    placeholder="Мен — Айбек, сенің бағыттаушың..."
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                                />
-                            </div>
+                        {/* Bubble & button sizes */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">Размеры пузыря и кнопки</label>
+                            {([
+                                { key: 'bubble_width',    label: 'Пузырь ширина', min: 100, max: 400, step: 1,   def: 260, fmt: (v: number) => `${v}px` },
+                                { key: 'bubble_padding',  label: 'Пузырь padding', min: 4,  max: 40,  step: 1,   def: 20,  fmt: (v: number) => `${v}px` },
+                                { key: 'button_width',    label: 'Кнопка ширина', min: 0,   max: 400, step: 1,   def: 0,   fmt: (v: number) => v === 0 ? 'full' : `${v}px` },
+                                { key: 'button_padding_v',label: 'Кнопка padding v', min: 4, max: 30, step: 1,   def: 15,  fmt: (v: number) => `${v}px` },
+                            ] as const).map(({ key, label, min, max, step: st, def, fmt }) => {
+                                const val = (step[key] as number) ?? def
+                                return (
+                                    <div key={key} className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-500 w-32 flex-shrink-0">{label}</span>
+                                        <input
+                                            type="range" min={min} max={max} step={st} value={val}
+                                            onChange={e => upd({ [key]: Number(e.target.value) } as Partial<OnboardingStep>)}
+                                            className="flex-1 accent-indigo-500"
+                                        />
+                                        <span className="text-xs text-indigo-700 font-mono w-14 text-right flex-shrink-0">{fmt(val)}</span>
+                                        {val !== def && (
+                                            <button type="button"
+                                                onClick={() => upd({ [key]: def } as Partial<OnboardingStep>)}
+                                                className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0">↺</button>
+                                        )}
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
 
@@ -1331,6 +1369,10 @@ export const OnboardingPage: React.FC = () => {
                     bubble_y: s.bubble_y ?? 0,
                     mascot_flip_h: s.mascot_flip_h ?? false,
                     mascot_flip_v: s.mascot_flip_v ?? false,
+                    bubble_width: s.bubble_width ?? 260,
+                    bubble_padding: s.bubble_padding ?? 20,
+                    button_width: s.button_width ?? 0,
+                    button_padding_v: s.button_padding_v ?? 15,
                 })),
             }
             if (editing && editing.id) {
