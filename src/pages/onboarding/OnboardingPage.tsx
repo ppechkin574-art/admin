@@ -453,7 +453,14 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
             </div>
 
             {open && (
-                <div className="p-4 space-y-4">
+                <div className="flex gap-0">
+                    {/* Left: sticky phone preview */}
+                    <div className="sticky top-0 self-start border-r border-gray-100 p-4 shrink-0">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Предпросмотр на устройствах</p>
+                        <MultiDevicePreview step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
+                    </div>
+                    {/* Right: all settings (unchanged) */}
+                    <div className="flex-1 min-w-0 p-4 space-y-4">
                     <div className="space-y-4 min-w-0">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Mascot image */}
@@ -811,11 +818,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                         </div>
                     </div>
                 </div>
-                {/* Multi-device preview */}
-                <div className="border-t border-gray-100 pt-4">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Предпросмотр на устройствах</p>
-                    <MultiDevicePreview step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
-                </div>
+                    </div>
             </div>
         )}
         </div>
