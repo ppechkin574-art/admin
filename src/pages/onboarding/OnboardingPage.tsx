@@ -356,9 +356,56 @@ const MultiDevicePreview: React.FC<MultiDevicePreviewProps> = (props) => (
 
 // ─── StepEditor ─────────────────────────────────────────────────────────────
 
+// ─── Payload builder (shared by handleSave and handleAutoSave) ───────────────
+
+const buildStoryPayload = (story: OnboardingStory) => ({
+    name: story.name,
+    priority: story.priority,
+    is_active: story.is_active,
+    is_mandatory: story.is_mandatory,
+    is_test: story.is_test,
+    skip_delay_seconds: story.skip_delay_seconds,
+    target_audience: story.target_audience,
+    new_user_days: story.new_user_days,
+    trigger: story.trigger,
+    immediate_count: story.immediate_count,
+    max_shows_per_user: story.max_shows_per_user,
+    start_screen: story.start_screen,
+    steps: story.steps.map(s => ({
+        step_order: s.step_order,
+        mascot_image_url: s.mascot_image_url || null,
+        title_ru: s.title_ru,
+        title_kk: s.title_kk,
+        body_ru: s.body_ru,
+        body_kk: s.body_kk,
+        mascot_position: s.mascot_position,
+        spotlight_element_keys: s.spotlight_element_keys ?? [],
+        spotlight_element_key: (s.spotlight_element_keys ?? [])[0] ?? s.spotlight_element_key ?? null,
+        spotlight_adjustments: s.spotlight_adjustments ?? {},
+        step_screen: s.step_screen || null,
+        action_label_ru: s.action_label_ru || null,
+        action_label_kk: s.action_label_kk || null,
+        action_route: s.action_route || null,
+        mascot_scale: s.mascot_scale ?? 1.0,
+        mascot_x: s.mascot_x ?? 0,
+        mascot_y: s.mascot_y ?? 0,
+        mascot_rotation: s.mascot_rotation ?? 0,
+        bubble_x: s.bubble_x ?? 0,
+        bubble_y: s.bubble_y ?? 0,
+        mascot_flip_h: s.mascot_flip_h ?? false,
+        mascot_flip_v: s.mascot_flip_v ?? false,
+        bubble_width: s.bubble_width ?? 260,
+        bubble_padding: s.bubble_padding ?? 20,
+        button_width: s.button_width ?? 0,
+        button_padding_v: s.button_padding_v ?? 15,
+    })),
+})
+
+// ─── StepEditor ──────────────────────────────────────────────────────────────
+
 interface StepEditorProps {
     step: OnboardingStep
-    savedStep: OnboardingStep
+    savedStep: OnboardingStep | null
     index: number
     total: number
     spotlightKeys: SpotlightKey[]
@@ -376,8 +423,8 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, savedStep, index, total, 
 
     const upd = onPatch
 
-    const isDirty = JSON.stringify(step) !== JSON.stringify(savedStep)
-    const isChanged = <K extends keyof OnboardingStep>(k: K) => step[k] !== savedStep[k]
+    const isDirty = savedStep === null || JSON.stringify(step) !== JSON.stringify(savedStep)
+    const isChanged = <K extends keyof OnboardingStep>(k: K) => savedStep === null || step[k] !== savedStep[k]
 
     // F: Esc closes the open step
     useEffect(() => {
@@ -865,9 +912,10 @@ interface StoryFormProps {
     onSave: (s: OnboardingStory) => void
     onAutoSave?: (s: OnboardingStory) => Promise<void>
     onCancel: () => void
+    cancelRef?: React.MutableRefObject<() => void>
 }
 
-const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, onAutoSave, onCancel }) => {
+const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, onAutoSave, onCancel, cancelRef }) => {
     const [story, setStory] = useState<OnboardingStory>(initial)
     const [savedStory, setSavedStory] = useState<OnboardingStory>(initial)
     const [showExitDialog, setShowExitDialog] = useState(false)
@@ -969,6 +1017,8 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
             onCancel()
         }
     }
+    // expose handleCancel to parent so the header X button goes through dirty check
+    if (cancelRef) cancelRef.current = handleCancel
 
     // B: compute field-level diff for exit dialog
     const exitDiff: Array<{ label: string; was: string; now: string }> = []
@@ -1243,7 +1293,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                         <StepEditor
                             key={step.id}
                             step={step}
-                            savedStep={savedStory.steps.find(s => s.id === step.id) ?? step}
+                            savedStep={savedStory.steps.find(s => s.id === step.id) ?? null}
                             index={idx}
                             total={story.steps.length}
                             spotlightKeys={spotlightKeys}
@@ -1267,8 +1317,6 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
         </div>
     )
 }
-
-// ─── StoryCard ───────────────────────────────────────────────────────────────
 
 // ─── ReShowModal ─────────────────────────────────────────────────────────────
 
@@ -1304,7 +1352,7 @@ const ReShowModal: React.FC<ReShowModalProps> = ({ story, onClose, onDone }) => 
         setLoading(true)
         try {
             const payload: Parameters<typeof onboardingService.resetViews>[1] = { mode }
-            if (mode === 'before_date') payload.before_date = new Date(beforeDate).toISOString()
+            if (mode === 'before_date') payload.before_date = new Date(beforeDate + 'T00:00:00').toISOString()
             if (mode === 'new_users') payload.new_user_days = newUserDays
             if (mode === 'user') payload.user_phone = userPhone.trim()
 
@@ -1630,6 +1678,7 @@ export const OnboardingPage: React.FC = () => {
     const [editing, setEditing] = useState<OnboardingStory | null>(null)
     const [creating, setCreating] = useState(false)
     const [reshowStory, setReshowStory] = useState<OnboardingStory | null>(null)
+    const formCancelRef = useRef<() => void>(() => { setCreating(false); setEditing(null) })
 
     const fetchStories = async () => {
         setLoading(true)
@@ -1652,48 +1701,7 @@ export const OnboardingPage: React.FC = () => {
 
     const handleSave = async (story: OnboardingStory) => {
         try {
-            const payload = {
-                name: story.name,
-                priority: story.priority,
-                is_active: story.is_active,
-                is_mandatory: story.is_mandatory,
-                is_test: story.is_test,
-                skip_delay_seconds: story.skip_delay_seconds,
-                target_audience: story.target_audience,
-                new_user_days: story.new_user_days,
-                trigger: story.trigger,
-                immediate_count: story.immediate_count,
-                max_shows_per_user: story.max_shows_per_user,
-                start_screen: story.start_screen,
-                steps: story.steps.map(s => ({
-                    step_order: s.step_order,
-                    mascot_image_url: s.mascot_image_url || null,
-                    title_ru: s.title_ru,
-                    title_kk: s.title_kk,
-                    body_ru: s.body_ru,
-                    body_kk: s.body_kk,
-                    mascot_position: s.mascot_position,
-                    spotlight_element_keys: s.spotlight_element_keys ?? [],
-                    spotlight_element_key: (s.spotlight_element_keys ?? [])[0] ?? s.spotlight_element_key ?? null,
-                    spotlight_adjustments: s.spotlight_adjustments ?? {},
-                    step_screen: s.step_screen || null,
-                    action_label_ru: s.action_label_ru || null,
-                    action_label_kk: s.action_label_kk || null,
-                    action_route: s.action_route || null,
-                    mascot_scale: s.mascot_scale ?? 1.0,
-                    mascot_x: s.mascot_x ?? 0,
-                    mascot_y: s.mascot_y ?? 0,
-                    mascot_rotation: s.mascot_rotation ?? 0,
-                    bubble_x: s.bubble_x ?? 0,
-                    bubble_y: s.bubble_y ?? 0,
-                    mascot_flip_h: s.mascot_flip_h ?? false,
-                    mascot_flip_v: s.mascot_flip_v ?? false,
-                    bubble_width: s.bubble_width ?? 260,
-                    bubble_padding: s.bubble_padding ?? 20,
-                    button_width: s.button_width ?? 0,
-                    button_padding_v: s.button_padding_v ?? 15,
-                })),
-            }
+            const payload = buildStoryPayload(story)
             if (editing && editing.id) {
                 await onboardingService.updateStory(Number(editing.id), payload)
                 toast.success('Рассказ обновлён')
@@ -1711,49 +1719,7 @@ export const OnboardingPage: React.FC = () => {
 
     const handleAutoSave = async (story: OnboardingStory) => {
         if (!editing?.id) return
-        const payload = {
-            name: story.name,
-            priority: story.priority,
-            is_active: story.is_active,
-            is_mandatory: story.is_mandatory,
-            is_test: story.is_test,
-            skip_delay_seconds: story.skip_delay_seconds,
-            target_audience: story.target_audience,
-            new_user_days: story.new_user_days,
-            trigger: story.trigger,
-            immediate_count: story.immediate_count,
-            max_shows_per_user: story.max_shows_per_user,
-            start_screen: story.start_screen,
-            steps: story.steps.map(s => ({
-                step_order: s.step_order,
-                mascot_image_url: s.mascot_image_url || null,
-                title_ru: s.title_ru,
-                title_kk: s.title_kk,
-                body_ru: s.body_ru,
-                body_kk: s.body_kk,
-                mascot_position: s.mascot_position,
-                spotlight_element_keys: s.spotlight_element_keys ?? [],
-                spotlight_element_key: (s.spotlight_element_keys ?? [])[0] ?? s.spotlight_element_key ?? null,
-                spotlight_adjustments: s.spotlight_adjustments ?? {},
-                step_screen: s.step_screen || null,
-                action_label_ru: s.action_label_ru || null,
-                action_label_kk: s.action_label_kk || null,
-                action_route: s.action_route || null,
-                mascot_scale: s.mascot_scale ?? 1.0,
-                mascot_x: s.mascot_x ?? 0,
-                mascot_y: s.mascot_y ?? 0,
-                mascot_rotation: s.mascot_rotation ?? 0,
-                bubble_x: s.bubble_x ?? 0,
-                bubble_y: s.bubble_y ?? 0,
-                mascot_flip_h: s.mascot_flip_h ?? false,
-                mascot_flip_v: s.mascot_flip_v ?? false,
-                bubble_width: s.bubble_width ?? 260,
-                bubble_padding: s.bubble_padding ?? 20,
-                button_width: s.button_width ?? 0,
-                button_padding_v: s.button_padding_v ?? 15,
-            })),
-        }
-        await onboardingService.updateStory(Number(editing.id), payload)
+        await onboardingService.updateStory(Number(editing.id), buildStoryPayload(story))
     }
 
     const handleDelete = async (id: number | string) => {
@@ -1780,7 +1746,7 @@ export const OnboardingPage: React.FC = () => {
         return (
             <div className="px-6 py-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => { setCreating(false); setEditing(null) }}
+                    <button onClick={() => formCancelRef.current()}
                         className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
                         <X className="h-5 w-5" />
                     </button>
@@ -1795,6 +1761,7 @@ export const OnboardingPage: React.FC = () => {
                     onSave={handleSave}
                     onAutoSave={editing?.id ? handleAutoSave : undefined}
                     onCancel={() => { setCreating(false); setEditing(null) }}
+                    cancelRef={formCancelRef}
                 />
             </div>
         )
