@@ -1270,14 +1270,166 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
 
 // ─── StoryCard ───────────────────────────────────────────────────────────────
 
+// ─── ReShowModal ─────────────────────────────────────────────────────────────
+
+type ReShowMode = 'all' | 'before_date' | 'new_users' | 'user'
+
+interface ReShowModalProps {
+    story: OnboardingStory
+    onClose: () => void
+    onDone: () => void
+}
+
+const ReShowModal: React.FC<ReShowModalProps> = ({ story, onClose, onDone }) => {
+    const [mode, setMode] = useState<ReShowMode>('all')
+    const [beforeDate, setBeforeDate] = useState('')
+    const [newUserDays, setNewUserDays] = useState(7)
+    const [userPhone, setUserPhone] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [stats, setStats] = useState<{ total_views: number } | null>(null)
+
+    useEffect(() => {
+        onboardingService.getStoryStats(story.id as number)
+            .then(s => setStats(s))
+            .catch(() => {})
+    }, [story.id])
+
+    const canSubmit = () => {
+        if (mode === 'before_date') return !!beforeDate
+        if (mode === 'user') return userPhone.trim().length > 4
+        return true
+    }
+
+    const handleSubmit = async () => {
+        setLoading(true)
+        try {
+            const payload: Parameters<typeof onboardingService.resetViews>[1] = { mode }
+            if (mode === 'before_date') payload.before_date = new Date(beforeDate).toISOString()
+            if (mode === 'new_users') payload.new_user_days = newUserDays
+            if (mode === 'user') payload.user_phone = userPhone.trim()
+
+            const res = await onboardingService.resetViews(story.id as number, payload)
+            toast.success(res.message)
+            onDone()
+        } catch (e: any) {
+            toast.error(e?.response?.data?.detail || 'Ошибка')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const MODES: { key: ReShowMode; label: string; desc: string }[] = [
+        { key: 'all', label: 'Сбросить всем', desc: 'Удалить все просмотры — онбординг покажется снова каждому пользователю' },
+        { key: 'before_date', label: 'По дате просмотра', desc: 'Сбросить тех, кто смотрел до указанной даты' },
+        { key: 'new_users', label: 'Только новым', desc: 'Сменить аудиторию на «Новые пользователи» — существующие пользователи не увидят' },
+        { key: 'user', label: 'Конкретному пользователю', desc: 'Сбросить просмотр для одного пользователя по номеру телефона' },
+    ]
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Повторный показ</p>
+                        <h3 className="text-base font-semibold text-gray-900 truncate max-w-[280px]">{story.name}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100">
+                        <X className="h-4 w-4 text-gray-400" />
+                    </button>
+                </div>
+
+                <div className="px-6 py-4">
+                    {stats !== null && (
+                        <p className="text-sm text-gray-500 mb-4">
+                            Просмотрели: <span className="font-semibold text-gray-800">{stats.total_views}</span> пользователей
+                        </p>
+                    )}
+
+                    <div className="space-y-2 mb-5">
+                        {MODES.map(m => (
+                            <button
+                                key={m.key}
+                                onClick={() => setMode(m.key)}
+                                className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-colors ${
+                                    mode === m.key ? 'border-indigo-400 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'
+                                }`}
+                            >
+                                <p className={`text-sm font-medium ${mode === m.key ? 'text-indigo-700' : 'text-gray-800'}`}>{m.label}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{m.desc}</p>
+                            </button>
+                        ))}
+                    </div>
+
+                    {mode === 'before_date' && (
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Сбросить просмотры до даты</label>
+                            <input
+                                type="date"
+                                value={beforeDate}
+                                onChange={e => setBeforeDate(e.target.value)}
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                        </div>
+                    )}
+
+                    {mode === 'new_users' && (
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Новые пользователи — дней с регистрации</label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={newUserDays}
+                                onChange={e => setNewUserDays(Number(e.target.value))}
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                        </div>
+                    )}
+
+                    {mode === 'user' && (
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Номер телефона (+7...)</label>
+                            <input
+                                type="tel"
+                                value={userPhone}
+                                onChange={e => setUserPhone(e.target.value)}
+                                placeholder="+77001234567"
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={loading || !canSubmit()}
+                            className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                        >
+                            {loading ? 'Применяю...' : 'Применить'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── StoryCard ───────────────────────────────────────────────────────────────
+
 interface StoryCardProps {
     story: OnboardingStory
     onEdit: () => void
     onDelete: () => void
     onToggle: (story: OnboardingStory) => void
+    onReshow: () => void
 }
 
-const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle }) => (
+const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle, onReshow }) => (
     <div className={`bg-white rounded-2xl shadow-sm border-2 transition-colors ${
         story.is_active ? 'border-green-200' : 'border-gray-100'
     }`}>
@@ -1324,6 +1476,9 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onEdit, onDelete, onToggle
                         {story.is_active
                             ? <EyeOff className="h-4 w-4 text-gray-500" />
                             : <Eye className="h-4 w-4 text-gray-400" />}
+                    </button>
+                    <button onClick={onReshow} title="Повторный показ" className="p-2 rounded-lg hover:bg-indigo-50 transition-colors">
+                        <RefreshCw className="h-4 w-4 text-indigo-400" />
                     </button>
                     <button onClick={onEdit} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                         <Settings2 className="h-4 w-4 text-gray-500" />
@@ -1474,6 +1629,7 @@ export const OnboardingPage: React.FC = () => {
     const [spotlightKeys, setSpotlightKeys] = useState<SpotlightKey[]>(loadSpotlightKeys)
     const [editing, setEditing] = useState<OnboardingStory | null>(null)
     const [creating, setCreating] = useState(false)
+    const [reshowStory, setReshowStory] = useState<OnboardingStory | null>(null)
 
     const fetchStories = async () => {
         setLoading(true)
@@ -1716,9 +1872,18 @@ export const OnboardingPage: React.FC = () => {
                             onEdit={() => setEditing(story)}
                             onDelete={() => handleDelete(story.id)}
                             onToggle={() => handleToggle(story)}
+                            onReshow={() => setReshowStory(story)}
                         />
                     ))}
                 </div>
+            )}
+
+            {reshowStory && (
+                <ReShowModal
+                    story={reshowStory}
+                    onClose={() => setReshowStory(null)}
+                    onDone={() => { setReshowStory(null); fetchStories() }}
+                />
             )}
 
             {!loading && stories.length > 0 && (

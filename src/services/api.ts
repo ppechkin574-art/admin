@@ -1281,6 +1281,15 @@ export const onboardingService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
+  getStoryStats: (storyId: number): Promise<{ total_views: number }> =>
+    api.get(`/admin/onboarding/stories/${storyId}/stats`).then(r => r.data),
+  resetViews: (storyId: number, payload: {
+    mode: 'all' | 'before_date' | 'new_users' | 'user'
+    before_date?: string
+    new_user_days?: number
+    user_phone?: string
+  }): Promise<{ reset_count: number; message: string }> =>
+    api.post(`/admin/onboarding/stories/${storyId}/reset-views`, payload).then(r => r.data),
 }
 
 export default api;
