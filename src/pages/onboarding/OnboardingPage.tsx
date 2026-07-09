@@ -291,10 +291,10 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                     zIndex: 13,
                     transform: `translateX(${step.bubble_x ?? 0}px) translateY(${step.bubble_y ?? 0}px)`,
                 }}>
-                    <div style={{ position: 'relative', width: 260 }}>
+                    <div style={{ position: 'relative', width: step.bubble_width ?? 260 }}>
                         <div style={{
                             background: '#fff', borderRadius: 16,
-                            padding: `${isBottom ? 20 : 28}px ${isLeft ? 20 : 24}px ${isBottom ? 28 : 20}px ${isLeft ? 24 : 20}px`,
+                            padding: (() => { const p = step.bubble_padding ?? 20; return `${isBottom ? p : p+8}px ${isLeft ? p : p+4}px ${isBottom ? p+8 : p}px ${isLeft ? p+4 : p}px` })(),
                             boxShadow: '0 4px 16px rgba(0,0,0,.12)',
                         }}>
                             <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1A2E', marginBottom: 8, lineHeight: 1.3 }}>{title}</div>
@@ -325,7 +325,7 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                                 <div key={i} style={{ height: 8, width: i === stepIndex ? 20 : 8, borderRadius: 4, background: i === stepIndex ? '#6C5CE7' : '#DDD8F5', margin: '0 4px' }} />
                             ))}
                         </div>
-                        <div style={{ position: 'absolute', bottom: btnBot, left: 20, right: 20, zIndex: 13, background: '#6C5CE7', color: '#fff', fontSize: 16, fontWeight: 700, padding: '15px 0', borderRadius: 16, textAlign: 'center', boxShadow: '0 5px 14px rgba(108,92,231,.4)' }}>
+                        <div style={{ position: 'absolute', bottom: btnBot, left: '50%', transform: 'translateX(-50%)', width: (step.button_width ?? 0) > 0 ? (step.button_width ?? 0) : 'calc(100% - 40px)', zIndex: 13, background: '#6C5CE7', color: '#fff', fontSize: 16, fontWeight: 700, padding: `${step.button_padding_v ?? 15}px 0`, borderRadius: 16, textAlign: 'center', boxShadow: '0 5px 14px rgba(108,92,231,.4)' }}>
                             {btnLabel}
                         </div>
                         <div style={{ position: 'absolute', bottom: skipBot, left: 0, right: 0, textAlign: 'center', fontSize: 14, color: 'rgba(255,255,255,.5)', padding: '8px 0', zIndex: 13 }}>
