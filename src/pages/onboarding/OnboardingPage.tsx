@@ -358,6 +358,7 @@ const MultiDevicePreview: React.FC<MultiDevicePreviewProps> = (props) => (
 
 interface StepEditorProps {
     step: OnboardingStep
+    savedStep: OnboardingStep
     index: number
     total: number
     spotlightKeys: SpotlightKey[]
@@ -368,12 +369,23 @@ interface StepEditorProps {
     onDelete: () => void
 }
 
-const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKeys, startScreen, onPatch, onMoveUp, onMoveDown, onDelete }) => {
+const StepEditor: React.FC<StepEditorProps> = ({ step, savedStep, index, total, spotlightKeys, startScreen, onPatch, onMoveUp, onMoveDown, onDelete }) => {
     const [open, setOpen] = useState(index === 0)
     const [uploading, setUploading] = useState(false)
     const fileRef = useRef<HTMLInputElement>(null)
 
     const upd = onPatch
+
+    const isDirty = JSON.stringify(step) !== JSON.stringify(savedStep)
+    const isChanged = <K extends keyof OnboardingStep>(k: K) => step[k] !== savedStep[k]
+
+    // F: Esc closes the open step
+    useEffect(() => {
+        if (!open) return
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [open])
 
     const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -428,9 +440,22 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
                     {index + 1}
                 </span>
-                <span className="flex-1 text-sm font-medium text-gray-700 truncate">
-                    {step.title_ru || <span className="text-gray-400 italic">Без заголовка</span>}
-                </span>
+                {/* E: title + body preview when collapsed */}
+                <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-700 truncate">
+                        {step.title_ru || <span className="text-gray-400 italic">Без заголовка</span>}
+                    </div>
+                    {!open && step.body_ru && (
+                        <div className="text-xs text-gray-400 truncate mt-0.5">{step.body_ru}</div>
+                    )}
+                </div>
+                {/* A: unsaved badge */}
+                {isDirty && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full flex-shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+                        не сохранено
+                    </span>
+                )}
                 <div className="flex items-center gap-1 flex-shrink-0">
                     <button type="button" onClick={e => { e.stopPropagation(); onMoveUp() }}
                         disabled={index === 0}
@@ -454,10 +479,38 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
 
             {open && (
                 <div className="flex gap-0">
-                    {/* Left: sticky phone preview */}
-                    <div className="sticky top-0 self-start border-r border-gray-100 p-4 shrink-0">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Предпросмотр</p>
-                        <SingleDevicePreview device={DEVICES[0]} step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
+                    {/* Left: sticky phone preview + bubble position */}
+                    <div className="sticky top-0 self-start border-r border-gray-100 p-4 shrink-0" style={{ width: 224 }}>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Предпросмотр</p>
+                        {/* Phone scaled to 50% — frame is 401×860, labels ~42px → total ~902 → at 0.5 → ~451px */}
+                        <div style={{ width: 205, height: 460, overflow: 'hidden', flexShrink: 0 }}>
+                            <div style={{ transform: 'scale(0.5)', transformOrigin: 'top left', display: 'inline-block' }}>
+                                <SingleDevicePreview device={DEVICES[0]} step={step} startScreen={startScreen} stepIndex={index} totalSteps={total} />
+                            </div>
+                        </div>
+                        {/* Позиция пузыря — moved here from right column for proximity to preview */}
+                        <div className="mt-3 space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block">Позиция пузыря</label>
+                            {(['bubble_x', 'bubble_y'] as const).map(key => {
+                                const val = step[key] ?? 0
+                                return (
+                                    <div key={key} className="flex items-center gap-1.5">
+                                        <span className="text-[11px] text-gray-500 w-4 flex-shrink-0">{key === 'bubble_x' ? 'X' : 'Y'}</span>
+                                        <input
+                                            type="range" min={-200} max={200} step={1} value={val}
+                                            onChange={e => upd({ [key]: Number(e.target.value) } as Partial<OnboardingStep>)}
+                                            className="flex-1 accent-indigo-500"
+                                        />
+                                        <span className="text-[11px] text-indigo-700 font-mono w-10 text-right flex-shrink-0">{val}px</span>
+                                        {val !== 0 && (
+                                            <button type="button"
+                                                onClick={() => upd({ [key]: 0 } as Partial<OnboardingStep>)}
+                                                className="text-[11px] text-gray-400 hover:text-gray-600 flex-shrink-0">↺</button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
                     </div>
                     {/* Right: all settings (unchanged) */}
                     <div className="flex-1 min-w-0 p-4 space-y-4">
@@ -546,28 +599,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                     </label>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">Позиция пузыря</label>
-                                {(['bubble_x', 'bubble_y'] as const).map(key => {
-                                    const val = step[key] ?? 0
-                                    return (
-                                        <div key={key} className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-500 w-16 flex-shrink-0">{key === 'bubble_x' ? 'X' : 'Y'}</span>
-                                            <input
-                                                type="range" min={-200} max={200} step={1} value={val}
-                                                onChange={e => upd({ [key]: Number(e.target.value) } as Partial<OnboardingStep>)}
-                                                className="flex-1 accent-indigo-500"
-                                            />
-                                            <span className="text-xs text-indigo-700 font-mono w-12 text-right flex-shrink-0">{val}px</span>
-                                            {val !== 0 && (
-                                                <button type="button"
-                                                    onClick={() => upd({ [key]: 0 } as Partial<OnboardingStep>)}
-                                                    className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0">↺</button>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                            {/* Позиция пузыря moved to left sidebar (under preview phone) */}
                         </div>
 
                         {/* Texts — variant A: side-by-side RU | KK */}
@@ -585,7 +617,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                         type="text" value={step.title_ru} maxLength={80}
                                         onChange={e => upd({ title_ru: e.target.value })}
                                         placeholder="Привет! 👋"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        className={`w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${isChanged('title_ru') ? 'border-amber-300 bg-amber-50 focus:ring-amber-300' : 'border-gray-300 focus:ring-indigo-400'}`}
                                     />
                                 </div>
                                 <div>
@@ -596,7 +628,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                         type="text" value={step.title_kk} maxLength={80}
                                         onChange={e => upd({ title_kk: e.target.value })}
                                         placeholder="Сәлем! 👋"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                        className={`w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${isChanged('title_kk') ? 'border-amber-300 bg-amber-50 focus:ring-amber-300' : 'border-gray-300 focus:ring-indigo-400'}`}
                                     />
                                 </div>
                             </div>
@@ -611,7 +643,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                         value={step.body_ru} maxLength={300} rows={4}
                                         onChange={e => upd({ body_ru: e.target.value })}
                                         placeholder="Я — Айбек, твой проводник..."
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                                        className={`w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 resize-none ${isChanged('body_ru') ? 'border-amber-300 bg-amber-50 focus:ring-amber-300' : 'border-gray-300 focus:ring-indigo-400'}`}
                                     />
                                 </div>
                                 <div>
@@ -623,7 +655,7 @@ const StepEditor: React.FC<StepEditorProps> = ({ step, index, total, spotlightKe
                                         value={step.body_kk} maxLength={300} rows={4}
                                         onChange={e => upd({ body_kk: e.target.value })}
                                         placeholder="Мен — Айбек, сенің бағыттаушың..."
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                                        className={`w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 resize-none ${isChanged('body_kk') ? 'border-amber-300 bg-amber-50 focus:ring-amber-300' : 'border-gray-300 focus:ring-indigo-400'}`}
                                     />
                                 </div>
                             </div>
@@ -831,12 +863,70 @@ interface StoryFormProps {
     initial: OnboardingStory
     spotlightKeys: SpotlightKey[]
     onSave: (s: OnboardingStory) => void
+    onAutoSave?: (s: OnboardingStory) => Promise<void>
     onCancel: () => void
 }
 
-const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, onCancel }) => {
+const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, onAutoSave, onCancel }) => {
     const [story, setStory] = useState<OnboardingStory>(initial)
+    const [savedStory, setSavedStory] = useState<OnboardingStory>(initial)
+    const [showExitDialog, setShowExitDialog] = useState(false)
+    const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+    const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const storyRef = useRef(story)
+    const onAutoSaveRef = useRef(onAutoSave)
+    storyRef.current = story
+    onAutoSaveRef.current = onAutoSave
+
     const upd = (patch: Partial<OnboardingStory>) => setStory(s => ({ ...s, ...patch }))
+
+    const isDirtyForm = JSON.stringify(story) !== JSON.stringify(savedStory)
+
+    // C: auto-save debounce 1.5s after any change
+    useEffect(() => {
+        const fn = onAutoSaveRef.current
+        if (!fn) return
+        if (autoTimerRef.current) clearTimeout(autoTimerRef.current)
+        autoTimerRef.current = setTimeout(async () => {
+            const currentStory = storyRef.current
+            const currentFn = onAutoSaveRef.current
+            if (!currentFn) return
+            setAutoSaveStatus('saving')
+            try {
+                await currentFn(currentStory)
+                setSavedStory(currentStory)
+                setAutoSaveStatus('saved')
+                setTimeout(() => setAutoSaveStatus(s => s === 'saved' ? 'idle' : s), 3000)
+            } catch {
+                setAutoSaveStatus('error')
+            }
+        }, 1500)
+        return () => { if (autoTimerRef.current) clearTimeout(autoTimerRef.current) }
+    }, [story])
+
+    // B: warn on browser close/reload
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (isDirtyForm) { e.preventDefault(); e.returnValue = '' }
+        }
+        window.addEventListener('beforeunload', handler)
+        return () => window.removeEventListener('beforeunload', handler)
+    }, [isDirtyForm])
+
+    // F: Cmd/Ctrl+S to save
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault()
+                const s = storyRef.current
+                if (!s.name.trim()) { toast.error('Введите название рассказа'); return }
+                if (s.steps.some(st => !st.title_ru.trim())) { toast.error('Заполните заголовок (RU) для всех шагов'); return }
+                onSave(s)
+            }
+        }
+        window.addEventListener('keydown', handler)
+        return () => window.removeEventListener('keydown', handler)
+    }, [onSave])
 
     const patchStep = (idx: number, patch: Partial<OnboardingStep>) => {
         setStory(s => {
@@ -871,8 +961,77 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
         onSave(story)
     }
 
+    // B: intercept cancel — show exit dialog if dirty
+    const handleCancel = () => {
+        if (isDirtyForm) {
+            setShowExitDialog(true)
+        } else {
+            onCancel()
+        }
+    }
+
+    // B: compute field-level diff for exit dialog
+    const exitDiff: Array<{ label: string; was: string; now: string }> = []
+    if (story.name !== savedStory.name) exitDiff.push({ label: 'Название', was: savedStory.name || '—', now: story.name || '—' })
+    if (story.is_active !== savedStory.is_active) exitDiff.push({ label: 'Статус', was: savedStory.is_active ? 'Активен' : 'Неактивен', now: story.is_active ? 'Активен' : 'Неактивен' })
+    story.steps.forEach((st, i) => {
+        const sv = savedStory.steps.find(s => s.id === st.id)
+        if (!sv) { exitDiff.push({ label: `Шаг ${i + 1}`, was: '—', now: 'добавлен' }); return }
+        if (st.title_ru !== sv.title_ru) exitDiff.push({ label: `Шаг ${i + 1} заголовок`, was: (sv.title_ru || '—').slice(0, 28), now: (st.title_ru || '—').slice(0, 28) })
+        if (st.body_ru !== sv.body_ru) exitDiff.push({ label: `Шаг ${i + 1} текст`, was: (sv.body_ru || '—').slice(0, 28), now: (st.body_ru || '—').slice(0, 28) })
+        if (st.mascot_position !== sv.mascot_position) exitDiff.push({ label: `Шаг ${i + 1} маскот`, was: sv.mascot_position, now: st.mascot_position })
+    })
+
     return (
         <div className="space-y-6">
+            {/* B: Exit confirmation dialog */}
+            {showExitDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4">
+                        <div className="flex items-center gap-3 mb-3">
+                            <span className="text-2xl">⚠️</span>
+                            <h3 className="text-base font-bold text-gray-900">Есть несохранённые изменения</h3>
+                        </div>
+                        {exitDiff.length > 0 && (
+                            <div className="mb-4 rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                                {exitDiff.slice(0, 8).map((d, i) => (
+                                    <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                                        <span className="text-gray-500 font-medium w-32 flex-shrink-0 truncate">{d.label}</span>
+                                        <span className="bg-red-50 text-red-700 px-1.5 py-0.5 rounded max-w-[90px] truncate">{d.was}</span>
+                                        <span className="text-gray-400 flex-shrink-0">→</span>
+                                        <span className="bg-green-50 text-green-700 px-1.5 py-0.5 rounded max-w-[90px] truncate">{d.now}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex gap-2 justify-end">
+                            <button onClick={() => setShowExitDialog(false)}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
+                                Остаться
+                            </button>
+                            <button onClick={() => { setShowExitDialog(false); onCancel() }}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200">
+                                Уйти без сохранения
+                            </button>
+                            <button onClick={() => { setShowExitDialog(false); handleSave() }}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                                Сохранить и уйти
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* C: auto-save status bar */}
+            {autoSaveStatus !== 'idle' && (
+                <div className={`flex items-center gap-2 text-xs px-4 py-2 rounded-xl ${
+                    autoSaveStatus === 'saving' ? 'bg-indigo-50 text-indigo-600' :
+                    autoSaveStatus === 'saved'  ? 'bg-green-50 text-green-700' :
+                    'bg-red-50 text-red-600'
+                }`}>
+                    {autoSaveStatus === 'saving' && <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />}
+                    {autoSaveStatus === 'saving' ? 'Сохраняется...' : autoSaveStatus === 'saved' ? '✓ Сохранено автоматически' : '✗ Ошибка авто-сохранения — нажмите «Сохранить» вручную'}
+                </div>
+            )}
             {/* ── Основное ── */}
             <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
@@ -1084,6 +1243,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
                         <StepEditor
                             key={step.id}
                             step={step}
+                            savedStep={savedStory.steps.find(s => s.id === step.id) ?? step}
                             index={idx}
                             total={story.steps.length}
                             spotlightKeys={spotlightKeys}
@@ -1099,7 +1259,7 @@ const StoryForm: React.FC<StoryFormProps> = ({ initial, spotlightKeys, onSave, o
 
             {/* ── Actions ── */}
             <div className="flex justify-end gap-3 pb-6">
-                <Button variant="ghost" onClick={onCancel}>Отмена</Button>
+                <Button variant="ghost" onClick={handleCancel}>Отмена</Button>
                 <Button variant="primary" icon={<Save className="h-4 w-4" />} onClick={handleSave}>
                     Сохранить рассказ
                 </Button>
@@ -1393,6 +1553,53 @@ export const OnboardingPage: React.FC = () => {
         }
     }
 
+    const handleAutoSave = async (story: OnboardingStory) => {
+        if (!editing?.id) return
+        const payload = {
+            name: story.name,
+            priority: story.priority,
+            is_active: story.is_active,
+            is_mandatory: story.is_mandatory,
+            is_test: story.is_test,
+            skip_delay_seconds: story.skip_delay_seconds,
+            target_audience: story.target_audience,
+            new_user_days: story.new_user_days,
+            trigger: story.trigger,
+            immediate_count: story.immediate_count,
+            max_shows_per_user: story.max_shows_per_user,
+            start_screen: story.start_screen,
+            steps: story.steps.map(s => ({
+                step_order: s.step_order,
+                mascot_image_url: s.mascot_image_url || null,
+                title_ru: s.title_ru,
+                title_kk: s.title_kk,
+                body_ru: s.body_ru,
+                body_kk: s.body_kk,
+                mascot_position: s.mascot_position,
+                spotlight_element_keys: s.spotlight_element_keys ?? [],
+                spotlight_element_key: (s.spotlight_element_keys ?? [])[0] ?? s.spotlight_element_key ?? null,
+                spotlight_adjustments: s.spotlight_adjustments ?? {},
+                step_screen: s.step_screen || null,
+                action_label_ru: s.action_label_ru || null,
+                action_label_kk: s.action_label_kk || null,
+                action_route: s.action_route || null,
+                mascot_scale: s.mascot_scale ?? 1.0,
+                mascot_x: s.mascot_x ?? 0,
+                mascot_y: s.mascot_y ?? 0,
+                mascot_rotation: s.mascot_rotation ?? 0,
+                bubble_x: s.bubble_x ?? 0,
+                bubble_y: s.bubble_y ?? 0,
+                mascot_flip_h: s.mascot_flip_h ?? false,
+                mascot_flip_v: s.mascot_flip_v ?? false,
+                bubble_width: s.bubble_width ?? 260,
+                bubble_padding: s.bubble_padding ?? 20,
+                button_width: s.button_width ?? 0,
+                button_padding_v: s.button_padding_v ?? 15,
+            })),
+        }
+        await onboardingService.updateStory(Number(editing.id), payload)
+    }
+
     const handleDelete = async (id: number | string) => {
         if (!confirm('Удалить рассказ? Это действие нельзя отменить.')) return
         try {
@@ -1430,6 +1637,7 @@ export const OnboardingPage: React.FC = () => {
                     initial={editing ?? makeEmptyStory()}
                     spotlightKeys={spotlightKeys}
                     onSave={handleSave}
+                    onAutoSave={editing?.id ? handleAutoSave : undefined}
                     onCancel={() => { setCreating(false); setEditing(null) }}
                 />
             </div>
