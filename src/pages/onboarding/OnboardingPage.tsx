@@ -236,15 +236,34 @@ const SingleDevicePreview: React.FC<DevicePreviewProps> = ({ device, step, start
                             </div>
                             {/* Gap20 + Mini cards: h=155 */}
                             <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: f(12), paddingLeft: f(16), paddingRight: f(16), marginTop: f(20), height: f(155) })}>
-                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(16), boxShadow: '0 2px 8px rgba(0,0,0,.06)' })}>
-                                    <div style={s({ fontSize: f(24), marginBottom: f(8) })}>🏆</div>
-                                    <div style={s({ fontSize: f(12), color: '#888', lineHeight: 1.35 })}>Рейтингтегі<br />орным</div>
-                                    <div style={s({ fontSize: f(14), fontWeight: 700, color: '#6c5ce7', marginTop: f(6) })}>1 орын</div>
+                                {/* Rating card: icon-box + chevron + podium bars */}
+                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(14), boxShadow: '0 6px 24px rgba(0,0,0,.13),0 1px 4px rgba(0,0,0,.06)', position: 'relative', overflow: 'hidden' })}>
+                                    <div style={{ position: 'absolute', bottom: -2, right: -2, display: 'flex', alignItems: 'flex-end' }}>
+                                        {[[f(20),f(28),'#C9C6E8','#B8B5DF'],[f(20),f(40),'#BAB7DC','#A9A6D4'],[f(20),f(20),'#D4D1EC','#C4C1E4']].map(([w,h,c1,c2],i) => (
+                                            <div key={i} style={{ width: w, height: h, background: `linear-gradient(to bottom,${c1},${c2})` }} />
+                                        ))}
+                                    </div>
+                                    <span style={{ position: 'absolute', top: f(14), right: f(14), fontSize: f(12), color: '#B8B8BE', fontWeight: 300 }}>›</span>
+                                    <div style={s({ width: f(36), height: f(36), borderRadius: f(10), background: '#6c5ce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: f(18) })}>🏆</div>
+                                    <div style={s({ fontSize: f(12), color: '#888', lineHeight: 1.35, marginTop: f(8) })}>Рейтингтегі<br />орным</div>
+                                    <div style={s({ fontSize: f(16), fontWeight: 700, color: '#6c5ce7', marginTop: f(4) })}>1 орын</div>
+                                    <div style={s({ display: 'flex', alignItems: 'center', gap: f(3), marginTop: f(3) })}>
+                                        <span style={{ fontSize: f(10) }}>⭐</span>
+                                        <span style={s({ fontSize: f(11), color: '#888', fontWeight: 600 })}>684</span>
+                                    </div>
                                 </div>
-                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(16), boxShadow: '0 2px 8px rgba(0,0,0,.06)' })}>
-                                    <div style={s({ background: '#6c5ce7', width: f(32), height: f(32), borderRadius: f(10), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: f(18), marginBottom: f(8) })}>🎁</div>
-                                    <div style={s({ fontSize: f(12), color: '#888', lineHeight: 1.35 })}>Келесі<br />сыйлық</div>
-                                    <div style={s({ fontSize: f(14), fontWeight: 700, color: '#FF8800', marginTop: f(6) })}>340 ⭐</div>
+                                {/* Reward card: same icon-box style + progress bar */}
+                                <div style={s({ background: '#fff', borderRadius: f(16), padding: f(14), boxShadow: '0 6px 24px rgba(0,0,0,.13),0 1px 4px rgba(0,0,0,.06)', position: 'relative', overflow: 'hidden' })}>
+                                    <span style={{ position: 'absolute', bottom: -4, right: -4, fontSize: f(52), opacity: 0.1, lineHeight: 1 }}>🎁</span>
+                                    <div style={s({ width: f(36), height: f(36), borderRadius: f(10), background: '#6c5ce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: f(18) })}>🎁</div>
+                                    <div style={s({ fontSize: f(12), color: '#888', lineHeight: 1.35, marginTop: f(8) })}>Келесі<br />сыйлыққа дейін</div>
+                                    <div style={s({ fontSize: f(16), fontWeight: 700, color: '#FF8800', marginTop: f(4), display: 'flex', alignItems: 'center', gap: f(2) })}>ТАҒЫ 316 <span style={{ fontSize: f(12) }}>⭐</span></div>
+                                    <div style={s({ marginTop: f(8) })}>
+                                        <div style={s({ height: f(6), borderRadius: f(3), background: '#F0E8FF', overflow: 'hidden' })}>
+                                            <div style={{ height: '100%', width: '68%', borderRadius: f(3), background: 'linear-gradient(90deg,#FFD84D,#FF8800)' }} />
+                                        </div>
+                                        <div style={s({ fontSize: f(10), color: '#888', marginTop: f(3) })}>684 / 1000 ⭐</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
