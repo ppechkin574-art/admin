@@ -1415,7 +1415,7 @@ export const OnboardingPage: React.FC = () => {
 
     if (creating || editing) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="px-6 py-6">
                 <div className="flex items-center gap-3 mb-6">
                     <button onClick={() => { setCreating(false); setEditing(null) }}
                         className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
