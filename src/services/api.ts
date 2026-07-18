@@ -10,6 +10,7 @@ import {
 import keycloak from "@/services/keycloak";
 import { useAuthStore } from "@/stores/authStore";
 import { usePermissionModalStore } from "@/stores/permissionModalStore";
+import { isAllowedForMarketing } from "@/services/marketingWriteGate";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -31,22 +32,10 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// ── Marketing write-permission gate ─────────────────────────────────────
-// Backend already 403s a marketing-role token on almost every write route
-// (see allow_read_or_admin_write / allow_crm_access in the backend). This
-// intercepts the SAME calls client-side so a marketing account gets a
-// friendly "no permission" modal instead of a raw failed-request toast —
-// no page needs its own permission check, this is the single choke point
-// every mutating request goes through.
+// Marketing write-permission gate — see services/marketingWriteGate.ts for
+// the allow-list itself (kept in its own module so it's unit-testable
+// without a mocked Keycloak/axios environment).
 const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
-
-// CRM task create/update/move stays open to marketing; deleting a task
-// (and every other admin write) does not. Mirrors allow_crm_access.
-function isAllowedForMarketing(url: string, method: string): boolean {
-  const path = (url || "").split("?")[0];
-  const isCrmTaskWrite = /^\/admin\/crm\/tasks(\/[^/]+(\/move)?)?$/.test(path);
-  return isCrmTaskWrite && method !== "delete";
-}
 
 api.interceptors.request.use(
   (config) => {
