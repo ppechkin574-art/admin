@@ -307,6 +307,17 @@ export const CrmBoard: React.FC = () => {
 
     const taskId = Number(draggableId)
     const newStatus = destination.droppableId as CrmStatus
+
+    // Жёсткий WIP-лимит: «В работе» вмещает только одну задачу (бэкенд
+    // это тоже валидирует — здесь дублируем, чтобы карточка не прыгала).
+    if (newStatus === 'prog') {
+      const occupied = tasks.find((t) => t.status === 'prog' && t.id !== taskId)
+      if (occupied) {
+        toast.error(`В работе уже «${occupied.title}» — сначала освободите колонку`)
+        return
+      }
+    }
+
     setTasks((prev) => computeReorder(prev, taskId, newStatus, destination.index))
 
     crmService
