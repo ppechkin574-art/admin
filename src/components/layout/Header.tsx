@@ -2,24 +2,21 @@ import { useState } from "react";
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
 import { LogOut, User, Menu, X, ChevronDown } from 'lucide-react'
 import { useNavigate, NavLink } from 'react-router-dom'
-import { menuItemsGen2, menuItemsGen1, isMarketingPath } from '@/constants/sidebarContent'
+import { menuItemsGen2, menuItemsGen1 } from '@/constants/sidebarContent'
 
 const Header = () =>
 {
-    const { user, logout, isAuthenticated, isMarketingOnly } = useKeycloakAuth()
+    const { user, logout, isAuthenticated } = useKeycloakAuth()
     const navigate = useNavigate()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [gen2Open, setGen2Open] = useState(true)
     const [gen1Open, setGen1Open] = useState(true)
 
-    // Marketing-only users see ONLY the marketing items in the mobile
-    // menu; admins see the full menu exactly as before.
-    const gen2Items = isMarketingOnly
-        ? menuItemsGen2.filter(item => isMarketingPath(item.href))
-        : menuItemsGen2
-    const gen1Items = isMarketingOnly
-        ? menuItemsGen1.filter(item => isMarketingPath(item.href))
-        : menuItemsGen1
+    // Everyone sees the full mobile menu — marketing-only accounts get the
+    // same navigation as admin/manager (write actions are blocked
+    // per-request, not by hiding sections; see services/api.ts).
+    const gen2Items = menuItemsGen2
+    const gen1Items = menuItemsGen1
 
     const handleLogout = async () =>
     {

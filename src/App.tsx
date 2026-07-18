@@ -62,6 +62,7 @@ import { SecurityPolicy } from './pages/security/SecurityPolicy'
 import { SecurityUsersList } from './pages/security/SecurityUsersList'
 import { SecurityNotifications } from './pages/security/SecurityNotifications'
 import { CrmBoard } from './pages/crm'
+import NoPermissionModal from '@/components/common/NoPermissionModal'
 
 function App()
 {
@@ -93,6 +94,7 @@ function App()
 
   return (
     <>
+      <NoPermissionModal />
       <Toaster
         position="top-right"
         toastOptions={{

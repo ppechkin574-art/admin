@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
-import { menuItemsGen2, menuItemsGen1, isMarketingPath } from '@/constants/sidebarContent'
+import { menuItemsGen2, menuItemsGen1 } from '@/constants/sidebarContent'
 import { ChevronDown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { securityService } from '@/services/api'
 
 const Sidebar = () =>
 {
-  const { isAuthenticated, isMarketingOnly } = useKeycloakAuth()
+  const { isAuthenticated } = useKeycloakAuth()
   const [gen2Open, setGen2Open] = useState(true)
   const [gen1Open, setGen1Open] = useState(true)
   const [securityBadge, setSecurityBadge] = useState(0)
@@ -27,14 +27,11 @@ const Sidebar = () =>
     return () => clearInterval(interval)
   }, [isAuthenticated])
 
-  // Marketing-only users see ONLY the marketing items; admins (and any
-  // user with `admin`) see the full sidebar exactly as before.
-  const gen2Items = isMarketingOnly
-    ? menuItemsGen2.filter(item => isMarketingPath(item.href))
-    : menuItemsGen2
-  const gen1Items = isMarketingOnly
-    ? menuItemsGen1.filter(item => isMarketingPath(item.href))
-    : menuItemsGen1
+  // Everyone sees the full sidebar — marketing-only accounts get the same
+  // navigation as admin/manager. Write actions are blocked per-request by
+  // the axios interceptor + NoPermissionModal, not by hiding sections.
+  const gen2Items = menuItemsGen2
+  const gen1Items = menuItemsGen1
 
   const renderNavLink = (item: { label: string; href: string; icon: any }) =>
   {

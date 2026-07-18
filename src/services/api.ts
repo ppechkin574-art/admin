@@ -8,6 +8,8 @@ import {
   QuestionDraftUpdate,
 } from "@/types/questionDrafts";
 import keycloak from "@/services/keycloak";
+import { useAuthStore } from "@/stores/authStore";
+import { usePermissionModalStore } from "@/stores/permissionModalStore";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -29,6 +31,41 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// ── Marketing write-permission gate ─────────────────────────────────────
+// Backend already 403s a marketing-role token on almost every write route
+// (see allow_read_or_admin_write / allow_crm_access in the backend). This
+// intercepts the SAME calls client-side so a marketing account gets a
+// friendly "no permission" modal instead of a raw failed-request toast —
+// no page needs its own permission check, this is the single choke point
+// every mutating request goes through.
+const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
+
+// CRM task create/update/move stays open to marketing; deleting a task
+// (and every other admin write) does not. Mirrors allow_crm_access.
+function isAllowedForMarketing(url: string, method: string): boolean {
+  const path = (url || "").split("?")[0];
+  const isCrmTaskWrite = /^\/admin\/crm\/tasks(\/[^/]+(\/move)?)?$/.test(path);
+  return isCrmTaskWrite && method !== "delete";
+}
+
+api.interceptors.request.use(
+  (config) => {
+    const method = (config.method || "get").toLowerCase();
+    if (MUTATING_METHODS.has(method)) {
+      const roles = useAuthStore.getState().permissions;
+      const isMarketingOnly = roles.includes("marketing") && !roles.includes("admin");
+      if (isMarketingOnly && !isAllowedForMarketing(config.url || "", method)) {
+        usePermissionModalStore.getState().open();
+        const blocked: any = new Error("marketing role: write blocked");
+        blocked.__permissionBlocked = true;
+        return Promise.reject(blocked);
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
 // Single 401 handler: try to refresh the Keycloak token first.
 // If refresh succeeds → retry the original request with the new token.
 // If refresh fails → clear local state and redirect to login.
@@ -37,6 +74,13 @@ let redirectingToLogin = false;
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    if (error?.__permissionBlocked) {
+      // Already surfaced via the global "no permission" modal (see the
+      // request interceptor above) — swallow so the calling page doesn't
+      // ALSO flash its own generic error toast for the same click.
+      return new Promise(() => {});
+    }
+
     const status = error?.response?.status;
 
     if (status !== 401) return Promise.reject(error);

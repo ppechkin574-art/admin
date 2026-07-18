@@ -1,7 +1,6 @@
 import { FC } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
-import { isMarketingPath } from '@/constants/sidebarContent'
 import LoadingSpinner from './LoadingSpinner'
 
 interface ProtectedRouteProps
@@ -11,7 +10,7 @@ interface ProtectedRouteProps
 
 const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
 {
-    const { isInitialized, isAuthenticated, isMarketingOnly, isManagerOnly } = useKeycloakAuth()
+    const { isInitialized, isAuthenticated, isManagerOnly } = useKeycloakAuth()
     const location = useLocation()
 
     if (!isInitialized)
@@ -24,11 +23,10 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
     if (!isAuthenticated)
         return <Navigate to="/login" replace />
 
-    // Marketing-only users (role `marketing`, NOT `admin`) may visit ONLY
-    // the marketing routes. Any other path — including the "/" landing —
-    // redirects them to /marketing. Admins are unrestricted.
-    if (isMarketingOnly && !isMarketingPath(location.pathname))
-        return <Navigate to="/marketing" replace />
+    // Marketing-only users see every page (read access is opened up on the
+    // backend too, see allow_read_or_admin_write) — write actions are
+    // blocked per-request by the axios interceptor + NoPermissionModal,
+    // not by hiding routes. See services/api.ts.
 
     // Manager users have full access except /admin/app-settings.
     if (isManagerOnly && location.pathname.startsWith('/admin/app-settings'))
