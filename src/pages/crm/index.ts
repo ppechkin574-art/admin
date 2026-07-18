@@ -1,0 +1,1 @@
+export { CrmBoard } from './CrmBoard'

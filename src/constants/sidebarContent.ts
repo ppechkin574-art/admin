@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 export const menuItemsGen2 = [
+  { label: "CRM", href: "/crm", icon: FolderKanban },
   { label: "Модули", href: "/modules", icon: Puzzle },
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },

@@ -130,7 +130,7 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try
         {
             await keycloak.login({
-                redirectUri: window.location.origin + '/modules'
+                redirectUri: window.location.origin + '/crm'
             })
         } catch (error)
         {
