@@ -264,14 +264,25 @@ export const UserList: React.FC = () => {
     const DEFAULT_WIDTHS: Record<ColKey, number> = {
         name: 180, phone: 140, role: 100, plan: 150,
         streak: 90, points: 80, registered: 110,
-        activity: 120, status: 110, actions: 110,
+        activity: 120, status: 110, actions: 280,
     }
     const COL_WIDTHS_KEY = 'userlist_col_widths_v1'
+
+    // The "Действия" column had no resize handle until a 5th action button
+    // (points adjust) was added, so any previously-saved width of exactly the
+    // OLD default (110px) was never a deliberate user choice — it's stale and
+    // now too narrow to fit 5 icons. Treat that specific value as unset so
+    // everyone gets the new, wider default without re-saving.
+    const OLD_ACTIONS_DEFAULT = 110
 
     const [colWidths, setColWidths] = useState<Record<ColKey, number>>(() => {
         try {
             const raw = localStorage.getItem(COL_WIDTHS_KEY)
-            if (raw) return { ...DEFAULT_WIDTHS, ...JSON.parse(raw) }
+            if (raw) {
+                const saved = JSON.parse(raw)
+                if (saved.actions === OLD_ACTIONS_DEFAULT) delete saved.actions
+                return { ...DEFAULT_WIDTHS, ...saved }
+            }
         } catch {}
         return { ...DEFAULT_WIDTHS }
     })
@@ -818,7 +829,10 @@ export const UserList: React.FC = () => {
                                 Статус
                                 <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('status', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-500">Действия</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-500 relative overflow-hidden">
+                                Действия
+                                <div className="group absolute top-0 right-0 h-full w-3 cursor-col-resize z-10" onMouseDown={e => startResize('actions', e)}><div className="absolute right-1 top-2 h-4/5 w-px bg-gray-200 group-hover:bg-blue-400 group-hover:w-0.5 transition-all" /></div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
