@@ -61,6 +61,7 @@ import { SecurityUserDetail } from './pages/security/SecurityUserDetail'
 import { SecurityPolicy } from './pages/security/SecurityPolicy'
 import { SecurityUsersList } from './pages/security/SecurityUsersList'
 import { SecurityNotifications } from './pages/security/SecurityNotifications'
+import { CrmBoard } from './pages/crm'
 
 function App()
 {
@@ -113,7 +114,9 @@ function App()
             <Layout />
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="/modules" replace />} />
+          <Route index element={<Navigate to="/crm" replace />} />
+
+          <Route path="/crm" element={<CrmBoard />} />
 
           <Route path="/ent-practice">
             <Route path="subjects" element={<EntSubjectList context="ent" />} />

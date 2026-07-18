@@ -1292,4 +1292,101 @@ export const onboardingService = {
     api.post(`/admin/onboarding/stories/${storyId}/reset-views`, payload).then(r => r.data),
 }
 
+// ---------------- CRM board (задачи команды + лог изменений) ----------------
+
+export type CrmStatus = 'todo' | 'prog' | 'hold' | 'done';
+export type CrmPriority = 'low' | 'mid' | 'high';
+export type CrmAction = 'create' | 'move' | 'edit' | 'delete';
+
+export interface CrmTask {
+  id: number;
+  title: string;
+  description: string;
+  status: CrmStatus;
+  priority: CrmPriority;
+  assignee_admin_id: string | null;
+  assignee_display: string | null;
+  due_date: string | null; // YYYY-MM-DD
+  labels: string[];
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmTaskCreatePayload {
+  title: string;
+  description?: string;
+  status?: CrmStatus;
+  priority?: CrmPriority;
+  assignee_admin_id?: string | null;
+  assignee_display?: string | null;
+  due_date?: string | null;
+  labels?: string[];
+}
+export type CrmTaskUpdatePayload = Partial<CrmTaskCreatePayload>;
+
+export interface CrmActivity {
+  id: number;
+  task_id: number | null;
+  task_title: string;
+  admin_id: string | null;
+  admin_display: string;
+  action: CrmAction;
+  details: Record<string, any>;
+  created_at: string;
+}
+
+export interface CrmMember {
+  id: string;
+  display: string;
+}
+
+export const crmService = {
+  listTasks: (): Promise<CrmTask[]> =>
+    api.get('/admin/crm/tasks').then(r => r.data),
+  createTask: (payload: CrmTaskCreatePayload): Promise<CrmTask> =>
+    api.post('/admin/crm/tasks', payload).then(r => r.data),
+  updateTask: (id: number, payload: CrmTaskUpdatePayload): Promise<CrmTask> =>
+    api.patch(`/admin/crm/tasks/${id}`, payload).then(r => r.data),
+  moveTask: (id: number, status: CrmStatus, position: number): Promise<CrmTask> =>
+    api.patch(`/admin/crm/tasks/${id}/move`, { status, position }).then(r => r.data),
+  deleteTask: (id: number): Promise<void> =>
+    api.delete(`/admin/crm/tasks/${id}`).then(() => undefined),
+  listActivity: (): Promise<CrmActivity[]> =>
+    api.get('/admin/crm/activity').then(r => r.data),
+  listMembers: (): Promise<CrmMember[]> =>
+    api.get('/admin/crm/members').then(r => r.data),
+};
+
+// ---------------- Leaderboard points: auto-reset settings + selective adjust ----------------
+
+export interface LeaderboardPointsSettings {
+  auto_reset_enabled: boolean;
+  interval_days: number;
+  last_reset_at: string | null;
+  next_reset_at: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface PointsAdjustResult {
+  user_id: string;
+  points_before: number;
+  points_after: number;
+  points_delta: number;
+}
+
+export const leaderboardPointsService = {
+  getSettings: (): Promise<LeaderboardPointsSettings> =>
+    api.get('/admin/leaderboard-points/settings').then(r => r.data),
+  updateSettings: (enabled: boolean, intervalDays: number): Promise<LeaderboardPointsSettings> =>
+    api.patch('/admin/leaderboard-points/settings', {
+      auto_reset_enabled: enabled,
+      interval_days: intervalDays,
+    }).then(r => r.data),
+  adjustPoints: (userId: string, delta: number, reason?: string): Promise<PointsAdjustResult> =>
+    api.post(`/admin/leaderboard-points/users/${userId}/adjust`, { delta, reason: reason || null })
+      .then(r => r.data),
+};
+
 export default api;

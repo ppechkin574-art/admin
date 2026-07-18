@@ -32,7 +32,7 @@ const ProtectedRoute: FC<ProtectedRouteProps> = ({ children }) =>
 
     // Manager users have full access except /admin/app-settings.
     if (isManagerOnly && location.pathname.startsWith('/admin/app-settings'))
-        return <Navigate to="/modules" replace />
+        return <Navigate to="/crm" replace />
 
     return <>{children}</>
 }
