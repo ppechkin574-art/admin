@@ -5,12 +5,13 @@ import toast from 'react-hot-toast'
 import {
     ArrowUpDown, ChevronDown, ChevronUp, Crown,
     Eye, EyeOff, Lock, RefreshCw, Trash2, Unlock, Users as UsersIcon, X,
-    Smartphone, Apple, Save, Settings,
+    Smartphone, Apple, Save, Settings, Coins, RotateCcw,
 } from 'lucide-react'
 import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
-import { leaderboardHiddenService, appSettingsService } from '@/services/api'
+import Modal from '@/components/common/Modal'
+import { leaderboardHiddenService, appSettingsService, leaderboardPointsService } from '@/services/api'
 
 interface User {
     id: string
@@ -39,6 +40,14 @@ interface User {
 
 type SortKey = 'name' | 'plan' | 'created_at' | 'attendance_streak_days' | 'points'
 type PlanFilter = '' | 'PRO' | 'FREE'
+type HiddenFilter = '' | 'hidden' | 'visible'
+
+const formatDateTime = (iso: string | null): string => {
+    if (!iso) return '—'
+    try {
+        return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    } catch { return '—' }
+}
 
 const ROLE_OPTIONS = [
     { value: '', label: 'Все роли' },
@@ -148,6 +157,7 @@ export const UserList: React.FC = () => {
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
     const [planFilter, setPlanFilter] = useState<PlanFilter>('')
+    const [hiddenFilter, setHiddenFilter] = useState<HiddenFilter>('')
     const [sortKey, setSortKey] = useState<SortKey>('created_at')
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
     const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -185,6 +195,42 @@ export const UserList: React.FC = () => {
             setAutoSettingLoading(false)
         }
     }
+
+    // ── Leaderboard points: auto-reset settings ─────────────────────────────
+    const [pointsResetEnabled, setPointsResetEnabled] = useState(false)
+    const [pointsIntervalInput, setPointsIntervalInput] = useState<string>('30')
+    const [pointsNextReset, setPointsNextReset] = useState<string | null>(null)
+    const [pointsSettingLoading, setPointsSettingLoading] = useState(false)
+
+    const loadPointsSettings = useCallback(async () => {
+        try {
+            const s = await leaderboardPointsService.getSettings()
+            setPointsResetEnabled(s.auto_reset_enabled)
+            setPointsIntervalInput(String(s.interval_days))
+            setPointsNextReset(s.next_reset_at)
+        } catch { /* best-effort — card just won't show a next-reset date */ }
+    }, [])
+    useEffect(() => { loadPointsSettings() }, [loadPointsSettings])
+
+    const handleSavePointsSettings = async (enabledOverride?: boolean) => {
+        const n = parseInt(pointsIntervalInput, 10)
+        if (isNaN(n) || n < 1 || n > 3650) { toast.error('Введите число дней от 1 до 3650'); return }
+        const enabled = enabledOverride ?? pointsResetEnabled
+        setPointsSettingLoading(true)
+        try {
+            const s = await leaderboardPointsService.updateSettings(enabled, n)
+            setPointsResetEnabled(s.auto_reset_enabled)
+            setPointsNextReset(s.next_reset_at)
+            toast.success(enabled ? `Автообнуление: каждые ${n} дн.` : 'Автообнуление отключено')
+        } catch {
+            toast.error('Ошибка сохранения настроек очков')
+        } finally {
+            setPointsSettingLoading(false)
+        }
+    }
+
+    // ── Leaderboard points: selective adjust ────────────────────────────────
+    const [adjustUser, setAdjustUser] = useState<User | null>(null)
 
     useEffect(() => { fetchUsers({}) }, [fetchUsers])
 
@@ -290,8 +336,9 @@ export const UserList: React.FC = () => {
         }
         if (roleFilter) list = list.filter(u => u.roles?.includes(roleFilter) || u.role === roleFilter)
         if (planFilter) list = list.filter(u => planFilter === 'PRO' ? u.plan === 'PRO' : u.plan !== 'PRO')
+        if (hiddenFilter) list = list.filter(u => hiddenFilter === 'hidden' ? hiddenIds.has(u.id) : !hiddenIds.has(u.id))
         return list
-    }, [users, search, roleFilter, planFilter])
+    }, [users, search, roleFilter, planFilter, hiddenFilter, hiddenIds])
 
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
@@ -428,8 +475,8 @@ export const UserList: React.FC = () => {
         }
     }
 
-    const resetFilters = () => { setSearch(''); setRoleFilter(''); setPlanFilter(''); setCurrentPage(1) }
-    const activeFiltersCount = (search ? 1 : 0) + (roleFilter ? 1 : 0) + (planFilter ? 1 : 0)
+    const resetFilters = () => { setSearch(''); setRoleFilter(''); setPlanFilter(''); setHiddenFilter(''); setCurrentPage(1) }
+    const activeFiltersCount = (search ? 1 : 0) + (roleFilter ? 1 : 0) + (planFilter ? 1 : 0) + (hiddenFilter ? 1 : 0)
 
     return (
         <ListContainer>
@@ -490,6 +537,51 @@ export const UserList: React.FC = () => {
                         Новые пользователи получат {autoDays} дней PRO
                     </span>
                 )}
+            </div>
+
+            {/* ── Leaderboard points auto-reset settings ──────────────────── */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700 shrink-0">
+                    <RotateCcw className="h-4 w-4 text-gray-400" />
+                    Автообнуление очков лидерборда
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => { const next = !pointsResetEnabled; setPointsResetEnabled(next); handleSavePointsSettings(next) }}
+                        disabled={pointsSettingLoading}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${pointsResetEnabled ? 'bg-blue-500' : 'bg-gray-300'}`}
+                    >
+                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${pointsResetEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <span className="text-sm text-gray-500">{pointsResetEnabled ? 'Включено' : 'Выключено'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Раз в (дней):</label>
+                    <input
+                        type="number" min={1} max={3650} step={1}
+                        value={pointsIntervalInput}
+                        onChange={e => setPointsIntervalInput(e.target.value)}
+                        className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                </div>
+                <Button
+                    variant="secondary" size="sm"
+                    icon={<Save className="h-3.5 w-3.5" />}
+                    onClick={() => handleSavePointsSettings()}
+                    disabled={pointsSettingLoading}
+                    loading={pointsSettingLoading}
+                >
+                    Сохранить
+                </Button>
+                {pointsResetEnabled && (
+                    <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2.5 py-0.5">
+                        Следующий сброс: {formatDateTime(pointsNextReset)} · у всех, включая скрытых
+                    </span>
+                )}
+                <span className="text-xs text-gray-400 w-full">
+                    Обнуляет очки у всех пользователей (в т.ч. скрытых из лидерборда). Сохранение перезапускает отсчёт от текущего момента.
+                </span>
             </div>
 
             {/* ── Stats bar ──────────────────────────────────────────────── */}
@@ -570,6 +662,16 @@ export const UserList: React.FC = () => {
                             </button>
                         ))}
                     </div>
+                    <select
+                        value={hiddenFilter}
+                        onChange={e => { setHiddenFilter(e.target.value as HiddenFilter); setCurrentPage(1) }}
+                        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        title="Видимость в лидерборде"
+                    >
+                        <option value="">Лидерборд: все</option>
+                        <option value="hidden">Только скрытые ({hiddenIds.size})</option>
+                        <option value="visible">Только показанные</option>
+                    </select>
                 </div>
             </div>
 
@@ -806,6 +908,9 @@ export const UserList: React.FC = () => {
                                                 ? <Lock className="h-4 w-4 text-orange-500" />
                                                 : <Unlock className="h-4 w-4 text-green-600" />}
                                             title={user.is_active ? 'Заблокировать' : 'Разблокировать'} />
+                                        <Button variant="ghost" size="sm" onClick={() => setAdjustUser(user)}
+                                            icon={<Coins className="h-4 w-4 text-amber-500" />}
+                                            title="Изменить очки" />
                                         <div className="relative">
                                             <Button variant="ghost" size="sm"
                                                 onClick={() => setOpenSubMenu(openSubMenu === user.id ? null : user.id)}
@@ -890,6 +995,104 @@ export const UserList: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <AdjustPointsModal
+                user={adjustUser}
+                onClose={() => setAdjustUser(null)}
+                onApplied={async () => { setAdjustUser(null); await refreshUsers({}) }}
+            />
         </ListContainer>
+    )
+}
+
+// ── Adjust points modal ──────────────────────────────────────────────────
+// Selective +/- points for one user. Result is always clamped at 0 server-side
+// (no "reason required" friction — see leaderboard_points backend docs); the
+// preview below shows the clamped outcome before the admin confirms.
+interface AdjustPointsModalProps {
+    user: User | null
+    onClose: () => void
+    onApplied: () => void
+}
+
+const AdjustPointsModal: React.FC<AdjustPointsModalProps> = ({ user, onClose, onApplied }) => {
+    const [deltaInput, setDeltaInput] = useState('')
+    const [reason, setReason] = useState('')
+    const [saving, setSaving] = useState(false)
+
+    useEffect(() => {
+        if (user) { setDeltaInput(''); setReason('') }
+    }, [user])
+
+    if (!user) return null
+
+    const delta = parseInt(deltaInput, 10)
+    const validDelta = deltaInput.trim() !== '' && !isNaN(delta) && delta !== 0
+    const preview = validDelta ? Math.max(0, user.points + delta) : null
+
+    const apply = async () => {
+        if (!validDelta) { toast.error('Введите ненулевое число очков'); return }
+        setSaving(true)
+        try {
+            const result = await leaderboardPointsService.adjustPoints(user.id, delta, reason || undefined)
+            toast.success(
+                `${result.points_delta >= 0 ? '+' : ''}${result.points_delta} очков → "${user.name || user.phone}" (итого ${result.points_after})`
+            )
+            onApplied()
+        } catch (err: any) {
+            toast.error(err?.response?.data?.detail || 'Не удалось изменить очки')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <Modal isOpen={!!user} onClose={onClose} title="Изменить очки" maxWidth="sm">
+            <div className="space-y-4">
+                <div className="text-sm text-gray-600">
+                    <span className="font-medium text-gray-900">{user.name || user.phone}</span>
+                    {' — текущие очки: '}
+                    <span className="font-semibold tabular-nums">{user.points}</span>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                        Изменение (например 50 или -50)
+                    </label>
+                    <input
+                        type="number"
+                        value={deltaInput}
+                        onChange={e => setDeltaInput(e.target.value)}
+                        placeholder="50"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        autoFocus
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                        Причина (необязательно)
+                    </label>
+                    <input
+                        type="text"
+                        value={reason}
+                        maxLength={500}
+                        onChange={e => setReason(e.target.value)}
+                        placeholder="Например: компенсация за баг"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                </div>
+                {preview !== null && (
+                    <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                        Итого станет: <span className="font-semibold text-gray-800">{preview}</span>
+                        {user.points + delta < 0 && ' (списание ограничено нулём)'}
+                    </div>
+                )}
+                <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={onClose} disabled={saving}>Отмена</Button>
+                    <Button variant="primary" onClick={apply} disabled={saving || !validDelta} loading={saving}>
+                        Применить
+                    </Button>
+                </div>
+            </div>
+        </Modal>
     )
 }

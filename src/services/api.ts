@@ -1358,4 +1358,35 @@ export const crmService = {
     api.get('/admin/crm/members').then(r => r.data),
 };
 
+// ---------------- Leaderboard points: auto-reset settings + selective adjust ----------------
+
+export interface LeaderboardPointsSettings {
+  auto_reset_enabled: boolean;
+  interval_days: number;
+  last_reset_at: string | null;
+  next_reset_at: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface PointsAdjustResult {
+  user_id: string;
+  points_before: number;
+  points_after: number;
+  points_delta: number;
+}
+
+export const leaderboardPointsService = {
+  getSettings: (): Promise<LeaderboardPointsSettings> =>
+    api.get('/admin/leaderboard-points/settings').then(r => r.data),
+  updateSettings: (enabled: boolean, intervalDays: number): Promise<LeaderboardPointsSettings> =>
+    api.patch('/admin/leaderboard-points/settings', {
+      auto_reset_enabled: enabled,
+      interval_days: intervalDays,
+    }).then(r => r.data),
+  adjustPoints: (userId: string, delta: number, reason?: string): Promise<PointsAdjustResult> =>
+    api.post(`/admin/leaderboard-points/users/${userId}/adjust`, { delta, reason: reason || null })
+      .then(r => r.data),
+};
+
 export default api;
