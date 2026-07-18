@@ -45,14 +45,23 @@ const PRIORITY: Record<CrmPriority, { label: string; color: string; bg: string }
 
 const LABEL_PALETTE: Record<string, { color: string; bg: string }> = {
   'баг': { color: '#b91c1c', bg: '#fee2e2' },
+  'блокер': { color: '#9f1239', bg: '#ffe4e6' },
   'срочно': { color: '#c2410c', bg: '#ffedd5' },
   'контент': { color: '#7e22ce', bg: '#f3e8ff' },
   'перевод': { color: '#0f766e', bg: '#ccfbf1' },
   'дизайн': { color: '#be185d', bg: '#fce7f3' },
+  'фронтенд': { color: '#1d4ed8', bg: '#dbeafe' },
   'бэкенд': { color: '#4338ca', bg: '#e0e7ff' },
+  'фича': { color: '#15803d', bg: '#dcfce7' },
+  'рефактор': { color: '#9a3412', bg: '#fed7aa' },
+  'тесты': { color: '#3f6212', bg: '#ecfccb' },
+  'документация': { color: '#0369a1', bg: '#e0f2fe' },
+  'маркетинг': { color: '#a21caf', bg: '#fae8ff' },
+  'платежи': { color: '#854d0e', bg: '#fef9c3' },
   'релиз': { color: '#475569', bg: '#e2e8f0' },
   'перф': { color: '#0e7490', bg: '#cffafe' },
   'безопасность': { color: '#92400e', bg: '#fde68a' },
+  'идея': { color: '#57534e', bg: '#f5f5f4' },
 }
 const LABEL_OPTIONS = Object.keys(LABEL_PALETTE)
 const labelStyle = (name: string) => LABEL_PALETTE[name] ?? { color: '#475569', bg: '#e2e8f0' }
@@ -88,20 +97,21 @@ function colorFromString(s: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length]
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0')
-const todayISO = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
-}
-
-function dueMeta(iso: string | null): { kind: '' | 'today' | 'over'; text: string } | null {
+function dueMeta(
+  iso: string | null,
+): { kind: '' | 'soon' | 'today' | 'over'; text: string; dateLabel: string } | null {
   if (!iso) return null
-  const t = todayISO()
-  const d = new Date(iso + 'T00:00:00')
-  const label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-  if (iso < t) return { kind: 'over', text: label }
-  if (iso === t) return { kind: 'today', text: 'Сегодня' }
-  return { kind: '', text: label }
+  const due = new Date(iso + 'T00:00:00')
+  const now = new Date()
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diffDays = Math.round((due.getTime() - todayMidnight.getTime()) / 86_400_000)
+  const dateLabel = due.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+
+  if (diffDays < 0) return { kind: 'over', text: `Просрочено на ${-diffDays} дн.`, dateLabel }
+  if (diffDays === 0) return { kind: 'today', text: 'Сегодня', dateLabel }
+  if (diffDays === 1) return { kind: 'soon', text: 'Завтра', dateLabel }
+  if (diffDays === 2) return { kind: 'soon', text: 'Через 2 дн.', dateLabel }
+  return { kind: '', text: `Через ${diffDays} дн.`, dateLabel }
 }
 
 const bySort = (a: CrmTask, b: CrmTask) => a.sort_order - b.sort_order || a.id - b.id
@@ -740,12 +750,15 @@ const TaskCard: React.FC<{ task: CrmTask; dragging: boolean; onDelete: (t: CrmTa
         </span>
         {dm && (
           <span
+            title={dm.dateLabel}
             className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${
               dm.kind === 'over'
                 ? 'text-red-700 bg-red-100'
                 : dm.kind === 'today'
                   ? 'text-amber-700 bg-amber-100'
-                  : 'text-gray-600 bg-gray-100'
+                  : dm.kind === 'soon'
+                    ? 'text-orange-600 bg-orange-50'
+                    : 'text-gray-600 bg-gray-100'
             }`}
           >
             <Clock className="h-3 w-3" />
