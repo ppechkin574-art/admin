@@ -23,6 +23,13 @@ describe("isAllowedForMarketing", () => {
     it("blocks deleting a CRM task", () => {
       expect(isAllowedForMarketing("/admin/crm/tasks/42", "delete")).toBe(false);
     });
+
+    it("blocks deleting a CRM task even if the caller passes an uppercase method", () => {
+      // The only current call site (api.ts) lowercases before calling in,
+      // but this function is exported precisely so it can be reused/tested
+      // independently of that — it must not silently trust the caller.
+      expect(isAllowedForMarketing("/admin/crm/tasks/42", "DELETE")).toBe(false);
+    });
   });
 
   describe("Push notifications — mirrors allow_admin_or_marketing", () => {
@@ -48,6 +55,16 @@ describe("isAllowedForMarketing", () => {
       // e.g. a hypothetical admin-only sub-route on the same prefix must
       // stay blocked — only the three named push actions are allowed.
       expect(isAllowedForMarketing("/admin/notifications/test/send", "post")).toBe(false);
+    });
+
+    it("only allows POST on the push routes, not other methods on the same path", () => {
+      // The backend only exposes POST on these 3 routes (notifications_send.py),
+      // so a client-side match on path alone (ignoring method) would be
+      // needlessly permissive for a hypothetical future PUT/PATCH/DELETE
+      // handler added at the same path.
+      expect(isAllowedForMarketing("/admin/notifications/send", "delete")).toBe(false);
+      expect(isAllowedForMarketing("/admin/notifications/send", "put")).toBe(false);
+      expect(isAllowedForMarketing("/admin/notifications/send", "patch")).toBe(false);
     });
   });
 

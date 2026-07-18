@@ -33,6 +33,14 @@ const isMarketingPushWrite = (path: string): boolean =>
 
 export function isAllowedForMarketing(url: string, method: string): boolean {
   const path = (url || "").split("?")[0];
-  if (isMarketingPushWrite(path)) return true;
-  return isCrmTaskWrite(path) && method !== "delete";
+  // Normalize here rather than trust the caller — api.ts happens to
+  // lowercase before calling in today, but this function is exported
+  // specifically so it's reusable/unit-testable outside that one call
+  // site, and an uppercase "DELETE" must not silently slip through.
+  const m = (method || "").toLowerCase();
+  // All 3 push routes are POST-only on the backend (see
+  // notifications_send.py) — matching on path alone would also let a
+  // hypothetical PUT/PATCH/DELETE to the same path through client-side.
+  if (isMarketingPushWrite(path)) return m === "post";
+  return isCrmTaskWrite(path) && m !== "delete";
 }
