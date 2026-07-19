@@ -15,6 +15,13 @@
 const isCrmTaskWrite = (path: string): boolean =>
   /^\/admin\/crm\/tasks(\/[^/]+(\/move)?)?$/.test(path);
 
+// Card subresources (attachments/links/assignees/comments) are gated on
+// the same allow_crm_access on the backend, and unlike the task itself
+// their DELETE is a normal CRM edit (detach a file/link/assignee), not a
+// destructive admin action — so DELETE is allowed here.
+const isCrmTaskExtraWrite = (path: string): boolean =>
+  /^\/admin\/crm\/tasks\/[^/]+\/(attachments|links|assignees|comments)(\/[^/]+)?$/.test(path);
+
 // Push-уведомления (POST /admin/notifications/send, /send-test,
 // /send-to-phone) is the other marketing write surface: the backend
 // router gates it on `allow_admin_or_marketing` (see the "Marketing
@@ -42,6 +49,7 @@ export function isAllowedForMarketing(url: string, method: string): boolean {
   // notifications_send.py) — matching on path alone would also let a
   // hypothetical PUT/PATCH/DELETE to the same path through client-side.
   if (isMarketingPushWrite(path)) return m === "post";
+  if (isCrmTaskExtraWrite(path)) return true;
   return isCrmTaskWrite(path) && m !== "delete";
 }
 

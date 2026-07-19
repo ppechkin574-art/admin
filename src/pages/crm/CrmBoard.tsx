@@ -252,6 +252,11 @@ export const CrmBoard: React.FC = () => {
   const [uploading, setUploading] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
+  // create-mode staging: extras picked before the card exists are held
+  // locally (links/assignees stage inside taskExtra) and flushed to the
+  // API right after createTask returns the new id
+  const [stagedFiles, setStagedFiles] = useState<File[]>([])
+  const [stagedComments, setStagedComments] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   // id карточки, для которой сейчас актуален запрос вложений/комментариев в модалке —
   // защита от гонки, если пользователь быстро переключается между карточками
@@ -406,6 +411,8 @@ export const CrmBoard: React.FC = () => {
     setAttachments([])
     setComments([])
     setCommentText('')
+    setStagedFiles([])
+    setStagedComments([])
     setModalOpen(true)
   }
   const openEdit = (t: CrmTask) => {
@@ -425,6 +432,8 @@ export const CrmBoard: React.FC = () => {
     setAttachments([])
     setComments([])
     setCommentText('')
+    setStagedFiles([])
+    setStagedComments([])
     setModalOpen(true)
 
     Promise.all([crmService.listAttachments(t.id), crmService.listComments(t.id)])
@@ -469,8 +478,13 @@ export const CrmBoard: React.FC = () => {
         await crmService.updateTask(form.id, payload)
         toast.success('Задача обновлена')
       } else {
-        await crmService.createTask(payload)
-        toast.success('Задача создана')
+        const created = await crmService.createTask(payload)
+        const failed = await flushStagedExtras(created.id)
+        if (failed.length) {
+          toast.error(`Задача создана, но не удалось: ${failed.join(', ')}`)
+        } else {
+          toast.success('Задача создана')
+        }
       }
       setModalOpen(false)
       await load()
@@ -479,6 +493,42 @@ export const CrmBoard: React.FC = () => {
     } finally {
       setSaving(false)
     }
+  }
+
+  // after createTask: push everything the user staged in the create modal
+  // onto the fresh card. Sequential on purpose — the backend appends
+  // comments/links in call order. Returns human labels of what failed.
+  const flushStagedExtras = async (taskId: number): Promise<string[]> => {
+    const failed: string[] = []
+    for (const m of taskExtra.extra_assignees) {
+      try {
+        await crmService.addAssignee(taskId, m.id, m.display)
+      } catch {
+        failed.push(`добавить ответственного «${m.display}»`)
+      }
+    }
+    for (const linkedId of taskExtra.linked_task_ids) {
+      try {
+        await crmService.addLink(taskId, linkedId)
+      } catch {
+        failed.push(`связать с карточкой №${linkedId}`)
+      }
+    }
+    for (const file of stagedFiles) {
+      try {
+        await crmService.uploadAttachment(taskId, file)
+      } catch {
+        failed.push(`загрузить «${file.name}»`)
+      }
+    }
+    for (const text of stagedComments) {
+      try {
+        await crmService.addComment(taskId, text)
+      } catch {
+        failed.push('добавить комментарий')
+      }
+    }
+    return failed
   }
 
   const remove = async (t: CrmTask) => {
@@ -496,9 +546,13 @@ export const CrmBoard: React.FC = () => {
   const handlePickFile = () => fileInputRef.current?.click()
 
   const handleUploadFile = async (file: File) => {
-    if (!form.id) return
     if (file.size > MAX_ATTACHMENT_SIZE) {
       toast.error(`Файл слишком большой (макс. ${humanSize(MAX_ATTACHMENT_SIZE)})`)
+      return
+    }
+    if (!form.id) {
+      // create mode: card doesn't exist yet — stage the file, upload on save
+      setStagedFiles((prev) => [...prev, file])
       return
     }
     const taskId = form.id
@@ -529,7 +583,11 @@ export const CrmBoard: React.FC = () => {
 
   /* ---------- links between cards ---------- */
   const handleAddLink = async (linkedTaskId: number) => {
-    if (!form.id || !linkedTaskId) return
+    if (!linkedTaskId) return
+    if (!form.id) {
+      setTaskExtra((prev) => ({ ...prev, linked_task_ids: [...prev.linked_task_ids, linkedTaskId] }))
+      return
+    }
     const taskId = form.id
     try {
       const updated = await crmService.addLink(taskId, linkedTaskId)
@@ -543,7 +601,13 @@ export const CrmBoard: React.FC = () => {
   }
 
   const handleRemoveLink = async (linkedTaskId: number) => {
-    if (!form.id) return
+    if (!form.id) {
+      setTaskExtra((prev) => ({
+        ...prev,
+        linked_task_ids: prev.linked_task_ids.filter((id) => id !== linkedTaskId),
+      }))
+      return
+    }
     const taskId = form.id
     try {
       await crmService.removeLink(taskId, linkedTaskId)
@@ -558,10 +622,14 @@ export const CrmBoard: React.FC = () => {
 
   /* ---------- extra assignees ---------- */
   const handleAddAssignee = async (adminId: string) => {
-    if (!form.id || !adminId) return
-    const taskId = form.id
+    if (!adminId) return
     const member = members.find((m) => m.id === adminId)
     if (!member) return
+    if (!form.id) {
+      setTaskExtra((prev) => ({ ...prev, extra_assignees: [...prev.extra_assignees, member] }))
+      return
+    }
+    const taskId = form.id
     try {
       const updated = await crmService.addAssignee(taskId, adminId, member.display)
       const next = updated.extra_assignees ?? [...taskExtra.extra_assignees, member]
@@ -573,7 +641,13 @@ export const CrmBoard: React.FC = () => {
   }
 
   const handleRemoveAssignee = async (adminId: string) => {
-    if (!form.id) return
+    if (!form.id) {
+      setTaskExtra((prev) => ({
+        ...prev,
+        extra_assignees: prev.extra_assignees.filter((m) => m.id !== adminId),
+      }))
+      return
+    }
     const taskId = form.id
     try {
       await crmService.removeAssignee(taskId, adminId)
@@ -588,7 +662,12 @@ export const CrmBoard: React.FC = () => {
 
   /* ---------- comments ---------- */
   const handleAddComment = async () => {
-    if (!form.id || !commentText.trim() || postingComment) return
+    if (!commentText.trim() || postingComment) return
+    if (!form.id) {
+      setStagedComments((prev) => [...prev, commentText.trim()])
+      setCommentText('')
+      return
+    }
     const taskId = form.id
     setPostingComment(true)
     try {
@@ -895,8 +974,7 @@ export const CrmBoard: React.FC = () => {
             </div>
           </div>
 
-          {form.id && (
-            <>
+          <>
               {/* доп. ответственные */}
               <div className="pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -997,9 +1075,28 @@ export const CrmBoard: React.FC = () => {
                   <label className="text-xs font-semibold text-gray-600">Вложения</label>
                 </div>
                 <div className="space-y-1.5 mb-2">
-                  {attachments.length === 0 && (
+                  {(form.id ? attachments.length === 0 : stagedFiles.length === 0) && (
                     <span className="text-xs text-gray-400">Нет вложений</span>
                   )}
+                  {!form.id &&
+                    stagedFiles.map((f, i) => (
+                      <div
+                        key={`${f.name}-${i}`}
+                        className="flex items-center gap-2 text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50"
+                      >
+                        <span className="truncate flex-1">{f.name}</span>
+                        <span className="text-xs text-gray-400 shrink-0">{humanSize(f.size)}</span>
+                        <span className="text-xs text-gray-400 shrink-0">загрузится после создания</span>
+                        <button
+                          type="button"
+                          onClick={() => setStagedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                          title="Убрать"
+                          className="text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   {attachments.map((a) => (
                     <div
                       key={a.id}
@@ -1056,7 +1153,32 @@ export const CrmBoard: React.FC = () => {
                   <label className="text-xs font-semibold text-gray-600">Комментарии</label>
                 </div>
                 <div className="rounded-lg border border-gray-200 max-h-64 overflow-y-auto px-1 py-1 mb-2">
-                  <CommentsFeed items={comments} />
+                  {form.id ? (
+                    <CommentsFeed items={comments} />
+                  ) : stagedComments.length === 0 ? (
+                    <div className="text-xs text-gray-400 px-2 py-1.5">
+                      Комментарий добавится после создания задачи
+                    </div>
+                  ) : (
+                    <div className="space-y-1 px-1 py-0.5">
+                      {stagedComments.map((c, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 text-sm px-2 py-1.5 rounded-lg bg-gray-50"
+                        >
+                          <span className="flex-1 whitespace-pre-wrap break-words">{c}</span>
+                          <button
+                            type="button"
+                            onClick={() => setStagedComments((prev) => prev.filter((_, idx) => idx !== i))}
+                            title="Убрать"
+                            className="text-gray-400 hover:text-red-600 mt-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -1080,8 +1202,7 @@ export const CrmBoard: React.FC = () => {
                   </Button>
                 </div>
               </div>
-            </>
-          )}
+          </>
         </div>
 
         <div className="flex justify-end gap-2 pt-5 mt-4 border-t border-gray-100">

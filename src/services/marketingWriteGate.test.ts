@@ -30,6 +30,25 @@ describe("isAllowedForMarketing", () => {
       // independently of that — it must not silently trust the caller.
       expect(isAllowedForMarketing("/admin/crm/tasks/42", "DELETE")).toBe(false);
     });
+
+    // Card subresources share allow_crm_access on the backend; their
+    // DELETE is a normal edit (detach file/link/assignee), not the
+    // destructive task-delete, so it must pass too.
+    it.each([
+      ["post", "/admin/crm/tasks/42/attachments"],
+      ["delete", "/admin/crm/tasks/42/attachments/7"],
+      ["post", "/admin/crm/tasks/42/links"],
+      ["delete", "/admin/crm/tasks/42/links/13"],
+      ["post", "/admin/crm/tasks/42/assignees"],
+      ["delete", "/admin/crm/tasks/42/assignees/a1b2-c3"],
+      ["post", "/admin/crm/tasks/42/comments"],
+    ])("allows %s %s (card subresources)", (method, url) => {
+      expect(isAllowedForMarketing(url, method)).toBe(true);
+    });
+
+    it("does not let an unknown subresource ride the CRM allow-list", () => {
+      expect(isAllowedForMarketing("/admin/crm/tasks/42/secrets", "post")).toBe(false);
+    });
   });
 
   describe("Push notifications — mirrors allow_admin_or_marketing", () => {
