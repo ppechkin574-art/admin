@@ -43,7 +43,7 @@ const DEVICES: readonly DeviceSpec[] = [
 
 // Which spotlight keys are visible on each start screen
 const SCREEN_SPOT_KEYS: Record<string, Set<string>> = {
-    HOME:         new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab','home_banner','home_events','home_rating_card','home_reward_card']),
+    HOME:         new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab','home_banner','home_events','home_rating_card']),
     TRAINER:      new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab','start_trainer_button']),
     LEADERBOARD:  new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab']),
     PROFILE:      new Set(['screen_top_half','screen_bottom_half','home_tab','trainer_tab','leaderboard_tab','profile_tab']),
@@ -54,6 +54,9 @@ const SCREEN_SPOT_KEYS: Record<string, Set<string>> = {
 // Positions derived from Flutter layout:
 //   home_banner  — SpotlightTarget wraps full-width _BannerCarousel (x=0, w=393, h=236, r=20)
 //   home_events  — Padding(horizontal:16) → SpotlightTarget wraps _EventsGrid
+//   home_rating_card — Padding(horizontal:16) → SpotlightTarget wraps full-width
+//                       _WeeklySprintCard (merged rating+reward+sprint-winner card,
+//                       replaces the old side-by-side _MiniRatingCard/_MiniRewardCard)
 //   nav tabs     — Expanded(SpotlightTarget(h=48, r=8)) inside Row(padding:l12,r12)
 type SpotRect = { x: number; y: number; w: number; h: number; r: number }
 const SPOT_MAP: Record<string, SpotRect> = {
@@ -65,8 +68,7 @@ const SPOT_MAP: Record<string, SpotRect> = {
     profile_tab:         { x: 288, y: IPHONE_H - IPHONE_NAV_H + 10, w: 92,            h: 48,  r: 8  },
     home_banner:         { x: 0,   y: IPHONE_SB_H + 17,             w: IPHONE_W,      h: 236, r: 20 },
     home_events:         { x: 16,  y: 363,                           w: IPHONE_W - 32, h: 200, r: 16 },
-    home_rating_card:    { x: 16,  y: 583,                           w: 174,           h: 155, r: 16 },
-    home_reward_card:    { x: 202, y: 583,                           w: 175,           h: 155, r: 16 },
+    home_rating_card:    { x: 16,  y: 583,                           w: IPHONE_W - 32, h: 200, r: 16 },
     subscription_banner: { x: 16,  y: IPHONE_SB_H + 90,             w: IPHONE_W - 32, h: 153, r: 28 },
     streak_widget:       { x: 267, y: IPHONE_SB_H + 12,             w: 110,           h: 63,  r: 20 },
     start_trainer_button:{ x: 16,  y: IPHONE_SB_H + 110,            w: IPHONE_W - 32, h: 70,  r: 20 },
