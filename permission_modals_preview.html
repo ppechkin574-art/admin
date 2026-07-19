@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<title>AIMA Admin — модалки доступа и предупреждений</title>
+<style>
+  :root{
+    --bg:#f3f4f6;
+    --panel:#ffffff;
+    --ink:#111827;
+    --sub:#6b7280;
+    --hair:#e5e7eb;
+    --primary:#2563eb;
+    --primary-ink:#1d4ed8;
+    --danger:#dc2626;
+    --amber:#d97706;
+    --amber-bg:#fffbeb;
+    --amber-ring:#fde68a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+  h1{font-size:19px;font-weight:700;margin:0 0 4px;}
+  .lede{color:var(--sub);font-size:13.5px;margin:0 0 28px;line-height:1.5;max-width:640px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:36px;}
+  .stage{
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:14px;
+    padding:18px 16px 16px;
+  }
+  .stage-label{
+    font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--sub);margin-bottom:12px;display:flex;align-items:center;gap:6px;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;flex:none;}
+  .dot.block{background:var(--sub);}
+  .dot.caution{background:var(--amber);}
+  .dot.danger{background:var(--danger);}
+  .mock-btn{
+    background:var(--primary);color:#fff;border:none;border-radius:8px;
+    font-size:13.5px;font-weight:500;padding:8px 14px;cursor:pointer;
+  }
+  .mock-btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--hair);}
+  .mock-btn.danger{background:var(--danger);}
+
+  /* overlay + alert card, iOS-style: hairline divider, split flat text buttons */
+  .overlay{
+    position:fixed;inset:0;background:rgba(17,24,39,.45);
+    display:none;align-items:center;justify-content:center;z-index:50;
+    animation:fade .15s ease-out;
+  }
+  .overlay.open{display:flex;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .alert{
+    width:320px;max-width:calc(100vw - 40px);
+    background:var(--panel);
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,.18);
+    animation:pop .16s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+  .alert-body{padding:22px 20px 16px;text-align:center;}
+  .icon{
+    width:36px;height:36px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 12px;
+  }
+  .icon svg{width:18px;height:18px;}
+  .icon.neutral{background:#eff6ff;color:var(--primary);}
+  .icon.caution{background:var(--amber-bg);color:var(--amber);}
+  .icon.danger{background:#fef2f2;color:var(--danger);}
+  .alert-title{font-size:15px;font-weight:600;margin:0 0 6px;color:var(--ink);}
+  .alert-msg{font-size:13px;line-height:1.5;color:var(--sub);margin:0;}
+  .alert-actions{display:flex;border-top:1px solid var(--hair);}
+  .alert-actions button{
+    flex:1;border:none;background:transparent;padding:12px 8px;
+    font-size:14.5px;cursor:pointer;color:var(--ink);font-family:inherit;
+  }
+  .alert-actions button + button{border-left:1px solid var(--hair);}
+  .alert-actions .primary{color:var(--primary);font-weight:600;}
+  .alert-actions .primary.danger{color:var(--danger);}
+  .alert-actions .only{font-weight:600;color:var(--primary);}
+  .alert-actions button:active{background:#f9fafb;}
+
+  .note{
+    font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Модалки доступа и предупреждений — marketing@aima.kz</h1>
+  <p class="lede">Нативный стиль (как системный алерт iOS): тонкая линия-разделитель, плоские текстовые кнопки без заливки, минимум цвета. Нажми на кнопку в карточке, чтобы увидеть модалку так, как она появится поверх экрана.</p>
+
+  <div class="grid">
+    <div class="stage">
+      <div class="stage-label"><span class="dot block"></span>1 · Нет доступа — база вопросов</div>
+      <button class="mock-btn secondary" onclick="openModal('m1')">Сохранить вопрос</button>
+      <p class="note">Показывается вместо действия — marketing вообще не может изменить вопрос, кнопка сразу открывает эту модалку.</p>
+    </div>
+    <div class="stage">
+      <div class="stage-label"><span class="dot caution"></span>2 · Предупреждение — отправка уведомления</div>
+      <button class="mock-btn" onclick="openModal('m2')">Отправить</button>
+      <p class="note">Действие разрешено, но модалка просит перепроверить текст и получателей перед реальной рассылкой.</p>
+    </div>
+    <div class="stage">
+      <div class="stage-label"><span class="dot danger"></span>3 · Предупреждение — удаление пользователя</div>
+      <button class="mock-btn danger" onclick="openModal('m3')">Удалить аккаунт</button>
+      <p class="note">Тот же шаблон переиспользуется для добавления/удаления/бана и др. важных действий в разделе «Пользователи» — меняется только текст.</p>
+    </div>
+  </div>
+
+  <p class="lede" style="margin-bottom:0">Если стиль ок — реализую: (1) жёсткий блок записи в БД вопросов для роли marketing на уровне интерцептора + эта модалка вместо текущего общего «NoPermissionModal»; (2) шаг подтверждения перед реальной отправкой push; (3) замену текущих window.confirm() в разделе «Пользователи» на этот же компонент.</p>
+</div>
+
+<!-- Modal 1: hard block, single action -->
+<div class="overlay" id="m1" onclick="closeOnBackdrop(event,'m1')">
+  <div class="alert">
+    <div class="alert-body">
+      <div class="icon neutral">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>
+      <p class="alert-title">Нет доступа</p>
+      <p class="alert-msg">Редактирование базы вопросов доступно только главному администратору. Если это нужно — обратитесь к нему.</p>
+    </div>
+    <div class="alert-actions">
+      <button class="only" onclick="closeModal('m1')">Понятно</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: caution before send -->
+<div class="overlay" id="m2" onclick="closeOnBackdrop(event,'m2')">
+  <div class="alert">
+    <div class="alert-body">
+      <div class="icon caution">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <p class="alert-title">Проверьте перед отправкой</p>
+      <p class="alert-msg">Уведомление уйдёт реальным пользователям — отменить нельзя. Если что-то не понятно, лучше не отправляйте и уточните у главного администратора.</p>
+    </div>
+    <div class="alert-actions">
+      <button onclick="closeModal('m2')">Отмена</button>
+      <button class="primary" onclick="closeModal('m2')">Отправить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 3: important user action -->
+<div class="overlay" id="m3" onclick="closeOnBackdrop(event,'m3')">
+  <div class="alert">
+    <div class="alert-body">
+      <div class="icon danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <p class="alert-title">Важное действие</p>
+      <p class="alert-msg">Вы собираетесь удалить аккаунт пользователя. Действие необратимо. Если не уверены — не подтверждайте, уточните у главного администратора.</p>
+    </div>
+    <div class="alert-actions">
+      <button onclick="closeModal('m3')">Отмена</button>
+      <button class="primary danger" onclick="closeModal('m3')">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openModal(id){document.getElementById(id).classList.add('open');}
+  function closeModal(id){document.getElementById(id).classList.remove('open');}
+  function closeOnBackdrop(e,id){ if(e.target.id===id) closeModal(id); }
+</script>
+</body>
+</html>

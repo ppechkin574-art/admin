@@ -44,3 +44,18 @@ export function isAllowedForMarketing(url: string, method: string): boolean {
   if (isMarketingPushWrite(path)) return m === "post";
   return isCrmTaskWrite(path) && m !== "delete";
 }
+
+// Question bank writes (POST/PATCH/DELETE /admin/questions...) are never
+// in the marketing allow-list above — a marketing account is blocked from
+// touching the question DB entirely. NoPermissionModal's generic "нет
+// прав" text is fine for most blocked routes, but this one is common
+// enough (and confusing enough without context) to get its own wording.
+const isQuestionsWrite = (path: string): boolean => /^\/admin\/questions(\/.*)?$/.test(path);
+
+export function blockedActionMessage(url: string): string | undefined {
+  const path = (url || "").split("?")[0];
+  if (isQuestionsWrite(path)) {
+    return "Редактирование базы вопросов доступно только главному администратору. Если это нужно — обратитесь к нему.";
+  }
+  return undefined;
+}

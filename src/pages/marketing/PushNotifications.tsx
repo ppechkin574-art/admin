@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import AlertModal from '@/components/common/AlertModal'
 import {
-    Bell, Send, Users, Crown, Smartphone, History, AlertTriangle,
+    Bell, Send, Users, Crown, Smartphone, History,
     Clock, Flame, Settings, CheckCircle, XCircle, Loader2,
     ChevronDown, ChevronUp, Save, Play, WifiOff, FlaskConical,
 } from 'lucide-react'
@@ -870,31 +871,22 @@ export const PushNotifications: React.FC = () => {
             </div>
 
             {/* ── Confirm modal ── */}
-            {confirming && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="rounded-full bg-orange-100 text-orange-700 p-2.5">
-                                <AlertTriangle className="h-5 w-5" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900">Подтвердить отправку</h3>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Push будет отправлен <strong>{TARGET_LABELS[target].toLowerCase()}</strong>. Действие необратимо.
-                        </p>
-                        <div className="bg-gray-50 rounded-xl p-4 mb-5 text-sm border border-gray-100">
-                            <div className="font-semibold text-gray-900 mb-1">{titleTrimmed}</div>
-                            <div className="text-gray-600">{bodyTrimmed}</div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <Button variant="ghost" onClick={() => setConfirming(false)} disabled={sending}>Отмена</Button>
-                            <Button variant="primary" onClick={handleSend} disabled={sending} loading={sending} icon={<Send className="h-4 w-4" />}>
-                                {sending ? 'Отправка…' : 'Отправить'}
-                            </Button>
-                        </div>
-                    </div>
+            <AlertModal
+                isOpen={confirming}
+                onClose={() => setConfirming(false)}
+                icon="caution"
+                title="Проверьте перед отправкой"
+                message={`Уведомление уйдёт ${TARGET_LABELS[target].toLowerCase()} — отменить нельзя. Если что-то не понятно, лучше не отправляйте и уточните у главного администратора.`}
+                onConfirm={handleSend}
+                confirmText={sending ? 'Отправка…' : 'Отправить'}
+                cancelText="Отмена"
+                isLoading={sending}
+            >
+                <div className="bg-gray-50 rounded-xl p-3 text-[13px] border border-gray-100">
+                    <div className="font-semibold text-gray-900 mb-0.5">{titleTrimmed}</div>
+                    <div className="text-gray-600">{bodyTrimmed}</div>
                 </div>
-            )}
+            </AlertModal>
 
             {/* ── Personal push by phone ── */}
             <div className="space-y-2">

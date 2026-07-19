@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner'
 import Button from '@/components/common/Button'
 import { MultiSelect } from '@/components/common/MultiSelect'
 import Modal from '@/components/common/Modal'
+import AlertModal from '@/components/common/AlertModal'
 import { Copy, Check } from 'lucide-react'
 
 interface Subject
@@ -31,6 +32,7 @@ export const UserForm: React.FC = () =>
     const [showCredentialsModal, setShowCredentialsModal] = useState(false)
     const [createdCredentials, setCreatedCredentials] = useState<{ username: string; password: string } | null>(null)
     const [copied, setCopied] = useState<'login' | 'password' | null>(null)
+    const [pendingCreateData, setPendingCreateData] = useState<any>(null)
 
     const [formData, setFormData] = useState({
         username: '',
@@ -133,23 +135,19 @@ export const UserForm: React.FC = () =>
         return true
     }
 
-    const handleSubmit = async (e: React.FormEvent) =>
+    const buildSubmitData = () => ({
+        name: formData.name,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        role: formData.role,
+        allowed_subject_ids: formData.role === 'teacher' ? formData.allowed_subject_ids : [],
+        is_active: formData.is_active,
+        ...(formData.username.trim() ? { username: formData.username } : {}),
+        ...(formData.password.trim() ? { password: formData.password } : {}),
+    } as any)
+
+    const saveUser = async (submitData: any) =>
     {
-        e.preventDefault()
-        if (!validateForm()) return
-
-        const submitData: any = {
-            name: formData.name,
-            email: formData.email || undefined,
-            phone: formData.phone || undefined,
-            role: formData.role,
-            allowed_subject_ids: formData.role === 'teacher' ? formData.allowed_subject_ids : [],
-            is_active: formData.is_active,
-        }
-
-        if (formData.username.trim()) submitData.username = formData.username
-        if (formData.password.trim()) submitData.password = formData.password
-
         setSaving(true)
         try
         {
@@ -189,6 +187,26 @@ export const UserForm: React.FC = () =>
         {
             setSaving(false)
         }
+    }
+
+    // Creating a new admin-panel account is the one path here worth an
+    // extra "are you sure" — editing an existing user isn't gated, it's
+    // already scoped/reviewable via its own detail page.
+    const handleSubmit = async (e: React.FormEvent) =>
+    {
+        e.preventDefault()
+        if (!validateForm()) return
+
+        const submitData = buildSubmitData()
+        if (isEditing) { await saveUser(submitData); return }
+        setPendingCreateData(submitData)
+    }
+
+    const confirmCreate = async () =>
+    {
+        if (!pendingCreateData) return
+        await saveUser(pendingCreateData)
+        setPendingCreateData(null)
     }
 
     const handleCopy = (text: string, type: 'login' | 'password') =>
@@ -369,6 +387,18 @@ export const UserForm: React.FC = () =>
                     </div>
                 </Modal>
             )}
+
+            <AlertModal
+                isOpen={!!pendingCreateData}
+                onClose={() => setPendingCreateData(null)}
+                icon="caution"
+                title="Важное действие"
+                message={`Вы собираетесь создать аккаунт "${formData.name}". Проверьте данные ещё раз перед созданием — если что-то не понятно, уточните у главного администратора.`}
+                onConfirm={confirmCreate}
+                confirmText="Создать"
+                cancelText="Отмена"
+                isLoading={saving}
+            />
         </DetailContent>
     )
 }

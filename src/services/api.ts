@@ -10,7 +10,7 @@ import {
 import keycloak, { safeUpdateToken } from "@/services/keycloak";
 import { useAuthStore } from "@/stores/authStore";
 import { usePermissionModalStore } from "@/stores/permissionModalStore";
-import { isAllowedForMarketing } from "@/services/marketingWriteGate";
+import { isAllowedForMarketing, blockedActionMessage } from "@/services/marketingWriteGate";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -44,7 +44,7 @@ api.interceptors.request.use(
       const roles = useAuthStore.getState().permissions;
       const isMarketingOnly = roles.includes("marketing") && !roles.includes("admin");
       if (isMarketingOnly && !isAllowedForMarketing(config.url || "", method)) {
-        usePermissionModalStore.getState().open();
+        usePermissionModalStore.getState().open(blockedActionMessage(config.url || ""));
         const blocked: any = new Error("marketing role: write blocked");
         blocked.__permissionBlocked = true;
         return Promise.reject(blocked);

@@ -11,6 +11,7 @@ import { ListContainer } from '@/components/lists/ListContainer'
 import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import Modal from '@/components/common/Modal'
+import AlertModal from '@/components/common/AlertModal'
 import { leaderboardHiddenService, appSettingsService, leaderboardPointsService } from '@/services/api'
 
 interface User {
@@ -231,6 +232,9 @@ export const UserList: React.FC = () => {
 
     // ── Leaderboard points: selective adjust ────────────────────────────────
     const [adjustUser, setAdjustUser] = useState<User | null>(null)
+    const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+    const [deleteLoading, setDeleteLoading] = useState(false)
+    const [bulkDeleteConfirming, setBulkDeleteConfirming] = useState(false)
 
     useEffect(() => { fetchUsers({}) }, [fetchUsers])
 
@@ -420,14 +424,19 @@ export const UserList: React.FC = () => {
         } catch { toast.error('Не удалось сбросить подписку') }
     }, [resetToFree, refreshUsers])
 
-    const handleDelete = useCallback(async (user: User) => {
-        if (!window.confirm(`Удалить аккаунт "${user.name || user.phone}"?\n\nДействие необратимо — номер и все данные исчезнут из системы.`)) return
+    const handleDelete = useCallback((user: User) => setDeleteTarget(user), [])
+
+    const confirmDelete = useCallback(async () => {
+        if (!deleteTarget) return
+        setDeleteLoading(true)
         try {
-            await deleteUser(user.id)
+            await deleteUser(deleteTarget.id)
             toast.success('Аккаунт удалён')
             await refreshUsers({})
+            setDeleteTarget(null)
         } catch { toast.error('Не удалось удалить аккаунт') }
-    }, [deleteUser, refreshUsers])
+        finally { setDeleteLoading(false) }
+    }, [deleteTarget, deleteUser, refreshUsers])
 
     // ── bulk actions ────────────────────────────────────────────────────────
     const selectedUsers = useMemo(() => users.filter(u => selected.has(u.id)), [users, selected])
@@ -455,12 +464,15 @@ export const UserList: React.FC = () => {
         () => Promise.all(selectedUsers.map(u => updateUser(u.id, { is_active: !block }))).then(() => {}),
         block ? `${selected.size} заблокировано` : `${selected.size} разблокировано`
     )
-    const handleBulkDelete = async () => {
-        if (!window.confirm(`Удалить ${selected.size} аккаунтов?\n\nДействие необратимо.`)) return
+    const handleBulkDelete = () => setBulkDeleteConfirming(true)
+
+    const confirmBulkDelete = async () => {
+        const count = selected.size
         await bulkAction(
             () => Promise.all(selectedUsers.map(u => deleteUser(u.id))).then(() => {}),
-            `${selected.size} аккаунтов удалено`
+            `${count} аккаунтов удалено`
         )
+        setBulkDeleteConfirming(false)
     }
 
     // Hide / show selected users on the in-app leaderboard. One bulk call
@@ -1014,6 +1026,30 @@ export const UserList: React.FC = () => {
                 user={adjustUser}
                 onClose={() => setAdjustUser(null)}
                 onApplied={async () => { setAdjustUser(null); await refreshUsers({}) }}
+            />
+
+            <AlertModal
+                isOpen={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                icon="danger"
+                title="Важное действие"
+                message={`Вы собираетесь удалить аккаунт "${deleteTarget?.name || deleteTarget?.phone}". Действие необратимо — номер и все данные исчезнут из системы. Если не уверены — не подтверждайте, уточните у главного администратора.`}
+                onConfirm={confirmDelete}
+                confirmText="Удалить"
+                confirmVariant="danger"
+                isLoading={deleteLoading}
+            />
+
+            <AlertModal
+                isOpen={bulkDeleteConfirming}
+                onClose={() => setBulkDeleteConfirming(false)}
+                icon="danger"
+                title="Важное действие"
+                message={`Вы собираетесь удалить ${selected.size} аккаунтов. Действие необратимо. Если не уверены — не подтверждайте, уточните у главного администратора.`}
+                onConfirm={confirmBulkDelete}
+                confirmText="Удалить"
+                confirmVariant="danger"
+                isLoading={bulkLoading}
             />
         </ListContainer>
     )
