@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState, ReactNode, useRef } from 'react'
-import keycloak from '@/services/keycloak'
+import keycloak, { safeUpdateToken } from '@/services/keycloak'
 import { useAuthStore } from '@/stores/authStore'
 
 type AuthContextValue = {
@@ -76,29 +76,25 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         initializeAuth()
 
-        // Guard against concurrent refresh calls: Keycloak's refreshTokenMaxReuse=0
-        // means the same refresh token can't be used twice. If onTokenExpired and
-        // the interval fire at the same moment, the second call uses a revoked
-        // refresh token → 401 → logout. Single shared lock prevents this.
-        let refreshing = false
+        // safeUpdateToken (services/keycloak.ts) is the app-wide single-flight
+        // refresh with built-in retries — shared with the api.ts 401-handler,
+        // so two flows can never burn the same single-use refresh token.
+        // A single failed refresh no longer logs the user out (network blips,
+        // Keycloak restarts): only 3 consecutive definitive failures do.
+        let consecutiveFailures = 0
         const refreshToken = async () =>
         {
-            if (!keycloak.authenticated || refreshing) return
-            refreshing = true
-            try
+            if (!keycloak.authenticated) return
+            const ok = await safeUpdateToken(120)
+            if (ok)
             {
-                // minValidity=120: refresh if the access token expires within 120 s.
-                // Gives a 2-minute buffer to handle clock skew between client and
-                // Keycloak server, preventing "just missed" expiry → 401 → logout.
-                const refreshed = await keycloak.updateToken(120)
-                if (refreshed && keycloak.token && keycloak.tokenParsed)
+                consecutiveFailures = 0
+                if (keycloak.token && keycloak.tokenParsed)
                     storeLogin(keycloak.tokenParsed, keycloak.token)
-            } catch (error)
+            } else
             {
-                storeLogout()
-            } finally
-            {
-                refreshing = false
+                consecutiveFailures += 1
+                if (consecutiveFailures >= 3) storeLogout()
             }
         }
 

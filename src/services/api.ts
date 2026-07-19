@@ -7,7 +7,7 @@ import {
   QuestionDraftListResult,
   QuestionDraftUpdate,
 } from "@/types/questionDrafts";
-import keycloak from "@/services/keycloak";
+import keycloak, { safeUpdateToken } from "@/services/keycloak";
 import { useAuthStore } from "@/stores/authStore";
 import { usePermissionModalStore } from "@/stores/permissionModalStore";
 import { isAllowedForMarketing } from "@/services/marketingWriteGate";
@@ -84,18 +84,17 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Attempt token refresh before giving up.
+    // Attempt token refresh before giving up. safeUpdateToken is the
+    // app-wide single-flight refresh — NEVER call keycloak.updateToken
+    // directly here: a concurrent refresh from AuthProvider's interval
+    // would burn the single-use refresh token and kill the session.
     if (keycloak.authenticated) {
-      try {
-        const refreshed = await keycloak.updateToken(-1); // -1 = force refresh now
-        if (refreshed && keycloak.token) {
-          localStorage.setItem("token", keycloak.token);
-          error.config._retried = true;
-          error.config.headers.Authorization = `Bearer ${keycloak.token}`;
-          return api.request(error.config);
-        }
-      } catch {
-        // Refresh failed — fall through to logout below.
+      const ok = await safeUpdateToken(-1); // force refresh now
+      if (ok && keycloak.token) {
+        localStorage.setItem("token", keycloak.token);
+        error.config._retried = true;
+        error.config.headers.Authorization = `Bearer ${keycloak.token}`;
+        return api.request(error.config);
       }
     }
 
