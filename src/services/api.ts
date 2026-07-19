@@ -1334,7 +1334,18 @@ export const onboardingService = {
 
 export type CrmStatus = 'todo' | 'prog' | 'hold' | 'done';
 export type CrmPriority = 'low' | 'mid' | 'high';
-export type CrmAction = 'create' | 'move' | 'edit' | 'delete';
+export type CrmAction =
+  | 'create'
+  | 'move'
+  | 'edit'
+  | 'delete'
+  | 'attach'
+  | 'unattach'
+  | 'link'
+  | 'unlink'
+  | 'assign_extra'
+  | 'unassign_extra'
+  | 'comment';
 
 export interface CrmTask {
   id: number;
@@ -1349,6 +1360,8 @@ export interface CrmTask {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  linked_task_ids?: number[];
+  extra_assignees?: CrmMember[];
 }
 
 export interface CrmTaskCreatePayload {
@@ -1379,6 +1392,23 @@ export interface CrmMember {
   display: string;
 }
 
+export interface CrmAttachment {
+  id: number;
+  filename: string;
+  content_type: string;
+  size: number;
+  url: string;
+  uploaded_by_display: string;
+  created_at: string;
+}
+
+export interface CrmComment {
+  id: number;
+  admin_display: string;
+  text: string;
+  created_at: string;
+}
+
 export const crmService = {
   listTasks: (): Promise<CrmTask[]> =>
     api.get('/admin/crm/tasks').then(r => r.data),
@@ -1394,6 +1424,40 @@ export const crmService = {
     api.get('/admin/crm/activity').then(r => r.data),
   listMembers: (): Promise<CrmMember[]> =>
     api.get('/admin/crm/members').then(r => r.data),
+
+  // -- attachments --
+  listAttachments: (taskId: number): Promise<CrmAttachment[]> =>
+    api.get(`/admin/crm/tasks/${taskId}/attachments`).then(r => r.data),
+  uploadAttachment: (taskId: number, file: File): Promise<CrmAttachment> => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/admin/crm/tasks/${taskId}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+  deleteAttachment: (taskId: number, attachmentId: number): Promise<void> =>
+    api.delete(`/admin/crm/tasks/${taskId}/attachments/${attachmentId}`).then(() => undefined),
+
+  // -- links between cards --
+  addLink: (taskId: number, linkedTaskId: number): Promise<CrmTask> =>
+    api.post(`/admin/crm/tasks/${taskId}/links`, { linked_task_id: linkedTaskId }).then(r => r.data),
+  removeLink: (taskId: number, linkedTaskId: number): Promise<void> =>
+    api.delete(`/admin/crm/tasks/${taskId}/links/${linkedTaskId}`).then(() => undefined),
+
+  // -- extra assignees --
+  addAssignee: (taskId: number, adminId: string, adminDisplay: string): Promise<CrmTask> =>
+    api.post(`/admin/crm/tasks/${taskId}/assignees`, {
+      admin_id: adminId,
+      admin_display: adminDisplay,
+    }).then(r => r.data),
+  removeAssignee: (taskId: number, adminId: string): Promise<void> =>
+    api.delete(`/admin/crm/tasks/${taskId}/assignees/${adminId}`).then(() => undefined),
+
+  // -- comments --
+  listComments: (taskId: number): Promise<CrmComment[]> =>
+    api.get(`/admin/crm/tasks/${taskId}/comments`).then(r => r.data),
+  addComment: (taskId: number, text: string): Promise<CrmComment> =>
+    api.post(`/admin/crm/tasks/${taskId}/comments`, { text }).then(r => r.data),
 };
 
 // ---------------- Leaderboard points: auto-reset settings + selective adjust ----------------

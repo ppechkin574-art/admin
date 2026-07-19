@@ -12,6 +12,12 @@ import {
   Clock,
   RefreshCw,
   History,
+  Paperclip,
+  Link2,
+  Users,
+  MessageSquare,
+  Download,
+  X,
 } from 'lucide-react'
 import {
   crmService,
@@ -20,6 +26,8 @@ import {
   CrmMember,
   CrmStatus,
   CrmPriority,
+  CrmAttachment,
+  CrmComment,
 } from '@/services/api'
 import Button from '@/components/common/Button'
 import Modal from '@/components/common/Modal'
@@ -71,6 +79,13 @@ const ACTIONS: Record<CrmActivity['action'], { label: string; color: string; bg:
   move: { label: 'переместил', color: '#1d4ed8', bg: '#dbeafe' },
   edit: { label: 'изменил', color: '#b45309', bg: '#fef3c7' },
   delete: { label: 'удалил', color: '#b91c1c', bg: '#fee2e2' },
+  attach: { label: 'прикрепил файл', color: '#0f766e', bg: '#ccfbf1' },
+  unattach: { label: 'удалил файл', color: '#b91c1c', bg: '#fee2e2' },
+  link: { label: 'связал карточки', color: '#7e22ce', bg: '#f3e8ff' },
+  unlink: { label: 'убрал связь', color: '#b91c1c', bg: '#fee2e2' },
+  assign_extra: { label: 'добавил ответственного', color: '#1d4ed8', bg: '#dbeafe' },
+  unassign_extra: { label: 'убрал ответственного', color: '#b91c1c', bg: '#fee2e2' },
+  comment: { label: 'прокомментировал', color: '#0369a1', bg: '#e0f2fe' },
 }
 
 const AVATAR_COLORS = ['#2563eb', '#0d9488', '#7c3aed', '#ea580c', '#db2777', '#0891b2', '#65a30d', '#c026d3']
@@ -127,6 +142,18 @@ function dayLabel(iso: string): string {
 }
 const timeLabel = (iso: string) =>
   new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+const dateLabel = (iso: string) =>
+  new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+
+// держим в синхроне с лимитом на бэкенде (20 МБ на вложение к CRM-карточке)
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
+
+function humanSize(bytes: number): string {
+  if (!Number.isFinite(bytes)) return ''
+  if (bytes < 1024) return `${bytes} Б`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
+}
 
 function readNum(key: string, def: number): number {
   try {
@@ -213,6 +240,22 @@ export const CrmBoard: React.FC = () => {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [titleError, setTitleError] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // доп. ответственные и связи приходят вместе с CrmTask — держим их отдельно
+  // от FormState, т.к. мутируются собственными эндпоинтами, а не через save()
+  const [taskExtra, setTaskExtra] = useState<{ linked_task_ids: number[]; extra_assignees: CrmMember[] }>({
+    linked_task_ids: [],
+    extra_assignees: [],
+  })
+  const [attachments, setAttachments] = useState<CrmAttachment[]>([])
+  const [comments, setComments] = useState<CrmComment[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  // id карточки, для которой сейчас актуален запрос вложений/комментариев в модалке —
+  // защита от гонки, если пользователь быстро переключается между карточками
+  const openTaskIdRef = useRef<number | null>(null)
 
   const [logWidth, setLogWidth] = useState<number>(() => readNum('crm.logWidth', 312))
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => readObj('crm.colWidths'))
@@ -356,11 +399,17 @@ export const CrmBoard: React.FC = () => {
 
   /* ---------- modal ---------- */
   const openCreate = (status: CrmStatus = 'todo') => {
+    openTaskIdRef.current = null
     setForm({ ...EMPTY_FORM, status })
     setTitleError(false)
+    setTaskExtra({ linked_task_ids: [], extra_assignees: [] })
+    setAttachments([])
+    setComments([])
+    setCommentText('')
     setModalOpen(true)
   }
   const openEdit = (t: CrmTask) => {
+    openTaskIdRef.current = t.id
     setForm({
       id: t.id,
       title: t.title,
@@ -372,7 +421,24 @@ export const CrmBoard: React.FC = () => {
       labels: [...t.labels],
     })
     setTitleError(false)
+    setTaskExtra({ linked_task_ids: t.linked_task_ids ?? [], extra_assignees: t.extra_assignees ?? [] })
+    setAttachments([])
+    setComments([])
+    setCommentText('')
     setModalOpen(true)
+
+    Promise.all([crmService.listAttachments(t.id), crmService.listComments(t.id)])
+      .then(([atts, cmts]) => {
+        // если пользователь уже открыл другую карточку (или создание новой) —
+        // этот ответ устарел, применять его нельзя
+        if (openTaskIdRef.current !== t.id) return
+        setAttachments(atts)
+        setComments(cmts)
+      })
+      .catch((err: any) => {
+        if (openTaskIdRef.current !== t.id) return
+        toast.error(err?.response?.data?.detail || 'Не удалось загрузить вложения и комментарии')
+      })
   }
 
   const toggleLabel = (name: string) =>
@@ -426,6 +492,118 @@ export const CrmBoard: React.FC = () => {
     }
   }
 
+  /* ---------- attachments ---------- */
+  const handlePickFile = () => fileInputRef.current?.click()
+
+  const handleUploadFile = async (file: File) => {
+    if (!form.id) return
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error(`Файл слишком большой (макс. ${humanSize(MAX_ATTACHMENT_SIZE)})`)
+      return
+    }
+    const taskId = form.id
+    setUploading(true)
+    try {
+      const att = await crmService.uploadAttachment(taskId, file)
+      if (openTaskIdRef.current === taskId) setAttachments((prev) => [att, ...prev])
+      toast.success('Файл загружен')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось загрузить файл')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteAttachment = async (att: CrmAttachment) => {
+    if (!form.id) return
+    const taskId = form.id
+    if (!window.confirm(`Удалить файл «${att.filename}»?`)) return
+    try {
+      await crmService.deleteAttachment(taskId, att.id)
+      if (openTaskIdRef.current === taskId) setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+      toast.success('Файл удалён')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось удалить файл')
+    }
+  }
+
+  /* ---------- links between cards ---------- */
+  const handleAddLink = async (linkedTaskId: number) => {
+    if (!form.id || !linkedTaskId) return
+    const taskId = form.id
+    try {
+      const updated = await crmService.addLink(taskId, linkedTaskId)
+      const nextIds = updated.linked_task_ids ?? [...taskExtra.linked_task_ids, linkedTaskId]
+      if (openTaskIdRef.current === taskId) setTaskExtra((prev) => ({ ...prev, linked_task_ids: nextIds }))
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, linked_task_ids: nextIds } : t)))
+      toast.success('Карточки связаны')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось связать карточки')
+    }
+  }
+
+  const handleRemoveLink = async (linkedTaskId: number) => {
+    if (!form.id) return
+    const taskId = form.id
+    try {
+      await crmService.removeLink(taskId, linkedTaskId)
+      const nextIds = taskExtra.linked_task_ids.filter((id) => id !== linkedTaskId)
+      if (openTaskIdRef.current === taskId) setTaskExtra((prev) => ({ ...prev, linked_task_ids: nextIds }))
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, linked_task_ids: nextIds } : t)))
+      toast.success('Связь удалена')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось отвязать карточку')
+    }
+  }
+
+  /* ---------- extra assignees ---------- */
+  const handleAddAssignee = async (adminId: string) => {
+    if (!form.id || !adminId) return
+    const taskId = form.id
+    const member = members.find((m) => m.id === adminId)
+    if (!member) return
+    try {
+      const updated = await crmService.addAssignee(taskId, adminId, member.display)
+      const next = updated.extra_assignees ?? [...taskExtra.extra_assignees, member]
+      if (openTaskIdRef.current === taskId) setTaskExtra((prev) => ({ ...prev, extra_assignees: next }))
+      toast.success('Ответственный добавлен')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось добавить ответственного')
+    }
+  }
+
+  const handleRemoveAssignee = async (adminId: string) => {
+    if (!form.id) return
+    const taskId = form.id
+    try {
+      await crmService.removeAssignee(taskId, adminId)
+      if (openTaskIdRef.current === taskId) {
+        setTaskExtra((prev) => ({ ...prev, extra_assignees: prev.extra_assignees.filter((m) => m.id !== adminId) }))
+      }
+      toast.success('Ответственный удалён')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось удалить ответственного')
+    }
+  }
+
+  /* ---------- comments ---------- */
+  const handleAddComment = async () => {
+    if (!form.id || !commentText.trim() || postingComment) return
+    const taskId = form.id
+    setPostingComment(true)
+    try {
+      const c = await crmService.addComment(taskId, commentText.trim())
+      if (openTaskIdRef.current === taskId) {
+        setComments((prev) => [...prev, c])
+        setCommentText('')
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Не удалось отправить комментарий')
+    } finally {
+      setPostingComment(false)
+    }
+  }
+
   /* ---------- derived ---------- */
   const byStatus = useMemo(() => {
     const map: Record<CrmStatus, CrmTask[]> = { todo: [], prog: [], hold: [], done: [] }
@@ -435,6 +613,22 @@ export const CrmBoard: React.FC = () => {
   }, [tasks])
 
   const doneCount = byStatus.done.length
+
+  const linkedTasks = useMemo(
+    () => tasks.filter((t) => taskExtra.linked_task_ids.includes(t.id)),
+    [tasks, taskExtra.linked_task_ids],
+  )
+  const linkableTasks = useMemo(
+    () => tasks.filter((t) => t.id !== form.id && !taskExtra.linked_task_ids.includes(t.id)),
+    [tasks, form.id, taskExtra.linked_task_ids],
+  )
+  const availableMembers = useMemo(
+    () =>
+      members.filter(
+        (m) => m.id !== form.assignee_admin_id && !taskExtra.extra_assignees.some((x) => x.id === m.id),
+      ),
+    [members, form.assignee_admin_id, taskExtra.extra_assignees],
+  )
 
   /* ---------- render states ---------- */
   if (loading) {
@@ -700,6 +894,194 @@ export const CrmBoard: React.FC = () => {
               })}
             </div>
           </div>
+
+          {form.id && (
+            <>
+              {/* доп. ответственные */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Users className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-xs font-semibold text-gray-600">Доп. ответственные</label>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {taskExtra.extra_assignees.length === 0 && (
+                    <span className="text-xs text-gray-400">Нет доп. ответственных</span>
+                  )}
+                  {taskExtra.extra_assignees.map((m) => (
+                    <span
+                      key={m.id}
+                      className="inline-flex items-center gap-1.5 pl-1 pr-1.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700"
+                    >
+                      <span
+                        className="grid h-5 w-5 place-items-center rounded-full text-[9px] font-bold text-white"
+                        style={{ background: colorFromString(m.id || m.display) }}
+                      >
+                        {initials(m.display)}
+                      </span>
+                      {m.display}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAssignee(m.id)}
+                        title="Убрать"
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) handleAddAssignee(e.target.value)
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                >
+                  <option value="">Добавить ответственного…</option>
+                  {availableMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.display}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* связанные карточки */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Link2 className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-xs font-semibold text-gray-600">Связанные карточки</label>
+                </div>
+                <div className="space-y-1.5 mb-2">
+                  {linkedTasks.length === 0 && (
+                    <span className="text-xs text-gray-400">Нет связанных карточек</span>
+                  )}
+                  {linkedTasks.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-2 text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50"
+                    >
+                      <span className="truncate flex-1">{t.title}</span>
+                      <StatusPill status={t.status} />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLink(t.id)}
+                        title="Отвязать"
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) handleAddLink(Number(e.target.value))
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                >
+                  <option value="">Связать с карточкой…</option>
+                  {linkableTasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* вложения */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Paperclip className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-xs font-semibold text-gray-600">Вложения</label>
+                </div>
+                <div className="space-y-1.5 mb-2">
+                  {attachments.length === 0 && (
+                    <span className="text-xs text-gray-400">Нет вложений</span>
+                  )}
+                  {attachments.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-2 text-sm px-2.5 py-1.5 rounded-lg border border-gray-200"
+                    >
+                      <span className="truncate flex-1">{a.filename}</span>
+                      <span className="text-xs text-gray-400 shrink-0">{humanSize(a.size)}</span>
+                      <span className="text-xs text-gray-400 shrink-0">{dateLabel(a.created_at)}</span>
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Скачать"
+                        className="text-gray-400 hover:text-primary-600"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAttachment(a)}
+                        title="Удалить"
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleUploadFile(file)
+                    e.target.value = ''
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<Paperclip className="h-3.5 w-3.5" />}
+                  onClick={handlePickFile}
+                  loading={uploading}
+                >
+                  Прикрепить файл
+                </Button>
+              </div>
+
+              {/* комментарии */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
+                  <label className="text-xs font-semibold text-gray-600">Комментарии</label>
+                </div>
+                <div className="rounded-lg border border-gray-200 max-h-64 overflow-y-auto px-1 py-1 mb-2">
+                  <CommentsFeed items={comments} />
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddComment()
+                    }}
+                    placeholder="Написать комментарий…"
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleAddComment}
+                    loading={postingComment}
+                    disabled={!commentText.trim()}
+                  >
+                    Отправить
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-5 mt-4 border-t border-gray-100">
@@ -908,8 +1290,79 @@ const ActivityText: React.FC<{ e: CrmActivity }> = ({ e }) => {
       </span>
     )
   }
+  if (e.action === 'attach') {
+    const filename = e.details?.filename as string | undefined
+    return <>прикрепил файл {filename ? <b className="text-gray-800 font-semibold">«{filename}»</b> : ''} к {title}</>
+  }
+  if (e.action === 'unattach') {
+    const filename = e.details?.filename as string | undefined
+    return <>удалил файл {filename ? <b className="text-gray-800 font-semibold">«{filename}»</b> : ''} из {title}</>
+  }
+  if (e.action === 'link') {
+    const linkedId = e.details?.linked_task_id as number | undefined
+    return <>связал {title} с задачей {linkedId ? `№${linkedId}` : ''}</>
+  }
+  if (e.action === 'unlink') {
+    const linkedId = e.details?.linked_task_id as number | undefined
+    return <>убрал связь {title} с задачей {linkedId ? `№${linkedId}` : ''}</>
+  }
+  if (e.action === 'assign_extra') {
+    const display = e.details?.admin_display as string | undefined
+    return <>добавил {display ? <b className="text-gray-800 font-semibold">{display}</b> : 'ответственного'} в доп. ответственные {title}</>
+  }
+  if (e.action === 'unassign_extra') {
+    return <>убрал доп. ответственного у {title}</>
+  }
+  if (e.action === 'comment') {
+    return <>прокомментировал {title}</>
+  }
   return <>изменил {title}</>
 }
+
+const CommentsFeed: React.FC<{ items: CrmComment[] }> = ({ items }) => {
+  if (items.length === 0) {
+    return (
+      <div className="py-6 px-3 text-center text-xs text-gray-400 leading-relaxed">
+        Пока нет комментариев.
+      </div>
+    )
+  }
+  const sorted = [...items].sort((a, b) => (a.created_at < b.created_at ? -1 : 1))
+  let lastDay = ''
+  const rows: React.ReactNode[] = []
+  for (const c of sorted) {
+    const dl = dayLabel(c.created_at)
+    if (dl !== lastDay) {
+      lastDay = dl
+      rows.push(
+        <div key={`day-${c.id}`} className="flex items-center gap-2.5 mt-3 mb-1.5 first:mt-1 px-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{dl}</span>
+          <span className="flex-1 h-px bg-gray-100" />
+        </div>,
+      )
+    }
+    rows.push(<CommentRow key={c.id} c={c} />)
+  }
+  return <>{rows}</>
+}
+
+const CommentRow: React.FC<{ c: CrmComment }> = ({ c }) => (
+  <div className="flex gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-gray-50">
+    <span
+      className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+      style={{ background: colorFromString(c.admin_display) }}
+    >
+      {initials(c.admin_display)}
+    </span>
+    <div className="min-w-0 flex-1">
+      <span className="text-[12.5px] font-bold text-gray-800">{c.admin_display}</span>
+      <div className="text-[12.5px] text-gray-700 mt-0.5 leading-snug whitespace-pre-wrap break-words">
+        {c.text}
+      </div>
+      <div className="text-[11px] text-gray-400 mt-0.5">{timeLabel(c.created_at)}</div>
+    </div>
+  </div>
+)
 
 const BoardEmpty: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
   <div className="h-full min-h-[50vh] grid place-items-center text-center text-gray-400">
