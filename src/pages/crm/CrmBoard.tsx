@@ -79,6 +79,13 @@ const ACTIONS: Record<CrmActivity['action'], { label: string; color: string; bg:
   move: { label: 'переместил', color: '#1d4ed8', bg: '#dbeafe' },
   edit: { label: 'изменил', color: '#b45309', bg: '#fef3c7' },
   delete: { label: 'удалил', color: '#b91c1c', bg: '#fee2e2' },
+  attach: { label: 'прикрепил файл', color: '#0f766e', bg: '#ccfbf1' },
+  unattach: { label: 'удалил файл', color: '#b91c1c', bg: '#fee2e2' },
+  link: { label: 'связал карточки', color: '#7e22ce', bg: '#f3e8ff' },
+  unlink: { label: 'убрал связь', color: '#b91c1c', bg: '#fee2e2' },
+  assign_extra: { label: 'добавил ответственного', color: '#1d4ed8', bg: '#dbeafe' },
+  unassign_extra: { label: 'убрал ответственного', color: '#b91c1c', bg: '#fee2e2' },
+  comment: { label: 'прокомментировал', color: '#0369a1', bg: '#e0f2fe' },
 }
 
 const AVATAR_COLORS = ['#2563eb', '#0d9488', '#7c3aed', '#ea580c', '#db2777', '#0891b2', '#65a30d', '#c026d3']
@@ -137,6 +144,9 @@ const timeLabel = (iso: string) =>
   new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 const dateLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+
+// держим в синхроне с лимитом на бэкенде (20 МБ на вложение к CRM-карточке)
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024
 
 function humanSize(bytes: number): string {
   if (!Number.isFinite(bytes)) return ''
@@ -243,6 +253,9 @@ export const CrmBoard: React.FC = () => {
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // id карточки, для которой сейчас актуален запрос вложений/комментариев в модалке —
+  // защита от гонки, если пользователь быстро переключается между карточками
+  const openTaskIdRef = useRef<number | null>(null)
 
   const [logWidth, setLogWidth] = useState<number>(() => readNum('crm.logWidth', 312))
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => readObj('crm.colWidths'))
@@ -386,6 +399,7 @@ export const CrmBoard: React.FC = () => {
 
   /* ---------- modal ---------- */
   const openCreate = (status: CrmStatus = 'todo') => {
+    openTaskIdRef.current = null
     setForm({ ...EMPTY_FORM, status })
     setTitleError(false)
     setTaskExtra({ linked_task_ids: [], extra_assignees: [] })
@@ -395,6 +409,7 @@ export const CrmBoard: React.FC = () => {
     setModalOpen(true)
   }
   const openEdit = (t: CrmTask) => {
+    openTaskIdRef.current = t.id
     setForm({
       id: t.id,
       title: t.title,
@@ -414,10 +429,14 @@ export const CrmBoard: React.FC = () => {
 
     Promise.all([crmService.listAttachments(t.id), crmService.listComments(t.id)])
       .then(([atts, cmts]) => {
+        // если пользователь уже открыл другую карточку (или создание новой) —
+        // этот ответ устарел, применять его нельзя
+        if (openTaskIdRef.current !== t.id) return
         setAttachments(atts)
         setComments(cmts)
       })
       .catch((err: any) => {
+        if (openTaskIdRef.current !== t.id) return
         toast.error(err?.response?.data?.detail || 'Не удалось загрузить вложения и комментарии')
       })
   }
@@ -478,10 +497,15 @@ export const CrmBoard: React.FC = () => {
 
   const handleUploadFile = async (file: File) => {
     if (!form.id) return
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error(`Файл слишком большой (макс. ${humanSize(MAX_ATTACHMENT_SIZE)})`)
+      return
+    }
+    const taskId = form.id
     setUploading(true)
     try {
-      const att = await crmService.uploadAttachment(form.id, file)
-      setAttachments((prev) => [att, ...prev])
+      const att = await crmService.uploadAttachment(taskId, file)
+      if (openTaskIdRef.current === taskId) setAttachments((prev) => [att, ...prev])
       toast.success('Файл загружен')
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось загрузить файл')
@@ -492,10 +516,11 @@ export const CrmBoard: React.FC = () => {
 
   const handleDeleteAttachment = async (att: CrmAttachment) => {
     if (!form.id) return
+    const taskId = form.id
     if (!window.confirm(`Удалить файл «${att.filename}»?`)) return
     try {
-      await crmService.deleteAttachment(form.id, att.id)
-      setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+      await crmService.deleteAttachment(taskId, att.id)
+      if (openTaskIdRef.current === taskId) setAttachments((prev) => prev.filter((a) => a.id !== att.id))
       toast.success('Файл удалён')
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось удалить файл')
@@ -505,11 +530,12 @@ export const CrmBoard: React.FC = () => {
   /* ---------- links between cards ---------- */
   const handleAddLink = async (linkedTaskId: number) => {
     if (!form.id || !linkedTaskId) return
+    const taskId = form.id
     try {
-      const updated = await crmService.addLink(form.id, linkedTaskId)
+      const updated = await crmService.addLink(taskId, linkedTaskId)
       const nextIds = updated.linked_task_ids ?? [...taskExtra.linked_task_ids, linkedTaskId]
-      setTaskExtra((prev) => ({ ...prev, linked_task_ids: nextIds }))
-      setTasks((prev) => prev.map((t) => (t.id === form.id ? { ...t, linked_task_ids: nextIds } : t)))
+      if (openTaskIdRef.current === taskId) setTaskExtra((prev) => ({ ...prev, linked_task_ids: nextIds }))
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, linked_task_ids: nextIds } : t)))
       toast.success('Карточки связаны')
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось связать карточки')
@@ -518,11 +544,12 @@ export const CrmBoard: React.FC = () => {
 
   const handleRemoveLink = async (linkedTaskId: number) => {
     if (!form.id) return
+    const taskId = form.id
     try {
-      await crmService.removeLink(form.id, linkedTaskId)
+      await crmService.removeLink(taskId, linkedTaskId)
       const nextIds = taskExtra.linked_task_ids.filter((id) => id !== linkedTaskId)
-      setTaskExtra((prev) => ({ ...prev, linked_task_ids: nextIds }))
-      setTasks((prev) => prev.map((t) => (t.id === form.id ? { ...t, linked_task_ids: nextIds } : t)))
+      if (openTaskIdRef.current === taskId) setTaskExtra((prev) => ({ ...prev, linked_task_ids: nextIds }))
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, linked_task_ids: nextIds } : t)))
       toast.success('Связь удалена')
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось отвязать карточку')
@@ -532,12 +559,13 @@ export const CrmBoard: React.FC = () => {
   /* ---------- extra assignees ---------- */
   const handleAddAssignee = async (adminId: string) => {
     if (!form.id || !adminId) return
+    const taskId = form.id
     const member = members.find((m) => m.id === adminId)
     if (!member) return
     try {
-      const updated = await crmService.addAssignee(form.id, adminId, member.display)
+      const updated = await crmService.addAssignee(taskId, adminId, member.display)
       const next = updated.extra_assignees ?? [...taskExtra.extra_assignees, member]
-      setTaskExtra((prev) => ({ ...prev, extra_assignees: next }))
+      if (openTaskIdRef.current === taskId) setTaskExtra((prev) => ({ ...prev, extra_assignees: next }))
       toast.success('Ответственный добавлен')
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось добавить ответственного')
@@ -546,9 +574,12 @@ export const CrmBoard: React.FC = () => {
 
   const handleRemoveAssignee = async (adminId: string) => {
     if (!form.id) return
+    const taskId = form.id
     try {
-      await crmService.removeAssignee(form.id, adminId)
-      setTaskExtra((prev) => ({ ...prev, extra_assignees: prev.extra_assignees.filter((m) => m.id !== adminId) }))
+      await crmService.removeAssignee(taskId, adminId)
+      if (openTaskIdRef.current === taskId) {
+        setTaskExtra((prev) => ({ ...prev, extra_assignees: prev.extra_assignees.filter((m) => m.id !== adminId) }))
+      }
       toast.success('Ответственный удалён')
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось удалить ответственного')
@@ -557,12 +588,15 @@ export const CrmBoard: React.FC = () => {
 
   /* ---------- comments ---------- */
   const handleAddComment = async () => {
-    if (!form.id || !commentText.trim()) return
+    if (!form.id || !commentText.trim() || postingComment) return
+    const taskId = form.id
     setPostingComment(true)
     try {
-      const c = await crmService.addComment(form.id, commentText.trim())
-      setComments((prev) => [...prev, c])
-      setCommentText('')
+      const c = await crmService.addComment(taskId, commentText.trim())
+      if (openTaskIdRef.current === taskId) {
+        setComments((prev) => [...prev, c])
+        setCommentText('')
+      }
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Не удалось отправить комментарий')
     } finally {
@@ -1255,6 +1289,32 @@ const ActivityText: React.FC<{ e: CrmActivity }> = ({ e }) => {
         {to && <StatusPill status={to} />}
       </span>
     )
+  }
+  if (e.action === 'attach') {
+    const filename = e.details?.filename as string | undefined
+    return <>прикрепил файл {filename ? <b className="text-gray-800 font-semibold">«{filename}»</b> : ''} к {title}</>
+  }
+  if (e.action === 'unattach') {
+    const filename = e.details?.filename as string | undefined
+    return <>удалил файл {filename ? <b className="text-gray-800 font-semibold">«{filename}»</b> : ''} из {title}</>
+  }
+  if (e.action === 'link') {
+    const linkedId = e.details?.linked_task_id as number | undefined
+    return <>связал {title} с задачей {linkedId ? `№${linkedId}` : ''}</>
+  }
+  if (e.action === 'unlink') {
+    const linkedId = e.details?.linked_task_id as number | undefined
+    return <>убрал связь {title} с задачей {linkedId ? `№${linkedId}` : ''}</>
+  }
+  if (e.action === 'assign_extra') {
+    const display = e.details?.admin_display as string | undefined
+    return <>добавил {display ? <b className="text-gray-800 font-semibold">{display}</b> : 'ответственного'} в доп. ответственные {title}</>
+  }
+  if (e.action === 'unassign_extra') {
+    return <>убрал доп. ответственного у {title}</>
+  }
+  if (e.action === 'comment') {
+    return <>прокомментировал {title}</>
   }
   return <>изменил {title}</>
 }

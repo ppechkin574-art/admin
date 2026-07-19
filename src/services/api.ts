@@ -1334,7 +1334,18 @@ export const onboardingService = {
 
 export type CrmStatus = 'todo' | 'prog' | 'hold' | 'done';
 export type CrmPriority = 'low' | 'mid' | 'high';
-export type CrmAction = 'create' | 'move' | 'edit' | 'delete';
+export type CrmAction =
+  | 'create'
+  | 'move'
+  | 'edit'
+  | 'delete'
+  | 'attach'
+  | 'unattach'
+  | 'link'
+  | 'unlink'
+  | 'assign_extra'
+  | 'unassign_extra'
+  | 'comment';
 
 export interface CrmTask {
   id: number;
