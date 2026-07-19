@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
 import { LogOut, User, Menu, X, ChevronDown } from 'lucide-react'
 import { useNavigate, NavLink } from 'react-router-dom'
-import { menuItemsGen2, menuItemsGen1 } from '@/constants/sidebarContent'
+import { menuItemsGen2, menuItemsGen1, isSidebarGroup, type SidebarItem, type SidebarLeafItem } from '@/constants/sidebarContent'
 
 const Header = () =>
 {
@@ -32,7 +32,7 @@ const Header = () =>
     // threw `ReferenceError: renderNavLink is not defined` and crashed
     // the whole Layout.  Desktop was unaffected because the
     // `mobileMenuOpen && (…)` block is gated.
-    const renderNavLink = (item: { label: string; href: string; icon: any }) =>
+    const renderNavLink = (item: SidebarLeafItem) =>
     {
         const Icon = item.icon
         return (
@@ -51,6 +51,27 @@ const Header = () =>
                 <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
                 {item.label}
             </NavLink>
+        )
+    }
+
+    // Groups (e.g. "Турнир") render as a small sub-heading + indented
+    // children — no separate collapse state, unlike the desktop Sidebar:
+    // the mobile menu is already a rarely-opened overlay, so one more
+    // interactive toggle level isn't worth the state-management cost here.
+    const renderSidebarItem = (item: SidebarItem) =>
+    {
+        if (!isSidebarGroup(item)) return renderNavLink(item)
+        const GroupIcon = item.icon
+        return (
+            <div key={item.label} className="pt-1">
+                <div className="flex items-center px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    <GroupIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                    {item.label}
+                </div>
+                <div className="ml-4 space-y-1 border-l border-gray-200 pl-2">
+                    {item.children.map(renderNavLink)}
+                </div>
+            </div>
         )
     }
 
@@ -136,7 +157,7 @@ const Header = () =>
                                         </button>
                                         {gen2Open && (
                                             <div className="mt-1 space-y-1">
-                                                {gen2Items.map(renderNavLink)}
+                                                {gen2Items.map(renderSidebarItem)}
                                             </div>
                                         )}
                                     </div>

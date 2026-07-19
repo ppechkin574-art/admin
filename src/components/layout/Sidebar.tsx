@@ -1,6 +1,6 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useKeycloakAuth } from '@/hooks/useKeycloakAuth'
-import { menuItemsGen2, menuItemsGen1 } from '@/constants/sidebarContent'
+import { menuItemsGen2, menuItemsGen1, isSidebarGroup, type SidebarItem, type SidebarLeafItem } from '@/constants/sidebarContent'
 import { ChevronDown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { securityService } from '@/services/api'
@@ -8,9 +8,23 @@ import { securityService } from '@/services/api'
 const Sidebar = () =>
 {
   const { isAuthenticated } = useKeycloakAuth()
+  const location = useLocation()
   const [gen2Open, setGen2Open] = useState(true)
   const [gen1Open, setGen1Open] = useState(true)
   const [securityBadge, setSecurityBadge] = useState(0)
+  // Nested groups (e.g. "Турнир") default open when one of their children
+  // is the current route, so navigating in doesn't hide the active link.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {}
+    for (const item of menuItemsGen2) {
+      if (isSidebarGroup(item)) {
+        initial[item.label] = item.children.some(c => location.pathname.startsWith(c.href))
+      }
+    }
+    return initial
+  })
+  const toggleGroup = (label: string) =>
+    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }))
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -33,7 +47,7 @@ const Sidebar = () =>
   const gen2Items = menuItemsGen2
   const gen1Items = menuItemsGen1
 
-  const renderNavLink = (item: { label: string; href: string; icon: any }) =>
+  const renderNavLink = (item: SidebarLeafItem) =>
   {
     const Icon = item.icon
     const isSecurity = item.href === '/security'
@@ -60,6 +74,31 @@ const Sidebar = () =>
     )
   }
 
+  const renderSidebarItem = (item: SidebarItem) =>
+  {
+    if (!isSidebarGroup(item)) return renderNavLink(item)
+
+    const GroupIcon = item.icon
+    const open = openGroups[item.label] ?? false
+    return (
+      <div key={item.label}>
+        <button
+          onClick={() => toggleGroup(item.label)}
+          className="flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+        >
+          <GroupIcon className="mr-3 h-5 w-5 flex-shrink-0" />
+          <span className="flex-1 text-left">{item.label}</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="mt-1 ml-4 space-y-1 border-l border-gray-200 pl-2">
+            {item.children.map(renderNavLink)}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-30 lg:border-r lg:border-gray-200 lg:bg-white">
       <div className="flex items-center h-16 px-6 border-b border-gray-200">
@@ -81,7 +120,7 @@ const Sidebar = () =>
             </button>
             {gen2Open && (
               <div className="mt-1 space-y-1">
-                {gen2Items.map(renderNavLink)}
+                {gen2Items.map(renderSidebarItem)}
               </div>
             )}
           </div>

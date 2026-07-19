@@ -12,7 +12,7 @@ import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import Modal from '@/components/common/Modal'
 import AlertModal from '@/components/common/AlertModal'
-import { leaderboardHiddenService, appSettingsService, leaderboardPointsService } from '@/services/api'
+import { leaderboardHiddenService, appSettingsService, leaderboardPointsService, type LeaderboardPointsResetMode } from '@/services/api'
 
 interface User {
     id: string
@@ -199,30 +199,57 @@ export const UserList: React.FC = () => {
 
     // ── Leaderboard points: auto-reset settings ─────────────────────────────
     const [pointsResetEnabled, setPointsResetEnabled] = useState(false)
+    const [pointsResetMode, setPointsResetMode] = useState<LeaderboardPointsResetMode>('interval')
     const [pointsIntervalInput, setPointsIntervalInput] = useState<string>('30')
     const [pointsNextReset, setPointsNextReset] = useState<string | null>(null)
     const [pointsSettingLoading, setPointsSettingLoading] = useState(false)
+    // Last interval_days value confirmed by the server — used as the
+    // fallback when switching to weekly mode while the interval input is
+    // mid-edit (e.g. cleared to retype), so an in-progress edit can never
+    // silently overwrite the user's saved interval with a hardcoded default.
+    const lastValidIntervalDays = useRef(30)
 
     const loadPointsSettings = useCallback(async () => {
         try {
             const s = await leaderboardPointsService.getSettings()
             setPointsResetEnabled(s.auto_reset_enabled)
+            setPointsResetMode(s.reset_mode)
             setPointsIntervalInput(String(s.interval_days))
             setPointsNextReset(s.next_reset_at)
+            lastValidIntervalDays.current = s.interval_days
         } catch { /* best-effort — card just won't show a next-reset date */ }
     }, [])
     useEffect(() => { loadPointsSettings() }, [loadPointsSettings])
 
-    const handleSavePointsSettings = async (enabledOverride?: boolean) => {
-        const n = parseInt(pointsIntervalInput, 10)
-        if (isNaN(n) || n < 1 || n > 3650) { toast.error('Введите число дней от 1 до 3650'); return }
-        const enabled = enabledOverride ?? pointsResetEnabled
+    // `overrides` lets the enabled-toggle and mode-select save immediately
+    // without waiting for a state update to land first (both call this
+    // right after calling their own setState).
+    const handleSavePointsSettings = async (overrides?: {
+        enabled?: boolean
+        mode?: LeaderboardPointsResetMode
+    }) => {
+        const enabled = overrides?.enabled ?? pointsResetEnabled
+        const mode = overrides?.mode ?? pointsResetMode
+        let n = parseInt(pointsIntervalInput, 10)
+        if (mode === 'interval') {
+            if (isNaN(n) || n < 1 || n > 3650) { toast.error('Введите число дней от 1 до 3650'); return }
+        } else if (isNaN(n) || n < 1 || n > 3650) {
+            // Weekly mode ignores interval_days server-side, but the field
+            // is still validated/stored — fall back to the last
+            // server-confirmed value rather than a hardcoded default, so a
+            // mid-edit (e.g. field cleared to retype) can't silently
+            // overwrite the user's saved interval.
+            n = lastValidIntervalDays.current
+        }
         setPointsSettingLoading(true)
         try {
-            const s = await leaderboardPointsService.updateSettings(enabled, n)
+            const s = await leaderboardPointsService.updateSettings(enabled, mode, n)
             setPointsResetEnabled(s.auto_reset_enabled)
+            setPointsResetMode(s.reset_mode)
+            lastValidIntervalDays.current = s.interval_days
             setPointsNextReset(s.next_reset_at)
-            toast.success(enabled ? `Автообнуление: каждые ${n} дн.` : 'Автообнуление отключено')
+            const label = mode === 'weekly_monday' ? 'каждый понедельник 00:00 (Алматы)' : `каждые ${n} дн.`
+            toast.success(enabled ? `Автообнуление: ${label}` : 'Автообнуление отключено')
         } catch {
             toast.error('Ошибка сохранения настроек очков')
         } finally {
@@ -571,7 +598,7 @@ export const UserList: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => { const next = !pointsResetEnabled; setPointsResetEnabled(next); handleSavePointsSettings(next) }}
+                        onClick={() => { const next = !pointsResetEnabled; setPointsResetEnabled(next); handleSavePointsSettings({ enabled: next }) }}
                         disabled={pointsSettingLoading}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${pointsResetEnabled ? 'bg-blue-500' : 'bg-gray-300'}`}
                     >
@@ -580,14 +607,32 @@ export const UserList: React.FC = () => {
                     <span className="text-sm text-gray-500">{pointsResetEnabled ? 'Включено' : 'Выключено'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Раз в (дней):</label>
-                    <input
-                        type="number" min={1} max={3650} step={1}
-                        value={pointsIntervalInput}
-                        onChange={e => setPointsIntervalInput(e.target.value)}
-                        className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
+                    <label className="text-sm text-gray-600">Режим:</label>
+                    <select
+                        value={pointsResetMode}
+                        onChange={e => {
+                            const next = e.target.value as LeaderboardPointsResetMode
+                            setPointsResetMode(next)
+                            handleSavePointsSettings({ mode: next })
+                        }}
+                        disabled={pointsSettingLoading}
+                        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+                    >
+                        <option value="interval">По интервалу</option>
+                        <option value="weekly_monday">Еженедельно (пн 00:00, Алматы)</option>
+                    </select>
                 </div>
+                {pointsResetMode === 'interval' && (
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-600">Раз в (дней):</label>
+                        <input
+                            type="number" min={1} max={3650} step={1}
+                            value={pointsIntervalInput}
+                            onChange={e => setPointsIntervalInput(e.target.value)}
+                            className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                )}
                 <Button
                     variant="secondary" size="sm"
                     icon={<Save className="h-3.5 w-3.5" />}
