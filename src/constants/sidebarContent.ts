@@ -25,9 +25,18 @@ import {
   Shield,
   Languages,
   CalendarDays,
+  Award,
+  type LucideIcon,
 } from "lucide-react";
 
-export const menuItemsGen2 = [
+export type SidebarLeafItem = { label: string; href: string; icon: LucideIcon };
+export type SidebarGroupItem = { label: string; icon: LucideIcon; children: SidebarLeafItem[] };
+export type SidebarItem = SidebarLeafItem | SidebarGroupItem;
+
+export const isSidebarGroup = (item: SidebarItem): item is SidebarGroupItem =>
+  "children" in item;
+
+export const menuItemsGen2: SidebarItem[] = [
   { label: "CRM", href: "/crm", icon: FolderKanban },
   { label: "Модули", href: "/modules", icon: Puzzle },
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
@@ -50,9 +59,19 @@ export const menuItemsGen2 = [
     icon: Gift,
   },
   {
-    label: "События",
-    href: "/events",
-    icon: CalendarDays,
+    label: "Турнир",
+    icon: Award,
+    // CRM #6: "Турнир" is a navigation group, not a new game entity — the
+    // only content it holds so far is the existing "События" page. When a
+    // dedicated tournament feature ships (CRM #10/#14), add its section
+    // here instead of creating a new top-level menu entry.
+    children: [
+      {
+        label: "События",
+        href: "/events",
+        icon: CalendarDays,
+      },
+    ],
   },
   {
     label: "Призы топов",

@@ -1398,8 +1398,14 @@ export const crmService = {
 
 // ---------------- Leaderboard points: auto-reset settings + selective adjust ----------------
 
+// "interval"      — reset every `interval_days` days after the last reset.
+// "weekly_monday" — reset every Monday 00:00 Asia/Almaty (CRM task #6,
+//                    "Еженедельный спринт").
+export type LeaderboardPointsResetMode = 'interval' | 'weekly_monday';
+
 export interface LeaderboardPointsSettings {
   auto_reset_enabled: boolean;
+  reset_mode: LeaderboardPointsResetMode;
   interval_days: number;
   last_reset_at: string | null;
   next_reset_at: string | null;
@@ -1417,9 +1423,14 @@ export interface PointsAdjustResult {
 export const leaderboardPointsService = {
   getSettings: (): Promise<LeaderboardPointsSettings> =>
     api.get('/admin/leaderboard-points/settings').then(r => r.data),
-  updateSettings: (enabled: boolean, intervalDays: number): Promise<LeaderboardPointsSettings> =>
+  updateSettings: (
+    enabled: boolean,
+    resetMode: LeaderboardPointsResetMode,
+    intervalDays: number,
+  ): Promise<LeaderboardPointsSettings> =>
     api.patch('/admin/leaderboard-points/settings', {
       auto_reset_enabled: enabled,
+      reset_mode: resetMode,
       interval_days: intervalDays,
     }).then(r => r.data),
   adjustPoints: (userId: string, delta: number, reason?: string): Promise<PointsAdjustResult> =>
