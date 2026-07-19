@@ -308,12 +308,37 @@ export const CrmBoard: React.FC = () => {
     const taskId = Number(draggableId)
     const newStatus = destination.droppableId as CrmStatus
 
-    // Жёсткий WIP-лимит: «В работе» вмещает только одну задачу (бэкенд
-    // это тоже валидирует — здесь дублируем, чтобы карточка не прыгала).
+    // Жёсткий WIP-лимит: «В работе» вмещает только одну задачу (бэкенд это
+    // тоже валидирует). При попытке добавить вторую — предупреждаем и
+    // вытесняем МЕНЕЕ приоритетную из двух обратно в «Не начато».
     if (newStatus === 'prog') {
       const occupied = tasks.find((t) => t.status === 'prog' && t.id !== taskId)
-      if (occupied) {
-        toast.error(`В работе уже «${occupied.title}» — сначала освободите колонку`)
+      const incoming = tasks.find((t) => t.id === taskId)
+      if (occupied && incoming) {
+        const rank = (t: CrmTask) =>
+          ({ high: 3, mid: 2, low: 1 })[t.priority] * 10 + (t.labels.includes('срочно') ? 5 : 0)
+        const loser = rank(incoming) > rank(occupied) ? occupied : incoming
+        const winner = loser.id === occupied.id ? incoming : occupied
+        if (
+          !window.confirm(
+            `Две задачи одновременно в работе быть не могут.\n\n` +
+              `«${winner.title}» приоритетнее — «${loser.title}» будет возвращена в «Не начато». Продолжить?`,
+          )
+        )
+          return
+        ;(async () => {
+          try {
+            await crmService.moveTask(loser.id, 'todo', 0)
+            if (loser.id !== taskId) {
+              await crmService.moveTask(taskId, 'prog', 0)
+            }
+            toast.success(`«${loser.title}» возвращена в «Не начато»`)
+            await load()
+          } catch (err: any) {
+            toast.error(err?.response?.data?.detail || 'Не удалось перераспределить задачи')
+            await load()
+          }
+        })()
         return
       }
     }
