@@ -203,6 +203,11 @@ export const UserList: React.FC = () => {
     const [pointsIntervalInput, setPointsIntervalInput] = useState<string>('30')
     const [pointsNextReset, setPointsNextReset] = useState<string | null>(null)
     const [pointsSettingLoading, setPointsSettingLoading] = useState(false)
+    // Last interval_days value confirmed by the server — used as the
+    // fallback when switching to weekly mode while the interval input is
+    // mid-edit (e.g. cleared to retype), so an in-progress edit can never
+    // silently overwrite the user's saved interval with a hardcoded default.
+    const lastValidIntervalDays = useRef(30)
 
     const loadPointsSettings = useCallback(async () => {
         try {
@@ -211,6 +216,7 @@ export const UserList: React.FC = () => {
             setPointsResetMode(s.reset_mode)
             setPointsIntervalInput(String(s.interval_days))
             setPointsNextReset(s.next_reset_at)
+            lastValidIntervalDays.current = s.interval_days
         } catch { /* best-effort — card just won't show a next-reset date */ }
     }, [])
     useEffect(() => { loadPointsSettings() }, [loadPointsSettings])
@@ -229,15 +235,18 @@ export const UserList: React.FC = () => {
             if (isNaN(n) || n < 1 || n > 3650) { toast.error('Введите число дней от 1 до 3650'); return }
         } else if (isNaN(n) || n < 1 || n > 3650) {
             // Weekly mode ignores interval_days server-side, but the field
-            // is still validated/stored — fall back to a sane default
-            // rather than blocking the save on an unrelated input.
-            n = 30
+            // is still validated/stored — fall back to the last
+            // server-confirmed value rather than a hardcoded default, so a
+            // mid-edit (e.g. field cleared to retype) can't silently
+            // overwrite the user's saved interval.
+            n = lastValidIntervalDays.current
         }
         setPointsSettingLoading(true)
         try {
             const s = await leaderboardPointsService.updateSettings(enabled, mode, n)
             setPointsResetEnabled(s.auto_reset_enabled)
             setPointsResetMode(s.reset_mode)
+            lastValidIntervalDays.current = s.interval_days
             setPointsNextReset(s.next_reset_at)
             const label = mode === 'weekly_monday' ? 'каждый понедельник 00:00 (Алматы)' : `каждые ${n} дн.`
             toast.success(enabled ? `Автообнуление: ${label}` : 'Автообнуление отключено')
