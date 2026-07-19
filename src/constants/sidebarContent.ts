@@ -26,6 +26,7 @@ import {
   Languages,
   CalendarDays,
   Award,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,15 +62,22 @@ export const menuItemsGen2: SidebarItem[] = [
   {
     label: "Турнир",
     icon: Award,
-    // CRM #6: "Турнир" is a navigation group, not a new game entity — the
-    // only content it holds so far is the existing "События" page. When a
-    // dedicated tournament feature ships (CRM #10/#14), add its section
-    // here instead of creating a new top-level menu entry.
+    // CRM #6/#7/#19: "Турнир" is a navigation group, not a new game entity.
+    // "События" is the existing events feed; "Спринт" (CRM #19) is the
+    // weekly leaderboard-sprint admin page (settings, phone allowlist,
+    // current week, history, antifraud). When a dedicated tournament
+    // feature ships (CRM #10/#14), add its section here too instead of
+    // creating a new top-level menu entry.
     children: [
       {
         label: "События",
         href: "/events",
         icon: CalendarDays,
+      },
+      {
+        label: "Спринт",
+        href: "/tournament/sprint",
+        icon: Timer,
       },
     ],
   },

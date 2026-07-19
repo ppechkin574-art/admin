@@ -1476,10 +1476,26 @@ export interface LeaderboardPointsSettings {
   // mobile app's home screen. `null`/0 means the feature is off (CRM
   // task #7, "Победитель спринта").
   sprint_target_points: number | null;
+  // Prize amount (KZT, whole tenge) paid out to the sprint winner(s) —
+  // configured on the dedicated "Спринт" admin page (CRM #19). `null`
+  // means no prize is configured.
+  sprint_prize_amount: number | null;
   last_reset_at: string | null;
   next_reset_at: string | null;
   updated_at: string;
   updated_by: string | null;
+}
+
+// Partial PATCH payload — only the fields being changed should be sent, so
+// e.g. saving the auto-reset card on the Users page never clobbers the
+// sprint threshold/prize configured on the dedicated Sprint page, and
+// vice versa.
+export interface LeaderboardPointsSettingsUpdatePayload {
+  auto_reset_enabled?: boolean;
+  reset_mode?: LeaderboardPointsResetMode;
+  interval_days?: number;
+  sprint_target_points?: number | null;
+  sprint_prize_amount?: number | null;
 }
 
 export interface PointsAdjustResult {
@@ -1507,17 +1523,9 @@ export const leaderboardPointsService = {
   getSettings: (): Promise<LeaderboardPointsSettings> =>
     api.get('/admin/leaderboard-points/settings').then(r => r.data),
   updateSettings: (
-    enabled: boolean,
-    resetMode: LeaderboardPointsResetMode,
-    intervalDays: number,
-    sprintTargetPoints: number | null,
+    payload: LeaderboardPointsSettingsUpdatePayload,
   ): Promise<LeaderboardPointsSettings> =>
-    api.patch('/admin/leaderboard-points/settings', {
-      auto_reset_enabled: enabled,
-      reset_mode: resetMode,
-      interval_days: intervalDays,
-      sprint_target_points: sprintTargetPoints,
-    }).then(r => r.data),
+    api.patch('/admin/leaderboard-points/settings', payload).then(r => r.data),
   adjustPoints: (userId: string, delta: number, reason?: string): Promise<PointsAdjustResult> =>
     api.post(`/admin/leaderboard-points/users/${userId}/adjust`, { delta, reason: reason || null })
       .then(r => r.data),
@@ -1525,6 +1533,70 @@ export const leaderboardPointsService = {
   // winner, if any. Used for a read-only display next to the settings card.
   getSprintStatus: (): Promise<SprintStatus> =>
     api.get('/leaderboard/sprint').then(r => r.data),
+};
+
+// ---------------- Sprint admin (CRM #19, "Еженедельный спринт") ----------------
+// Builds on the auto-reset + sprint-target settings from CRM #6/#7 above:
+// allowlisted phone numbers eligible to participate, the current week's
+// standings/winner(s) (incl. unresolved ties), past-weeks history, and a
+// lightweight antifraud diagnostic list.
+
+export interface SprintAllowedPhone {
+  // Some backends key this list by numeric id, others treat phone_number
+  // itself as the unique key — `id` is optional so the UI can fall back to
+  // deleting by phone_number when it's absent.
+  id?: number;
+  phone_number: string;
+  added_by_display: string;
+  created_at: string;
+}
+
+export type SprintResolutionType = 'threshold' | 'closest' | 'tie_pending' | 'tie_split';
+
+export interface SprintWinnerEntry {
+  user_id: string;
+  name: string;
+  points: number;
+  resolution_type: SprintResolutionType;
+  prize_share: number | null;
+}
+
+export interface SprintCurrent {
+  target_points: number | null;
+  prize_amount: number | null;
+  week_start_at: string;
+  participant_count: number;
+  winners: SprintWinnerEntry[];
+}
+
+export interface SprintHistoryEntry extends SprintWinnerEntry {
+  week_start_at: string;
+}
+
+export interface SprintSuspiciousEntry {
+  user_id: string;
+  name: string;
+  points_delta: number;
+  source_type: string;
+  created_at: string;
+}
+
+export const sprintService = {
+  listAllowedPhones: (): Promise<SprintAllowedPhone[]> =>
+    api.get('/admin/sprint/allowed-phones').then(r => r.data),
+  addAllowedPhone: (phoneNumber: string): Promise<SprintAllowedPhone> =>
+    api.post('/admin/sprint/allowed-phones', { phone_number: phoneNumber }).then(r => r.data),
+  removeAllowedPhone: (entry: SprintAllowedPhone): Promise<void> =>
+    api.delete(`/admin/sprint/allowed-phones/${encodeURIComponent(String(entry.id ?? entry.phone_number))}`)
+      .then(() => undefined),
+  getCurrent: (): Promise<SprintCurrent> =>
+    api.get('/admin/sprint/current').then(r => r.data),
+  getHistory: (): Promise<SprintHistoryEntry[]> =>
+    api.get('/admin/sprint/history').then(r => r.data),
+  resolveTie: (weekStartAt: string): Promise<void> =>
+    api.post(`/admin/sprint/weeks/${encodeURIComponent(weekStartAt)}/resolve-tie`).then(() => undefined),
+  getSuspicious: (): Promise<SprintSuspiciousEntry[]> =>
+    api.get('/admin/sprint/suspicious').then(r => r.data),
 };
 
 export default api;
