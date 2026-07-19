@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: vitest (BLOCKING)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npx vitest run
+
+  typecheck:
+    name: tsc no-new-errors (advisory)
+    runs-on: ubuntu-latest
+    # 82 pre-existing tsc errors — a hard gate would be red from day one.
+    # Advisory until the backlog is cleaned up; the count is printed so
+    # regressions are at least visible in the log.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Count type errors
+        run: |
+          COUNT=$(npx tsc --noEmit 2>&1 | grep -c "error TS" || true)
+          echo "tsc errors: $COUNT (baseline: 82)"
+          if [ "$COUNT" -gt 82 ]; then
+            echo "::warning::tsc error count grew above the 82 baseline"
+            exit 1
+          fi
