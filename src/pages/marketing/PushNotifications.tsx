@@ -472,6 +472,13 @@ export const PushNotifications: React.FC = () => {
 
     const [testSending, setTestSending] = useState(false)
     const [testResult, setTestResult] = useState<TestPushResult | null>(null)
+    const [testPhones, setTestPhones] = useState<string[]>([])
+    const [testPhonesLoading, setTestPhonesLoading] = useState(true)
+    // Distinct from "confirmed empty" (real backend answer: no phones
+    // configured) — a fetch failure shouldn't look/behave the same, and
+    // must NOT permanently block a working send-test just because this
+    // one GET hiccuped. See loadTestPhones() below (retryable).
+    const [testPhonesError, setTestPhonesError] = useState(false)
 
     // ── Personal push by phone ────────────────────────────────────────────────
     const [personalPhone, setPersonalPhone] = useState('')
@@ -505,6 +512,19 @@ export const PushNotifications: React.FC = () => {
         }
     }
 
+    // Retryable on purpose: a transient GET failure must not permanently
+    // disable "Отправить тест" (see review note — the button's disabled
+    // state depends on testPhones, so a one-off network blip shouldn't
+    // masquerade as "no test phones configured on the backend").
+    const loadTestPhones = () => {
+        setTestPhonesLoading(true)
+        setTestPhonesError(false)
+        pushService.getTestPhones()
+            .then(r => setTestPhones(r.phones))
+            .catch(() => setTestPhonesError(true))
+            .finally(() => setTestPhonesLoading(false))
+    }
+
     useEffect(() => {
         streakPushTemplateService.get()
             .then(t => { setStreakTemplate(t); setStreakError(false) })
@@ -519,6 +539,8 @@ export const PushNotifications: React.FC = () => {
         dailyNotificationService.firebaseStatus()
             .then(s => setFirebaseEnabled(s.enabled))
             .catch(() => setFirebaseEnabled(false))
+
+        loadTestPhones()
     }, [])
 
     const titleTrimmed = title.trim()
@@ -662,18 +684,47 @@ export const PushNotifications: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex flex-wrap gap-2">
-                            {['+77787943760', '+77001234566'].map(phone => (
-                                <span key={phone} className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
-                                    <Smartphone className="h-3 w-3 text-gray-400" />
-                                    {phone}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {testPhonesLoading ? (
+                                <span className="text-xs text-gray-400">Загрузка номеров…</span>
+                            ) : testPhonesError ? (
+                                <>
+                                    <span className="text-xs text-red-500">
+                                        Не удалось загрузить список тестовых номеров (ошибка сети/сервера)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={loadTestPhones}
+                                        className="text-xs font-medium text-blue-600 hover:underline"
+                                    >
+                                        Повторить
+                                    </button>
+                                </>
+                            ) : testPhones.length === 0 ? (
+                                <span className="text-xs text-amber-600">
+                                    Тестовые номера не настроены на бэкенде (REVIEWER_TEST_PHONE / DEV_RATE_LIMIT_BYPASS_PHONES)
                                 </span>
-                            ))}
+                            ) : (
+                                testPhones.map(phone => (
+                                    <span key={phone} className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full px-2.5 py-1">
+                                        <Smartphone className="h-3 w-3 text-gray-400" />
+                                        {phone}
+                                    </span>
+                                ))
+                            )}
                         </div>
                         <Button
                             variant="secondary"
                             onClick={handleTestSend}
-                            disabled={testSending || !canSubmit}
+                            disabled={
+                                testSending ||
+                                !canSubmit ||
+                                testPhonesLoading ||
+                                // A failed GET is NOT proof of "nothing configured" — don't
+                                // block the button on it, let the real POST /send-test call
+                                // (and its own 400 guard) be the source of truth instead.
+                                (!testPhonesError && testPhones.length === 0)
+                            }
                             loading={testSending}
                             icon={<Send className="h-4 w-4" />}
                         >

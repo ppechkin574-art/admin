@@ -1178,6 +1178,12 @@ export const pushService = {
       .post("/admin/notifications/send-test", { title, body })
       .then((res) => res.data),
 
+  // Numbers actually configured on the backend (REVIEWER_TEST_PHONE +
+  // DEV_RATE_LIMIT_BYPASS_PHONES) — fetched instead of hardcoded so the
+  // chips shown before sending never drift from what /send-test really uses.
+  getTestPhones: (): Promise<{ phones: string[] }> =>
+    api.get("/admin/notifications/test-phones").then((res) => res.data),
+
   sendToPhone: (phone: string, title: string, body: string): Promise<{
     phone: string;
     user_found: boolean;
