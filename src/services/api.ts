@@ -1471,6 +1471,11 @@ export interface LeaderboardPointsSettings {
   auto_reset_enabled: boolean;
   reset_mode: LeaderboardPointsResetMode;
   interval_days: number;
+  // Weekly points threshold — the first user to reach this many points in
+  // the current week is locked in as the "sprint winner" shown on the
+  // mobile app's home screen. `null`/0 means the feature is off (CRM
+  // task #7, "Победитель спринта").
+  sprint_target_points: number | null;
   last_reset_at: string | null;
   next_reset_at: string | null;
   updated_at: string;
@@ -1484,6 +1489,20 @@ export interface PointsAdjustResult {
   points_delta: number;
 }
 
+export interface SprintWinner {
+  user_id: string;
+  name: string;
+  avatar_url: string | null;
+  points_at_win: number;
+  won_at: string;
+}
+
+export interface SprintStatus {
+  target_points: number | null;
+  week_start_at: string | null;
+  winner: SprintWinner | null;
+}
+
 export const leaderboardPointsService = {
   getSettings: (): Promise<LeaderboardPointsSettings> =>
     api.get('/admin/leaderboard-points/settings').then(r => r.data),
@@ -1491,15 +1510,21 @@ export const leaderboardPointsService = {
     enabled: boolean,
     resetMode: LeaderboardPointsResetMode,
     intervalDays: number,
+    sprintTargetPoints: number | null,
   ): Promise<LeaderboardPointsSettings> =>
     api.patch('/admin/leaderboard-points/settings', {
       auto_reset_enabled: enabled,
       reset_mode: resetMode,
       interval_days: intervalDays,
+      sprint_target_points: sprintTargetPoints,
     }).then(r => r.data),
   adjustPoints: (userId: string, delta: number, reason?: string): Promise<PointsAdjustResult> =>
     api.post(`/admin/leaderboard-points/users/${userId}/adjust`, { delta, reason: reason || null })
       .then(r => r.data),
+  // Public endpoint (no auth) — current week's sprint target + locked-in
+  // winner, if any. Used for a read-only display next to the settings card.
+  getSprintStatus: (): Promise<SprintStatus> =>
+    api.get('/leaderboard/sprint').then(r => r.data),
 };
 
 export default api;
