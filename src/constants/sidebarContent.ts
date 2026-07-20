@@ -26,6 +26,7 @@ import {
   Languages,
   CalendarDays,
   Award,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,27 @@ export const isSidebarGroup = (item: SidebarItem): item is SidebarGroupItem =>
 
 export const menuItemsGen2: SidebarItem[] = [
   { label: "CRM", href: "/crm", icon: FolderKanban },
+  {
+    label: "Турнир",
+    icon: Award,
+    // CRM #6/#19: "Турнир" is a navigation group, not a game entity. Placed
+    // straight after CRM because the weekly sprint is edited every week —
+    // it is operational work, unlike the content sections further down.
+    // "События" lives here (it edits the same home screen) rather than as a
+    // top-level entry, so everything the Главная shows is in one place.
+    children: [
+      {
+        label: "Спринт",
+        href: "/tournament/sprint",
+        icon: Timer,
+      },
+      {
+        label: "События",
+        href: "/events",
+        icon: CalendarDays,
+      },
+    ],
+  },
   { label: "Модули", href: "/modules", icon: Puzzle },
   { label: "Пробное ЕНТ", href: "/ent-practice/subjects", icon: GraduationCap },
   { label: "Тренажёр по темам", href: "/trainer-v2/subjects", icon: Layers },
@@ -57,21 +79,6 @@ export const menuItemsGen2: SidebarItem[] = [
     label: "Реферралы",
     href: "/referrals/policy",
     icon: Gift,
-  },
-  {
-    label: "Турнир",
-    icon: Award,
-    // CRM #6: "Турнир" is a navigation group, not a new game entity — the
-    // only content it holds so far is the existing "События" page. When a
-    // dedicated tournament feature ships (CRM #10/#14), add its section
-    // here instead of creating a new top-level menu entry.
-    children: [
-      {
-        label: "События",
-        href: "/events",
-        icon: CalendarDays,
-      },
-    ],
   },
   {
     label: "Призы топов",

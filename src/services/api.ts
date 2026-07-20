@@ -1476,6 +1476,12 @@ export interface LeaderboardPointsSettings {
   // mobile app's home screen. `null`/0 means the feature is off (CRM
   // task #7, "Победитель спринта").
   sprint_target_points: number | null;
+  // CRM #19 — the copy and prize the mobile home card renders. Owned here
+  // (not in the Events section) because the prize is also what gets split
+  // between tied winners and recorded per week.
+  sprint_title_ru: string | null;
+  sprint_title_kk: string | null;
+  sprint_prize_amount: number | null;
   last_reset_at: string | null;
   next_reset_at: string | null;
   updated_at: string;
@@ -1503,21 +1509,102 @@ export interface SprintStatus {
   winner: SprintWinner | null;
 }
 
+export type LeaderboardPointsSettingsPatch = Partial<{
+  auto_reset_enabled: boolean;
+  reset_mode: LeaderboardPointsResetMode;
+  interval_days: number;
+  sprint_target_points: number | null;
+  sprint_title_ru: string | null;
+  sprint_title_kk: string | null;
+  sprint_prize_amount: number | null;
+}>;
+
+// ---------------- Weekly sprint (CRM #19) ----------------
+
+// How a week's winner was decided.
+//  threshold   — crossed the points target mid-week, week closed early
+//  closest     — highest score when the week ended
+//  tie_pending — several tied at the top, waiting for an admin to split
+//  tie_split   — that tie after the admin split the prize
+export type SprintResolution = 'threshold' | 'closest' | 'tie_pending' | 'tie_split';
+
+export interface SprintParticipant {
+  id: number;
+  phone_number: string;
+  // null while the phone has no account yet — entry granted in advance to
+  // someone who paid but has not registered.
+  user_id: string | null;
+  user_display: string | null;
+  added_by_display: string;
+  created_at: string;
+}
+
+export interface SprintStanding {
+  user_id: string;
+  name: string;
+  avatar_url: string | null;
+  points: number;
+}
+
+export interface SprintWinnerEntry {
+  user_id: string;
+  name: string;
+  points: number;
+  resolution_type: SprintResolution;
+  prize_share: number | null;
+  won_at: string;
+}
+
+export interface SprintCurrent {
+  week_start_at: string;
+  week_end_at: string;
+  target_points: number | null;
+  prize_amount: number | null;
+  participant_count: number;
+  winners: SprintWinnerEntry[];
+  standings: SprintStanding[];
+}
+
+export interface SprintHistoryEntry extends SprintWinnerEntry {
+  week_start_at: string;
+}
+
+export interface SprintTieResolveResult {
+  week_start_at: string;
+  winners_count: number;
+  prize_share: number | null;
+}
+
+export const sprintService = {
+  listParticipants: (): Promise<SprintParticipant[]> =>
+    api.get('/admin/sprint/participants').then(r => r.data),
+  // `userId` is set when the admin picked an existing account from search,
+  // null when they typed a bare number for someone not registered yet.
+  addParticipant: (phoneNumber: string, userId: string | null = null): Promise<SprintParticipant> =>
+    api.post('/admin/sprint/participants', { phone_number: phoneNumber, user_id: userId })
+      .then(r => r.data),
+  removeParticipant: (id: number): Promise<void> =>
+    api.delete(`/admin/sprint/participants/${id}`).then(() => undefined),
+  getCurrent: (): Promise<SprintCurrent> =>
+    api.get('/admin/sprint/current').then(r => r.data),
+  getHistory: (limit = 100): Promise<SprintHistoryEntry[]> =>
+    api.get('/admin/sprint/history', { params: { limit } }).then(r => r.data),
+  resolveTie: (weekStartAt: string): Promise<SprintTieResolveResult> =>
+    api.post(`/admin/sprint/weeks/${encodeURIComponent(weekStartAt)}/resolve-tie`)
+      .then(r => r.data),
+};
+
 export const leaderboardPointsService = {
   getSettings: (): Promise<LeaderboardPointsSettings> =>
     api.get('/admin/leaderboard-points/settings').then(r => r.data),
+  // PARTIAL update — send ONLY the fields your screen owns. Two pages write
+  // to this endpoint (Пользователи owns the auto-reset cadence, Турнир →
+  // Спринт owns the threshold/prize/card copy); sending a full payload from
+  // either would reset the other page's fields to their defaults.
   updateSettings: (
-    enabled: boolean,
-    resetMode: LeaderboardPointsResetMode,
-    intervalDays: number,
-    sprintTargetPoints: number | null,
+    patch: LeaderboardPointsSettingsPatch,
   ): Promise<LeaderboardPointsSettings> =>
-    api.patch('/admin/leaderboard-points/settings', {
-      auto_reset_enabled: enabled,
-      reset_mode: resetMode,
-      interval_days: intervalDays,
-      sprint_target_points: sprintTargetPoints,
-    }).then(r => r.data),
+    api.patch('/admin/leaderboard-points/settings', patch).then(r => r.data),
   adjustPoints: (userId: string, delta: number, reason?: string): Promise<PointsAdjustResult> =>
     api.post(`/admin/leaderboard-points/users/${userId}/adjust`, { delta, reason: reason || null })
       .then(r => r.data),

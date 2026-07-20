@@ -12,7 +12,7 @@ import Button from '@/components/common/Button'
 import Badge from '@/components/common/Badge'
 import Modal from '@/components/common/Modal'
 import AlertModal from '@/components/common/AlertModal'
-import { leaderboardHiddenService, appSettingsService, leaderboardPointsService, type LeaderboardPointsResetMode, type SprintStatus } from '@/services/api'
+import { leaderboardHiddenService, appSettingsService, leaderboardPointsService, type LeaderboardPointsResetMode } from '@/services/api'
 
 interface User {
     id: string
@@ -202,10 +202,6 @@ export const UserList: React.FC = () => {
     const [pointsResetMode, setPointsResetMode] = useState<LeaderboardPointsResetMode>('interval')
     const [pointsIntervalInput, setPointsIntervalInput] = useState<string>('30')
     const [pointsNextReset, setPointsNextReset] = useState<string | null>(null)
-    // Weekly sprint-winner threshold (CRM task #7) — empty string/0 means
-    // the feature is off and is sent to the backend as `null`.
-    const [pointsSprintTargetInput, setPointsSprintTargetInput] = useState<string>('')
-    const [sprintStatus, setSprintStatus] = useState<SprintStatus | null>(null)
     const [pointsSettingLoading, setPointsSettingLoading] = useState(false)
     // Last interval_days value confirmed by the server — used as the
     // fallback when switching to weekly mode while the interval input is
@@ -220,16 +216,12 @@ export const UserList: React.FC = () => {
             setPointsResetMode(s.reset_mode)
             setPointsIntervalInput(String(s.interval_days))
             setPointsNextReset(s.next_reset_at)
-            setPointsSprintTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
             lastValidIntervalDays.current = s.interval_days
         } catch { /* best-effort — card just won't show a next-reset date */ }
     }, [])
     useEffect(() => { loadPointsSettings() }, [loadPointsSettings])
 
     useEffect(() => {
-        leaderboardPointsService.getSprintStatus()
-            .then(setSprintStatus)
-            .catch(() => { /* best-effort — winner badge just won't show */ })
     }, [])
 
     // `overrides` lets the enabled-toggle and mode-select save immediately
@@ -252,21 +244,20 @@ export const UserList: React.FC = () => {
             // overwrite the user's saved interval.
             n = lastValidIntervalDays.current
         }
-        // Empty or 0 means the sprint-winner feature is off — send `null`
-        // rather than 0 so the backend treats it as "disabled".
-        const sprintRaw = parseInt(pointsSprintTargetInput, 10)
-        if (pointsSprintTargetInput.trim() !== '' && (isNaN(sprintRaw) || sprintRaw < 0)) {
-            toast.error('Порог баллов спринта должен быть неотрицательным числом'); return
-        }
-        const sprintTarget = isNaN(sprintRaw) || sprintRaw <= 0 ? null : sprintRaw
         setPointsSettingLoading(true)
         try {
-            const s = await leaderboardPointsService.updateSettings(enabled, mode, n, sprintTarget)
+            // Partial payload — this page owns ONLY the auto-reset cadence.
+            // The sprint threshold/prize/copy live on Турнир → Спринт and
+            // sending them from here would overwrite that page's values.
+            const s = await leaderboardPointsService.updateSettings({
+                auto_reset_enabled: enabled,
+                reset_mode: mode,
+                interval_days: n,
+            })
             setPointsResetEnabled(s.auto_reset_enabled)
             setPointsResetMode(s.reset_mode)
             lastValidIntervalDays.current = s.interval_days
             setPointsNextReset(s.next_reset_at)
-            setPointsSprintTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
             const label = mode === 'weekly_monday' ? 'каждый понедельник 00:00 (Алматы)' : `каждые ${n} дн.`
             toast.success(enabled ? `Автообнуление: ${label}` : 'Автообнуление отключено')
         } catch {
@@ -652,16 +643,6 @@ export const UserList: React.FC = () => {
                         />
                     </div>
                 )}
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Порог баллов для победы в спринте (0 или пусто — выключено):</label>
-                    <input
-                        type="number" min={0} step={1}
-                        value={pointsSprintTargetInput}
-                        onChange={e => setPointsSprintTargetInput(e.target.value)}
-                        placeholder="выключено"
-                        className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                </div>
                 <Button
                     variant="secondary" size="sm"
                     icon={<Save className="h-3.5 w-3.5" />}
@@ -676,16 +657,8 @@ export const UserList: React.FC = () => {
                         Следующий сброс: {formatDateTime(pointsNextReset)} · у всех, включая скрытых
                     </span>
                 )}
-                {sprintStatus?.target_points ? (
-                    <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 flex items-center gap-1">
-                        <Crown className="h-3 w-3" />
-                        {sprintStatus.winner
-                            ? `Победитель спринта: ${sprintStatus.winner.name} (${sprintStatus.winner.points_at_win} баллов)`
-                            : `Спринт: ещё нет победителя (порог ${sprintStatus.target_points})`}
-                    </span>
-                ) : null}
                 <span className="text-xs text-gray-400 w-full">
-                    Обнуляет очки у всех пользователей (в т.ч. скрытых из лидерборда). Сохранение перезапускает отсчёт от текущего момента. Порог спринта — первый, кто наберёт указанное число баллов за неделю, фиксируется победителем и отображается на главном экране приложения.
+                    Обнуляет очки у всех пользователей (в т.ч. скрытых из лидерборда). Сохранение перезапускает отсчёт от текущего момента. Настройки еженедельного спринта — порог, приз и текст карточки — на странице «Турнир → Спринт».
                 </span>
             </div>
 

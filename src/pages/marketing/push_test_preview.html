@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview: Тестовая отправка пушей</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; padding: 32px; color: #111827; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 28px; }
+  .page { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+
+  /* Section wrapper */
+  .section-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.07em; padding: 0 2px; margin-bottom: 8px; }
+  .card { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); padding: 24px; }
+
+  /* Test push card */
+  .card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .icon-wrap { background: #fffbeb; color: #d97706; border-radius: 12px; padding: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .icon-wrap svg { width: 20px; height: 20px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #111827; }
+  .card-desc { font-size: 12px; color: #6b7280; margin-top: 2px; line-height: 1.5; }
+
+  /* Phone chips + button row */
+  .phone-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: #f3f4f6; border-radius: 100px; padding: 4px 10px; font-size: 12px; font-weight: 500; color: #374151; }
+  .chip svg { width: 12px; height: 12px; color: #9ca3af; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; }
+  .btn-secondary { background: #f3f4f6; color: #374151; }
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn svg { width: 16px; height: 16px; }
+
+  /* Result table */
+  .result-table { margin-top: 16px; border: 1px solid #f3f4f6; border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead tr { background: #f9fafb; }
+  thead th { padding: 8px 12px; font-weight: 500; color: #6b7280; text-align: left; }
+  thead th.center { text-align: center; }
+  tbody tr { background: #fff; border-top: 1px solid #f9fafb; }
+  tbody td { padding: 8px 12px; color: #374151; }
+  tbody td.center { text-align: center; }
+  .mono { font-family: monospace; }
+  .ok { color: #16a34a; }
+  .err { color: #dc2626; }
+  .muted { color: #9ca3af; }
+  tfoot tr { background: #f9fafb; font-weight: 600; color: #374151; border-top: 1px solid #e5e7eb; }
+  tfoot td { padding: 8px 12px; }
+
+  /* State 1: initial (no result yet) */
+  .state-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 6px; }
+
+  .demo-wrap { display: flex; flex-direction: column; gap: 20px; }
+  .demo-state { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); padding: 24px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div>
+    <h1>Push-уведомления — Тестовая отправка</h1>
+    <p class="subtitle">Новый раздел между «Автоматические пуши» и «Ручная рассылка»</p>
+  </div>
+
+  <div class="demo-wrap">
+
+    <!-- State A: before send -->
+    <div class="demo-state">
+      <div class="state-label">Состояние A — до отправки</div>
+      <div class="section-label">Тестовая отправка</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5h0c-1.4 0-2.5-1.1-2.5-2.5V2"/>
+              <path d="M8.5 2h7"/><path d="M14.5 16h.1"/>
+              <path d="m9 7.5 6 4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Проверить перед рассылкой</div>
+            <div class="card-desc">Отправляет пуш только на тестовые телефоны (ваш + ревьюеры). Используйте тот же заголовок и текст что ниже — проверьте как выглядит уведомление перед broadcast.</div>
+          </div>
+        </div>
+        <div class="phone-row">
+          <div class="chips">
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              +77787943760
+            </span>
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              +77001234566
+            </span>
+          </div>
+          <button class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Отправить тест
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- State B: after successful send -->
+    <div class="demo-state">
+      <div class="state-label">Состояние B — после отправки (результат)</div>
+      <div class="section-label">Тестовая отправка</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5h0c-1.4 0-2.5-1.1-2.5-2.5V2"/>
+              <path d="M8.5 2h7"/><path d="M14.5 16h.1"/>
+              <path d="m9 7.5 6 4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Проверить перед рассылкой</div>
+            <div class="card-desc">Отправляет пуш только на тестовые телефоны (ваш + ревьюеры). Используйте тот же заголовок и текст что ниже — проверьте как выглядит уведомление перед broadcast.</div>
+          </div>
+        </div>
+        <div class="phone-row">
+          <div class="chips">
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              +77787943760
+            </span>
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              +77001234566
+            </span>
+          </div>
+          <button class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Отправить тест
+          </button>
+        </div>
+
+        <!-- Result table -->
+        <div class="result-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Телефон</th>
+                <th class="center">Польз.</th>
+                <th class="center">Устройств</th>
+                <th class="center">Доставлено</th>
+                <th class="center">Ошибок</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">+77787943760</td>
+                <td class="center ok">✓</td>
+                <td class="center">2</td>
+                <td class="center ok" style="font-weight:600">2</td>
+                <td class="center muted">0</td>
+              </tr>
+              <tr>
+                <td class="mono">+77001234566</td>
+                <td class="center ok">✓</td>
+                <td class="center">1</td>
+                <td class="center ok" style="font-weight:600">1</td>
+                <td class="center muted">0</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Итого</td>
+                <td style="text-align:center;color:#15803d">3</td>
+                <td style="text-align:center;color:#9ca3af">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- State C: user not found -->
+    <div class="demo-state">
+      <div class="state-label">Состояние C — один телефон не найден в системе</div>
+      <div class="section-label">Тестовая отправка</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5h0c-1.4 0-2.5-1.1-2.5-2.5V2"/>
+              <path d="M8.5 2h7"/><path d="M14.5 16h.1"/>
+              <path d="m9 7.5 6 4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Проверить перед рассылкой</div>
+            <div class="card-desc">Отправляет пуш только на тестовые телефоны (ваш + ревьюеры).</div>
+          </div>
+        </div>
+        <div class="phone-row">
+          <div class="chips">
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              +77787943760
+            </span>
+            <span class="chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              +77001234566
+            </span>
+          </div>
+          <button class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Отправить тест
+          </button>
+        </div>
+        <div class="result-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Телефон</th>
+                <th class="center">Польз.</th>
+                <th class="center">Устройств</th>
+                <th class="center">Доставлено</th>
+                <th class="center">Ошибок</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">+77787943760</td>
+                <td class="center ok">✓</td>
+                <td class="center">1</td>
+                <td class="center ok" style="font-weight:600">1</td>
+                <td class="center muted">0</td>
+              </tr>
+              <tr>
+                <td class="mono">+77001234566</td>
+                <td class="center err">✗</td>
+                <td class="center muted">0</td>
+                <td class="center muted">0</td>
+                <td class="center muted">0</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Итого</td>
+                <td style="text-align:center;color:#15803d">1</td>
+                <td style="text-align:center;color:#9ca3af">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
