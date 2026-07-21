@@ -89,6 +89,7 @@ export default function SprintSettings() {
     const [prizeInput, setPrizeInput] = useState('')
     const [targetInput, setTargetInput] = useState('')
     const [accessUrlInput, setAccessUrlInput] = useState('')
+    const [perAnswerInput, setPerAnswerInput] = useState('')
     const [settingsSaving, setSettingsSaving] = useState(false)
 
     const loadSettings = useCallback(async () => {
@@ -99,6 +100,7 @@ export default function SprintSettings() {
             setPrizeInput(s.sprint_prize_amount ? String(s.sprint_prize_amount) : '')
             setTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
             setAccessUrlInput(s.sprint_access_url ?? '')
+            setPerAnswerInput(s.sprint_points_per_answer ? String(s.sprint_points_per_answer) : '')
         } catch {
             toast.error('Не удалось загрузить настройки спринта')
         }
@@ -120,12 +122,14 @@ export default function SprintSettings() {
                 sprint_prize_amount: toNullableInt(prizeInput),
                 sprint_target_points: toNullableInt(targetInput),
                 sprint_access_url: accessUrlInput.trim() || null,
+                sprint_points_per_answer: toNullableInt(perAnswerInput),
             })
             setTitleRu(s.sprint_title_ru ?? '')
             setTitleKk(s.sprint_title_kk ?? '')
             setPrizeInput(s.sprint_prize_amount ? String(s.sprint_prize_amount) : '')
             setTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
             setAccessUrlInput(s.sprint_access_url ?? '')
+            setPerAnswerInput(s.sprint_points_per_answer ? String(s.sprint_points_per_answer) : '')
             toast.success('Настройки спринта сохранены')
             loadCurrent()
         } catch {
@@ -335,6 +339,16 @@ export default function SprintSettings() {
                         />
                     </div>
                     <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Баллы за верный ответ</label>
+                        <input
+                            type="number" min={0} step={1}
+                            value={perAnswerInput}
+                            onChange={e => setPerAnswerInput(e.target.value)}
+                            placeholder="выключено"
+                            className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
                         <label className="text-sm text-gray-600">Ссылка «Купить доступ»</label>
                         <input
                             type="url"
@@ -360,6 +374,7 @@ export default function SprintSettings() {
                     досрочно, и карточка сразу показывает победителя. Приз делится поровну при ничье и
                     записывается в историю. Выплата — вручную. Ссылка «Купить доступ» — куда ведёт
                     кнопка на экране спринта у тех, кто не в списке участников (пусто — кнопка скрыта).
+                    Баллы за верный ответ — сколько очков даёт каждый правильный ответ в тесте спринта.
                 </p>
             </div>
 
