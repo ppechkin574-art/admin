@@ -1486,6 +1486,9 @@ export interface LeaderboardPointsSettings {
   sprint_access_url: string | null;
   // Баллы за верный ответ в тесте спринта. null/0 — начисление выключено.
   sprint_points_per_answer: number | null;
+  // Период спринта (произвольные даты, ISO). Обе заданы → спринт идёт [start,end).
+  sprint_start_at: string | null;
+  sprint_end_at: string | null;
   last_reset_at: string | null;
   next_reset_at: string | null;
   updated_at: string;
@@ -1523,6 +1526,8 @@ export type LeaderboardPointsSettingsPatch = Partial<{
   sprint_prize_amount: number | null;
   sprint_access_url: string | null;
   sprint_points_per_answer: number | null;
+  sprint_start_at: string | null;
+  sprint_end_at: string | null;
 }>;
 
 // ---------------- Weekly sprint (CRM #19) ----------------

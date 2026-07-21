@@ -82,6 +82,16 @@ const toNullableInt = (raw: string): number | null => {
     return isNaN(n) || n <= 0 ? null : n
 }
 
+// <input type="datetime-local"> works in LOCAL time; the API stores ISO/UTC.
+const isoToLocalInput = (iso: string | null | undefined): string => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+const localInputToIso = (v: string): string | null =>
+    v.trim() ? new Date(v).toISOString() : null
+
 export default function SprintSettings() {
     // ── settings: card copy, prize, threshold ────────────────────────────
     const [titleRu, setTitleRu] = useState('')
@@ -90,6 +100,8 @@ export default function SprintSettings() {
     const [targetInput, setTargetInput] = useState('')
     const [accessUrlInput, setAccessUrlInput] = useState('')
     const [perAnswerInput, setPerAnswerInput] = useState('')
+    const [startInput, setStartInput] = useState('')
+    const [endInput, setEndInput] = useState('')
     const [settingsSaving, setSettingsSaving] = useState(false)
 
     const loadSettings = useCallback(async () => {
@@ -101,6 +113,8 @@ export default function SprintSettings() {
             setTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
             setAccessUrlInput(s.sprint_access_url ?? '')
             setPerAnswerInput(s.sprint_points_per_answer ? String(s.sprint_points_per_answer) : '')
+            setStartInput(isoToLocalInput(s.sprint_start_at))
+            setEndInput(isoToLocalInput(s.sprint_end_at))
         } catch {
             toast.error('Не удалось загрузить настройки спринта')
         }
@@ -113,6 +127,13 @@ export default function SprintSettings() {
                 toast.error(`${label}: введите неотрицательное число`); return
             }
         }
+        // Sprint period: both dates or neither, and end strictly after start.
+        if (!!startInput.trim() !== !!endInput.trim()) {
+            toast.error('Период спринта: задайте обе даты (начало и конец) или ни одной'); return
+        }
+        if (startInput.trim() && endInput.trim() && new Date(endInput) <= new Date(startInput)) {
+            toast.error('Конец спринта должен быть позже начала'); return
+        }
         setSettingsSaving(true)
         try {
             // Only this page's fields — the Пользователи page owns the rest.
@@ -123,6 +144,8 @@ export default function SprintSettings() {
                 sprint_target_points: toNullableInt(targetInput),
                 sprint_access_url: accessUrlInput.trim() || null,
                 sprint_points_per_answer: toNullableInt(perAnswerInput),
+                sprint_start_at: localInputToIso(startInput),
+                sprint_end_at: localInputToIso(endInput),
             })
             setTitleRu(s.sprint_title_ru ?? '')
             setTitleKk(s.sprint_title_kk ?? '')
@@ -130,6 +153,8 @@ export default function SprintSettings() {
             setTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
             setAccessUrlInput(s.sprint_access_url ?? '')
             setPerAnswerInput(s.sprint_points_per_answer ? String(s.sprint_points_per_answer) : '')
+            setStartInput(isoToLocalInput(s.sprint_start_at))
+            setEndInput(isoToLocalInput(s.sprint_end_at))
             toast.success('Настройки спринта сохранены')
             loadCurrent()
         } catch {
@@ -347,6 +372,27 @@ export default function SprintSettings() {
                             placeholder="выключено"
                             className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Период спринта: начало</label>
+                        <input
+                            type="datetime-local"
+                            value={startInput}
+                            onChange={e => setStartInput(e.target.value)}
+                            className="w-60 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Период спринта: конец</label>
+                        <input
+                            type="datetime-local"
+                            value={endInput}
+                            onChange={e => setEndInput(e.target.value)}
+                            className="w-60 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                        <span className="text-xs text-gray-400">
+                            Обе даты заданы → спринт идёт в этот период. Пусто → текущая неделя (Пн–Вс).
+                        </span>
                     </div>
                     <div className="flex flex-col gap-1">
                         <label className="text-sm text-gray-600">Ссылка «Купить доступ»</label>
