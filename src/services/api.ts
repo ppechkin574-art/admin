@@ -1482,6 +1482,8 @@ export interface LeaderboardPointsSettings {
   sprint_title_ru: string | null;
   sprint_title_kk: string | null;
   sprint_prize_amount: number | null;
+  // Ссылка, которую открывает кнопка «Купить доступ» на экране спринта.
+  sprint_access_url: string | null;
   last_reset_at: string | null;
   next_reset_at: string | null;
   updated_at: string;
@@ -1517,6 +1519,7 @@ export type LeaderboardPointsSettingsPatch = Partial<{
   sprint_title_ru: string | null;
   sprint_title_kk: string | null;
   sprint_prize_amount: number | null;
+  sprint_access_url: string | null;
 }>;
 
 // ---------------- Weekly sprint (CRM #19) ----------------

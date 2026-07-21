@@ -88,6 +88,7 @@ export default function SprintSettings() {
     const [titleKk, setTitleKk] = useState('')
     const [prizeInput, setPrizeInput] = useState('')
     const [targetInput, setTargetInput] = useState('')
+    const [accessUrlInput, setAccessUrlInput] = useState('')
     const [settingsSaving, setSettingsSaving] = useState(false)
 
     const loadSettings = useCallback(async () => {
@@ -97,6 +98,7 @@ export default function SprintSettings() {
             setTitleKk(s.sprint_title_kk ?? '')
             setPrizeInput(s.sprint_prize_amount ? String(s.sprint_prize_amount) : '')
             setTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
+            setAccessUrlInput(s.sprint_access_url ?? '')
         } catch {
             toast.error('Не удалось загрузить настройки спринта')
         }
@@ -117,11 +119,13 @@ export default function SprintSettings() {
                 sprint_title_kk: titleKk.trim() || null,
                 sprint_prize_amount: toNullableInt(prizeInput),
                 sprint_target_points: toNullableInt(targetInput),
+                sprint_access_url: accessUrlInput.trim() || null,
             })
             setTitleRu(s.sprint_title_ru ?? '')
             setTitleKk(s.sprint_title_kk ?? '')
             setPrizeInput(s.sprint_prize_amount ? String(s.sprint_prize_amount) : '')
             setTargetInput(s.sprint_target_points ? String(s.sprint_target_points) : '')
+            setAccessUrlInput(s.sprint_access_url ?? '')
             toast.success('Настройки спринта сохранены')
             loadCurrent()
         } catch {
@@ -330,6 +334,16 @@ export default function SprintSettings() {
                             className="w-40 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                         />
                     </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Ссылка «Купить доступ»</label>
+                        <input
+                            type="url"
+                            value={accessUrlInput}
+                            onChange={e => setAccessUrlInput(e.target.value)}
+                            placeholder="https://wa.me/7700… или ссылка на оплату"
+                            className="w-72 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
                     <Button
                         variant="secondary" size="sm"
                         icon={<Save className="h-3.5 w-3.5" />}
@@ -344,7 +358,8 @@ export default function SprintSettings() {
                     Неделя идёт с понедельника 00:00 до воскресенья 23:59 по Алматы. Побеждает набравший
                     больше всех баллов за неделю. Если задан порог — первый, кто его наберёт, побеждает
                     досрочно, и карточка сразу показывает победителя. Приз делится поровну при ничье и
-                    записывается в историю. Выплата — вручную.
+                    записывается в историю. Выплата — вручную. Ссылка «Купить доступ» — куда ведёт
+                    кнопка на экране спринта у тех, кто не в списке участников (пусто — кнопка скрыта).
                 </p>
             </div>
 
