@@ -107,7 +107,7 @@ export default function SprintSettings() {
     }, [])
 
     const handleSaveSettings = async () => {
-        for (const [raw, label] of [[targetInput, 'Порог баллов'], [prizeInput, 'Приз']] as const) {
+        for (const [raw, label] of [[targetInput, 'Цель недели'], [prizeInput, 'Приз']] as const) {
             const n = parseInt(raw, 10)
             if (raw.trim() !== '' && (isNaN(n) || n < 0)) {
                 toast.error(`${label}: введите неотрицательное число`); return
@@ -329,7 +329,7 @@ export default function SprintSettings() {
                         />
                     </div>
                     <div className="flex flex-col gap-1">
-                        <label className="text-sm text-gray-600">Порог досрочной победы</label>
+                        <label className="text-sm text-gray-600">Цель недели (порог досрочной победы)</label>
                         <input
                             type="number" min={0} step={1}
                             value={targetInput}
@@ -528,7 +528,7 @@ export default function SprintSettings() {
                     <>
                         <div className="flex flex-wrap items-center gap-3 mb-3">
                             <Badge type="info">Участников: {current.participant_count}</Badge>
-                            <Badge type="secondary">Порог: {current.target_points ?? 'не задан'}</Badge>
+                            <Badge type="secondary">Цель недели: {current.target_points ?? 'не задана'}</Badge>
                             <Badge type="secondary" icon={<Wallet className="h-3 w-3" />}>
                                 Приз: {formatPrize(current.prize_amount)}
                             </Badge>
