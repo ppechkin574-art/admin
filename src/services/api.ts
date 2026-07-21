@@ -1489,6 +1489,8 @@ export interface LeaderboardPointsSettings {
   // Период спринта (произвольные даты, ISO). Обе заданы → спринт идёт [start,end).
   sprint_start_at: string | null;
   sprint_end_at: string | null;
+  // true → спринт открыт всем (бесплатное участие), белый список игнорируется.
+  sprint_open_to_all: boolean;
   last_reset_at: string | null;
   next_reset_at: string | null;
   updated_at: string;
@@ -1528,6 +1530,7 @@ export type LeaderboardPointsSettingsPatch = Partial<{
   sprint_points_per_answer: number | null;
   sprint_start_at: string | null;
   sprint_end_at: string | null;
+  sprint_open_to_all: boolean;
 }>;
 
 // ---------------- Battle settings (admin-editable) ----------------

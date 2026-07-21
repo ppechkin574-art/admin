@@ -102,6 +102,7 @@ export default function SprintSettings() {
     const [perAnswerInput, setPerAnswerInput] = useState('')
     const [startInput, setStartInput] = useState('')
     const [endInput, setEndInput] = useState('')
+    const [openToAll, setOpenToAll] = useState(false)
     const [settingsSaving, setSettingsSaving] = useState(false)
 
     const loadSettings = useCallback(async () => {
@@ -115,6 +116,7 @@ export default function SprintSettings() {
             setPerAnswerInput(s.sprint_points_per_answer ? String(s.sprint_points_per_answer) : '')
             setStartInput(isoToLocalInput(s.sprint_start_at))
             setEndInput(isoToLocalInput(s.sprint_end_at))
+            setOpenToAll(s.sprint_open_to_all)
         } catch {
             toast.error('Не удалось загрузить настройки спринта')
         }
@@ -146,6 +148,7 @@ export default function SprintSettings() {
                 sprint_points_per_answer: toNullableInt(perAnswerInput),
                 sprint_start_at: localInputToIso(startInput),
                 sprint_end_at: localInputToIso(endInput),
+                sprint_open_to_all: openToAll,
             })
             setTitleRu(s.sprint_title_ru ?? '')
             setTitleKk(s.sprint_title_kk ?? '')
@@ -155,6 +158,7 @@ export default function SprintSettings() {
             setPerAnswerInput(s.sprint_points_per_answer ? String(s.sprint_points_per_answer) : '')
             setStartInput(isoToLocalInput(s.sprint_start_at))
             setEndInput(isoToLocalInput(s.sprint_end_at))
+            setOpenToAll(s.sprint_open_to_all)
             toast.success('Настройки спринта сохранены')
             loadCurrent()
         } catch {
@@ -402,7 +406,23 @@ export default function SprintSettings() {
                             onChange={e => setAccessUrlInput(e.target.value)}
                             placeholder="https://wa.me/7700… или ссылка на оплату"
                             className="w-72 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            disabled={openToAll}
                         />
+                    </div>
+                    <div className="flex flex-col gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-indigo-900 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={openToAll}
+                                onChange={e => setOpenToAll(e.target.checked)}
+                                className="h-4 w-4"
+                            />
+                            Спринт открыт всем (бесплатное участие)
+                        </label>
+                        <span className="text-xs text-indigo-700/80">
+                            Вкл → у всех кнопка «Начать тест», «Купить доступ» и «по приглашению» скрыты,
+                            белый список игнорируется (но сохраняется). Выкл → доступ только по списку участников.
+                        </span>
                     </div>
                     <Button
                         variant="secondary" size="sm"
