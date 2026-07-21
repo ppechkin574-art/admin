@@ -27,6 +27,7 @@ import {
   CalendarDays,
   Award,
   Timer,
+  Swords,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +58,11 @@ export const menuItemsGen2: SidebarItem[] = [
         label: "События",
         href: "/events",
         icon: CalendarDays,
+      },
+      {
+        label: "Баттл",
+        href: "/battle",
+        icon: Swords,
       },
     ],
   },

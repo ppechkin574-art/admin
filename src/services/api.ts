@@ -1530,6 +1530,25 @@ export type LeaderboardPointsSettingsPatch = Partial<{
   sprint_end_at: string | null;
 }>;
 
+// ---------------- Battle settings (admin-editable) ----------------
+export interface BattleSettings {
+  stars_win: number;
+  stars_draw: number;
+  stars_loss: number;
+  questions_per_subject: number;
+  time_seconds: number;
+  bot_win_rate_min: number;
+  bot_win_rate_max: number;
+}
+export type BattleSettingsPatch = Partial<BattleSettings>;
+
+export const battleSettingsService = {
+  getSettings: (): Promise<BattleSettings> =>
+    api.get('/admin/battle/settings').then(r => r.data),
+  updateSettings: (patch: BattleSettingsPatch): Promise<BattleSettings> =>
+    api.patch('/admin/battle/settings', patch).then(r => r.data),
+};
+
 // ---------------- Weekly sprint (CRM #19) ----------------
 
 // How a week's winner was decided.

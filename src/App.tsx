@@ -32,6 +32,7 @@ import { ReferralPolicyForm } from './pages/referrals'
 import { LeaderboardPrizesList } from './pages/leaderboardPrizes'
 import EventsList from './pages/events/EventsList'
 import SprintSettings from '@/pages/tournament/SprintSettings'
+import BattleSettings from '@/pages/tournament/BattleSettings'
 import { StreakRewardsList } from './pages/streakRewards'
 import { StreakPushTemplatePage } from './pages/streakPushTemplate'
 import { AppScreensPage } from './pages/appScreens/AppScreensPage'
@@ -194,6 +195,7 @@ function App()
           <Route path="/leaderboard-prizes" element={<LeaderboardPrizesList />} />
           <Route path="/events" element={<EventsList />} />
             <Route path="/tournament/sprint" element={<SprintSettings />} />
+            <Route path="/battle" element={<BattleSettings />} />
 
           <Route path="/streak-rewards" element={<StreakRewardsList />} />
 
