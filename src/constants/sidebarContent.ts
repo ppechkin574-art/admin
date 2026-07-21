@@ -28,6 +28,7 @@ import {
   Award,
   Timer,
   Swords,
+  Rocket,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +64,11 @@ export const menuItemsGen2: SidebarItem[] = [
         label: "Баттл",
         href: "/battle",
         icon: Swords,
+      },
+      {
+        label: "Экран «Скоро»",
+        href: "/tournament/coming-soon",
+        icon: Rocket,
       },
     ],
   },

@@ -1549,6 +1549,26 @@ export const battleSettingsService = {
     api.patch('/admin/battle/settings', patch).then(r => r.data),
 };
 
+// ---------------- Coming-soon screen copy (admin-editable) ----------------
+// Text for the «Скоро запускаем» screen shown when a not-yet-launched banner
+// is tapped. subtitle_* is a template — {title} is replaced by the event name.
+export interface ComingSoonSettings {
+  title1_ru: string;
+  title1_kk: string;
+  title2_ru: string;
+  title2_kk: string;
+  subtitle_ru: string;
+  subtitle_kk: string;
+}
+export type ComingSoonSettingsPatch = Partial<ComingSoonSettings>;
+
+export const comingSoonSettingsService = {
+  getSettings: (): Promise<ComingSoonSettings> =>
+    api.get('/admin/coming-soon/settings').then(r => r.data),
+  updateSettings: (patch: ComingSoonSettingsPatch): Promise<ComingSoonSettings> =>
+    api.patch('/admin/coming-soon/settings', patch).then(r => r.data),
+};
+
 // ---------------- Weekly sprint (CRM #19) ----------------
 
 // How a week's winner was decided.
