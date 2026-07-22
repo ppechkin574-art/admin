@@ -70,6 +70,11 @@ export const menuItemsGen2: SidebarItem[] = [
         href: "/tournament/coming-soon",
         icon: Rocket,
       },
+      {
+        label: "Награды за баллы",
+        href: "/tournament/reward-goal",
+        icon: Gift,
+      },
     ],
   },
   { label: "Модули", href: "/modules", icon: Puzzle },

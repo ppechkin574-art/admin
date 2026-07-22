@@ -34,6 +34,7 @@ import EventsList from './pages/events/EventsList'
 import SprintSettings from '@/pages/tournament/SprintSettings'
 import BattleSettings from '@/pages/tournament/BattleSettings'
 import ComingSoonSettings from '@/pages/tournament/ComingSoonSettings'
+import RewardGoalSettings from '@/pages/tournament/RewardGoalSettings'
 import { StreakRewardsList } from './pages/streakRewards'
 import { StreakPushTemplatePage } from './pages/streakPushTemplate'
 import { AppScreensPage } from './pages/appScreens/AppScreensPage'
@@ -198,6 +199,7 @@ function App()
             <Route path="/tournament/sprint" element={<SprintSettings />} />
             <Route path="/battle" element={<BattleSettings />} />
             <Route path="/tournament/coming-soon" element={<ComingSoonSettings />} />
+            <Route path="/tournament/reward-goal" element={<RewardGoalSettings />} />
 
           <Route path="/streak-rewards" element={<StreakRewardsList />} />
 

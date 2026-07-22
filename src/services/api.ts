@@ -1647,6 +1647,32 @@ export const sprintService = {
       .then(r => r.data),
 };
 
+export interface RewardGoalSettings {
+  enabled: boolean;
+  // Single points goal for the home «До следующей награды» card. `null`/0
+  // means no active goal → the mobile card shows «Скоро новые цели».
+  target_points: number | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/**
+ * Home «До следующей награды» card config (admin page «Турнир → Награды
+ * за баллы»). Stored on the same leaderboard_points_settings singleton,
+ * but editing it here never touches the points-reset schedule.
+ */
+export const rewardGoalSettingsService = {
+  get: (): Promise<RewardGoalSettings> =>
+    api.get('/admin/leaderboard-points/reward-goal/settings').then(r => r.data),
+  update: (enabled: boolean, targetPoints: number | null): Promise<RewardGoalSettings> =>
+    api
+      .patch('/admin/leaderboard-points/reward-goal/settings', {
+        enabled,
+        target_points: targetPoints,
+      })
+      .then(r => r.data),
+};
+
 export const leaderboardPointsService = {
   getSettings: (): Promise<LeaderboardPointsSettings> =>
     api.get('/admin/leaderboard-points/settings').then(r => r.data),
